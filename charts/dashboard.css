@@ -4,10 +4,35 @@
   --color-partial: #f9a825;
   --color-empty: #e0e0e0;
   --color-other: #1565c0;
-  --border: #d8dde3;
-  --bg-subtle: #f6f8fa;
+
+  --border: #dde2e8;
+  --bg-subtle: #f6f8fb;
+  --bg-page: #fafbfd;
+  --text-main: #1c2430;
   --text-muted: #5b6470;
+
+  /* Primary brand accent: a professional deep teal/navy, used for the bulk
+     of interactive chrome (buttons, links, focus rings, active tab). */
   --accent: #2f5f8a;
+  --accent-dark: #244a6c;
+  --accent-soft: #eaf1f7;
+
+  /* Secondary accent: a soft, dusty rose. Used sparingly (a thin gradient
+     line, a hint-banner border, a couple of legend/brand touches) as a
+     subtle nod to this being a women's-health resource, without leaning on
+     overt gender-coded styling anywhere else in the UI. */
+  --accent-rose: #c2698a;
+  --accent-rose-soft: #f7e9ee;
+
+  --warn: #b06a00;
+  --warn-bg: #fdf3e2;
+  --warn-border: #eecb8c;
+
+  --hover-bg: #eef3f8;
+  --shadow-sm: 0 1px 2px rgba(20, 30, 45, 0.06), 0 1px 1px rgba(20, 30, 45, 0.04);
+  --shadow-md: 0 4px 14px rgba(20, 30, 45, 0.08), 0 1px 3px rgba(20, 30, 45, 0.06);
+  --radius: 8px;
+
   font-size: 15px;
 }
 
@@ -16,59 +41,133 @@
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   margin: 0;
-  color: #1c2430;
-  background: #fff;
+  color: var(--text-main);
+  background: var(--bg-page);
 }
 
+/* ---------------------------------------------------------------------
+   Header
+   --------------------------------------------------------------------- */
+
 header.app-header {
-  padding: 1.25rem 1.5rem 0.5rem;
+  padding: 1.5rem 1.75rem 0;
+  background: #fff;
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+/* A thin two-tone gradient line: mostly the neutral accent, with a soft
+   rose sweep at the end -- a subtle, non-literal hint that this is a
+   women's-health resource, without color-coding the whole interface. */
+header.app-header::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 65%, var(--accent-rose) 100%);
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.brand-mark {
+  display: inline-block;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 8px;
+  flex: none;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 55%, var(--accent-rose) 130%);
+  box-shadow: var(--shadow-sm);
 }
 
 header.app-header h1 {
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.3rem;
   font-size: 1.4rem;
+  letter-spacing: -0.01em;
 }
 
 header.app-header p {
-  margin: 0 0 1rem;
+  margin: 0.15rem 0 1rem;
   color: var(--text-muted);
   font-size: 0.9rem;
   max-width: 60em;
+  line-height: 1.5;
 }
+
+/* Site-wide banner for surfacing data-source status (e.g. sample/mock data
+   vs. the live spreadsheet). Hidden by default; shown by JS when relevant. */
+.mock-data-banner {
+  display: none;
+  margin: 0 1.75rem 1rem;
+  padding: 0.65rem 0.9rem;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-left: 3px solid var(--warn);
+  border-radius: 6px;
+  color: #6b4700;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.mock-data-banner.visible { display: block; }
+.mock-data-banner strong { color: var(--warn); }
 
 nav.tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.3rem;
   flex-wrap: wrap;
 }
 
 nav.tabs button {
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-bottom: none;
-  background: var(--bg-subtle);
-  padding: 0.55rem 1rem;
+  background: transparent;
+  padding: 0.6rem 1.05rem;
   font-size: 0.9rem;
   cursor: pointer;
-  border-radius: 6px 6px 0 0;
-  color: #1c2430;
+  border-radius: 8px 8px 0 0;
+  color: var(--text-muted);
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+nav.tabs button:hover {
+  background: var(--bg-subtle);
+  color: var(--text-main);
 }
 
 nav.tabs button.active {
-  background: #fff;
-  font-weight: 600;
-  border-color: var(--accent);
-  border-bottom: 2px solid #fff;
+  background: var(--bg-page);
+  font-weight: 700;
+  color: var(--accent-dark);
+  border-color: var(--border);
+  border-bottom: 3px solid var(--accent);
   margin-bottom: -1px;
   position: relative;
 }
 
+/* ---------------------------------------------------------------------
+   Layout
+   --------------------------------------------------------------------- */
+
 main {
-  padding: 1.25rem 1.5rem 3rem;
+  padding: 1.5rem 1.75rem 3rem;
+  max-width: 100rem;
 }
 
 .tab-panel { display: none; }
-.tab-panel.active { display: block; }
+.tab-panel.active { display: block; animation: fade-in 0.18s ease; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .panel-toolbar {
   display: flex;
@@ -81,23 +180,76 @@ main {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.3rem;
 }
 
 .field label {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
+
+/* ---------------------------------------------------------------------
+   Hint / instruction banners
+   --------------------------------------------------------------------- */
+
+.hint-banner {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-rose-soft) 160%);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-rose);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.95rem;
+  font-size: 0.85rem;
+  color: #3a4451;
+  line-height: 1.5;
+  margin-bottom: 0.9rem;
+}
+
+.hint-banner .hint-label {
+  flex: none;
+  font-weight: 700;
+  color: var(--accent-dark);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding-top: 0.1rem;
+}
+
+.hint-banner p { margin: 0; }
+
+/* ---------------------------------------------------------------------
+   Inputs / buttons
+   --------------------------------------------------------------------- */
 
 input[type="text"], input[type="search"], input[type="number"], select {
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 0.4rem 0.55rem;
+  padding: 0.45rem 0.6rem;
   font-size: 0.9rem;
-  min-width: 10em;
+  min-width: 18em;
+  background: #fff;
+  color: var(--text-main);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="text"]:focus, input[type="search"]:focus, input[type="number"]:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Search boxes inside the narrower picker sidebars should fill the
+   sidebar's width rather than using the wider default min-width above,
+   which was pushing them past the sidebar's edge. */
+.picker .field input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 button.btn {
@@ -105,9 +257,20 @@ button.btn {
   background: var(--accent);
   color: #fff;
   border-radius: 6px;
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 0.9rem;
   font-size: 0.85rem;
   cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+button.btn:hover {
+  background: var(--accent-dark);
+  box-shadow: var(--shadow-sm);
+}
+
+button.btn:active {
+  transform: translateY(1px);
 }
 
 button.btn.secondary {
@@ -115,9 +278,18 @@ button.btn.secondary {
   color: var(--accent);
 }
 
+button.btn.secondary:hover {
+  background: var(--accent-soft);
+}
+
 button.btn.small {
-  padding: 0.25rem 0.55rem;
+  padding: 0.28rem 0.6rem;
   font-size: 0.78rem;
+}
+
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .result-count {
@@ -126,15 +298,20 @@ button.btn.small {
   margin: 0.25rem 0 0.6rem;
 }
 
+/* ---------------------------------------------------------------------
+   Tables
+   --------------------------------------------------------------------- */
+
 table.data-table {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.85rem;
+  background: #fff;
 }
 
 table.data-table th, table.data-table td {
   border: 1px solid var(--border);
-  padding: 0.4rem 0.55rem;
+  padding: 0.5rem 0.6rem;
   text-align: left;
   vertical-align: top;
 }
@@ -146,29 +323,96 @@ table.data-table thead th {
   position: sticky;
   top: 0;
   z-index: 2;
+  font-weight: 700;
+  color: var(--text-main);
+  user-select: none;
+  transition: background 0.12s ease;
 }
 
-table.data-table thead th.sorted-asc::after { content: " \25B2"; }
-table.data-table thead th.sorted-desc::after { content: " \25BC"; }
+table.data-table thead th:hover { background: var(--hover-bg); }
+
+table.data-table thead th.sorted-asc::after { content: " \25B2"; color: var(--accent); }
+table.data-table thead th.sorted-desc::after { content: " \25BC"; color: var(--accent); }
+
+table.data-table tbody tr {
+  transition: background 0.1s ease;
+}
+
+table.data-table tbody tr:nth-child(even) { background: #fbfcfd; }
+
+table.data-table tbody tr:hover td {
+  background: var(--hover-bg);
+}
 
 .table-scroll {
   max-height: 65vh;
   overflow: auto;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Row color-coding by Procedure Separation Type (Cohort Summary tab). The
+   accent color is set per-row via a CSS custom property in inline style;
+   this rule just draws a colored stripe on the first cell of that row and
+   (where supported) tints the row very lightly so the coding reads at a
+   glance without overpowering the data. */
+td.accent-cell {
+  border-left: 4px solid var(--row-accent, transparent);
+}
+table.data-table tbody tr:has(td.accent-cell) {
+  background: color-mix(in srgb, var(--row-accent, transparent) 6%, #fff);
+}
+table.data-table tbody tr:has(td.accent-cell):nth-child(even) {
+  background: color-mix(in srgb, var(--row-accent, transparent) 10%, #fbfcfd);
+}
+table.data-table tbody tr:has(td.accent-cell):hover td {
+  background: color-mix(in srgb, var(--row-accent, transparent) 16%, var(--hover-bg));
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  font-size: 0.8rem;
+  margin: 0.4rem 0 0.9rem;
+  color: var(--text-muted);
+  align-items: center;
+}
+.legend .legend-caption {
+  font-weight: 600;
+  color: var(--text-main);
+  margin-right: 0.15rem;
+}
+.legend .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+.legend .swatch {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 3px;
+  display: inline-block;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
 }
 
 /* Checklist / matrix table specifics */
 table.matrix-table thead th {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
-  max-height: 12em;
+  /* No height/max-height here on purpose -- table cell height is only ever
+     a minimum per the CSS table spec, so leaving it unset lets the header
+     row grow to fit whichever label is longest. A fixed max-height was
+     clipping longer labels (they were cutting off mid-word). */
+  white-space: nowrap;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
   font-size: 0.72rem;
   cursor: default;
+  vertical-align: bottom;
 }
 table.matrix-table thead th.cohort-col-header {
   writing-mode: horizontal-tb;
   transform: none;
+  height: auto;
+  vertical-align: middle;
 }
 table.matrix-table td.cohort-cell, table.matrix-table th.cohort-col-header {
   position: sticky;
@@ -178,10 +422,21 @@ table.matrix-table td.cohort-cell, table.matrix-table th.cohort-col-header {
   border-right: 2px solid var(--border);
   white-space: nowrap;
   font-weight: 600;
+  transition: background 0.1s ease, color 0.1s ease;
 }
 table.matrix-table thead th.cohort-col-header {
   z-index: 3;
   background: var(--bg-subtle);
+}
+table.matrix-table tbody tr:hover td.cohort-cell {
+  background: var(--hover-bg);
+  color: var(--accent-dark);
+}
+table.matrix-table td.cohort-cell {
+  cursor: pointer;
+}
+table.matrix-table td.cohort-cell:hover {
+  text-decoration: underline;
 }
 
 .chip {
@@ -194,11 +449,18 @@ table.matrix-table thead th.cohort-col-header {
   font-size: 0.75rem;
   font-weight: 700;
   color: #fff;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  cursor: default;
+}
+.chip:hover {
+  transform: scale(1.18);
+  box-shadow: var(--shadow-sm);
 }
 .chip.cat-yes { background: var(--color-yes); }
 .chip.cat-no { background: var(--color-no); }
 .chip.cat-partial { background: var(--color-partial); color: #4a3300; }
-.chip.cat-empty { background: var(--color-empty); color: #7a828c; }
+.chip.cat-empty { background: var(--color-empty); color: #7a828c; box-shadow: none; }
+.chip.cat-empty:hover { transform: none; }
 .chip.cat-other {
   background: transparent;
   color: var(--color-other);
@@ -209,16 +471,9 @@ table.matrix-table thead th.cohort-col-header {
   white-space: nowrap;
 }
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.9rem;
-  font-size: 0.8rem;
-  margin: 0.4rem 0 0.9rem;
-  color: var(--text-muted);
-}
-.legend .legend-item { display: flex; align-items: center; gap: 0.35rem; }
-.legend .swatch { width: 0.9em; height: 0.9em; border-radius: 3px; display: inline-block; }
+/* ---------------------------------------------------------------------
+   Pickers (Coverage Checklist sidebar)
+   --------------------------------------------------------------------- */
 
 .two-col {
   display: grid;
@@ -229,14 +484,17 @@ table.matrix-table thead th.cohort-col-header {
 
 .picker {
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.6rem;
+  border-radius: var(--radius);
+  padding: 0.65rem;
   max-height: 60vh;
   overflow: auto;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
 }
 .picker h3 {
   margin: 0 0 0.4rem;
   font-size: 0.85rem;
+  color: var(--accent-dark);
 }
 .picker .picker-actions {
   display: flex;
@@ -248,9 +506,18 @@ table.matrix-table thead th.cohort-col-header {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.82rem;
-  padding: 0.15rem 0;
+  padding: 0.25rem 0.35rem;
   cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s ease;
 }
+.picker label.picker-row:hover {
+  background: var(--hover-bg);
+}
+
+/* ---------------------------------------------------------------------
+   Custom Filter builder
+   --------------------------------------------------------------------- */
 
 .filter-row {
   display: flex;
@@ -258,29 +525,55 @@ table.matrix-table thead th.cohort-col-header {
   align-items: center;
   margin-bottom: 0.5rem;
   flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
 }
 .filter-row .remove-condition {
   border: none;
   background: none;
   color: #b3261e;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  transition: background 0.1s ease;
 }
+.filter-row .remove-condition:hover {
+  background: #fbe9e7;
+}
+
+/* ---------------------------------------------------------------------
+   Map
+   --------------------------------------------------------------------- */
 
 #map {
   height: 65vh;
-  border-radius: 6px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .leaflet-popup-content .cohort-tooltip strong { display: block; margin-bottom: 0.15em; }
+.cohort-tooltip { font-size: 0.85rem; line-height: 1.4; }
+.cohort-tooltip .tooltip-hint {
+  display: block;
+  margin-top: 0.3em;
+  color: var(--text-muted);
+  font-size: 0.78em;
+  font-style: italic;
+}
 
-/* Detail modal */
+/* ---------------------------------------------------------------------
+   Detail modal
+   --------------------------------------------------------------------- */
+
 .modal-backdrop {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(20, 26, 33, 0.5);
+  background: rgba(20, 26, 33, 0.55);
   align-items: flex-start;
   justify-content: center;
   padding: 4vh 1rem;
@@ -290,26 +583,37 @@ table.matrix-table thead th.cohort-col-header {
 .modal-backdrop.open { display: flex; }
 .modal {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
   max-width: 46em;
   width: 100%;
-  padding: 1.25rem 1.5rem;
+  padding: 1.4rem 1.6rem;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: var(--shadow-md);
 }
-.modal h2 { margin-top: 0; }
+.modal h2 {
+  margin-top: 0;
+  color: var(--accent-dark);
+}
 .modal .close-btn {
   float: right;
   border: none;
   background: none;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   cursor: pointer;
   color: var(--text-muted);
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  transition: background 0.1s ease, color 0.1s ease;
 }
-.modal dl { display: grid; grid-template-columns: 40% 1fr; gap: 0.3rem 0.8rem; margin: 0; }
+.modal .close-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-main);
+}
+.modal dl { display: grid; grid-template-columns: 40% 1fr; gap: 0.35rem 0.8rem; margin: 0; }
 .modal dt { font-weight: 600; color: var(--text-muted); font-size: 0.8rem; }
 .modal dd { margin: 0 0 0.4rem; font-size: 0.88rem; }
-.modal h3 { font-size: 0.9rem; margin: 1rem 0 0.4rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
+.modal h3 { font-size: 0.9rem; margin: 1.1rem 0 0.4rem; border-top: 1px solid var(--border); padding-top: 0.65rem; color: var(--accent-dark); }
 
 .empty-state {
   color: var(--text-muted);

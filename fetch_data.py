@@ -104,8 +104,12 @@ def _mock_complete_datasets() -> pd.DataFrame:
     """
     Small mock dataset shaped like the real 'Complete Datasets' tab --
     several countries (including repeats, to exercise map-marker jitter)
-    and a handful of representative checklist columns with yes / no /
-    "to some extent" values.
+    and a broader set of representative checklist columns (yes / no / "to
+    some extent" / free-text) so the Coverage Checklist tab previews with
+    more than a token handful of items when running without live
+    credentials. The real spreadsheet has ~90 checklist columns; this mock
+    set is intentionally smaller but varied enough to exercise every chip
+    type the dashboard renders.
     """
     rows = [
         {
@@ -123,6 +127,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "Yes",
             "Night sweats item:": "To some extent",
             "Birth control usage item": "Yes",
+            "Menopause Status Item": "Yes",
+            "Endometriosis Item": "No",
+            "Fibroids Item": "To some extent",
+            "Contraceptive Type Item": "IUD, Pill, Other",
+            "Sleep Quality Item": "Yes",
+            "Mental Health Screening Item": "Yes",
+            "BMI/Weight Item": "Yes",
+            "Family History Item": "To some extent",
         },
         {
             "Cohort Name": "Example Cohort B",
@@ -139,6 +151,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "No",
             "Night sweats item:": "No",
             "Birth control usage item": "No",
+            "Menopause Status Item": "No",
+            "Endometriosis Item": "No",
+            "Fibroids Item": "No",
+            "Contraceptive Type Item": "",
+            "Sleep Quality Item": "No",
+            "Mental Health Screening Item": "No",
+            "BMI/Weight Item": "Yes",
+            "Family History Item": "No",
         },
         {
             "Cohort Name": "Example Cohort C",
@@ -155,6 +175,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "To some extent",
             "Night sweats item:": "No",
             "Birth control usage item": "Yes",
+            "Menopause Status Item": "To some extent",
+            "Endometriosis Item": "Yes",
+            "Fibroids Item": "Yes",
+            "Contraceptive Type Item": "Pill, Condom",
+            "Sleep Quality Item": "Yes",
+            "Mental Health Screening Item": "Yes",
+            "BMI/Weight Item": "Yes",
+            "Family History Item": "Yes",
         },
         {
             "Cohort Name": "Example Cohort D",
@@ -171,6 +199,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "Yes",
             "Night sweats item:": "Yes",
             "Birth control usage item": "No",
+            "Menopause Status Item": "Yes",
+            "Endometriosis Item": "To some extent",
+            "Fibroids Item": "No",
+            "Contraceptive Type Item": "",
+            "Sleep Quality Item": "To some extent",
+            "Mental Health Screening Item": "No",
+            "BMI/Weight Item": "Yes",
+            "Family History Item": "To some extent",
         },
         {
             "Cohort Name": "Example Cohort E",
@@ -187,6 +223,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "Yes",
             "Night sweats item:": "Yes",
             "Birth control usage item": "Yes",
+            "Menopause Status Item": "Yes",
+            "Endometriosis Item": "No",
+            "Fibroids Item": "No",
+            "Contraceptive Type Item": "IUD",
+            "Sleep Quality Item": "Yes",
+            "Mental Health Screening Item": "Yes",
+            "BMI/Weight Item": "No",
+            "Family History Item": "No",
         },
         {
             "Cohort Name": "Example Cohort F",
@@ -203,6 +247,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "No",
             "Night sweats item:": "No",
             "Birth control usage item": "No",
+            "Menopause Status Item": "No",
+            "Endometriosis Item": "No",
+            "Fibroids Item": "To some extent",
+            "Contraceptive Type Item": "Pill",
+            "Sleep Quality Item": "No",
+            "Mental Health Screening Item": "To some extent",
+            "BMI/Weight Item": "Yes",
+            "Family History Item": "No",
         },
         {
             "Cohort Name": "Example Cohort G",
@@ -219,6 +271,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "Yes",
             "Night sweats item:": "To some extent",
             "Birth control usage item": "Yes",
+            "Menopause Status Item": "To some extent",
+            "Endometriosis Item": "Yes",
+            "Fibroids Item": "Yes",
+            "Contraceptive Type Item": "IUD, Pill",
+            "Sleep Quality Item": "Yes",
+            "Mental Health Screening Item": "Yes",
+            "BMI/Weight Item": "Yes",
+            "Family History Item": "Yes",
         },
         {
             "Cohort Name": "Example Cohort H",
@@ -235,6 +295,14 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Hot flashes item:": "Yes",
             "Night sweats item:": "No",
             "Birth control usage item": "No",
+            "Menopause Status Item": "No",
+            "Endometriosis Item": "No",
+            "Fibroids Item": "No",
+            "Contraceptive Type Item": "",
+            "Sleep Quality Item": "No",
+            "Mental Health Screening Item": "No",
+            "BMI/Weight Item": "No",
+            "Family History Item": "No",
         },
     ]
     return pd.DataFrame(rows)
@@ -264,16 +332,31 @@ def _mock_table() -> pd.DataFrame:
     )
 
 
+def _warn(message: str) -> None:
+    """
+    Prints a warning to stderr. When running inside GitHub Actions, also
+    emits it using the '::warning::' workflow command so it shows up as a
+    yellow annotation on the run summary/PR diff -- not just buried in the
+    raw step log, which is easy to miss (e.g. silently falling back to mock
+    data because a secret wasn't actually wired up).
+    """
+    print(f"Warning: {message}", file=sys.stderr)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(f"::warning::{message}")
+
+
 def get_complete_datasets(gc) -> pd.DataFrame:
     """
     Fetches the 'Complete Datasets' tab: one row per cohort, one column per
     variable (cohort characteristics + ~90 women's-health item columns).
     """
     if gc is None:
-        print(
-            f"No Sheets API credentials configured -- using mock "
-            f"'{COMPLETE_DATASETS_TAB}' data.",
-            file=sys.stderr,
+        _warn(
+            f"No Sheets API credentials configured (GOOGLE_CREDENTIALS "
+            f"and/or SPREADSHEET_ID are empty) -- using MOCK "
+            f"'{COMPLETE_DATASETS_TAB}' data instead of your real sheet. "
+            f"Check that both are set as repo secrets and spelled exactly "
+            f"right in Settings -> Secrets and variables -> Actions."
         )
         return _mock_complete_datasets()
 
@@ -292,10 +375,12 @@ def get_table(gc) -> pd.DataFrame:
     "Classification Validity - Procedure Separation Type".
     """
     if gc is None:
-        print(
-            f"No Sheets API credentials configured -- using mock "
-            f"'{TABLE_TAB}' data.",
-            file=sys.stderr,
+        _warn(
+            f"No Sheets API credentials configured (GOOGLE_CREDENTIALS "
+            f"and/or SPREADSHEET_ID are empty) -- using MOCK "
+            f"'{TABLE_TAB}' data instead of your real sheet. Check that "
+            f"both are set as repo secrets and spelled exactly right in "
+            f"Settings -> Secrets and variables -> Actions."
         )
         return _mock_table()
 
@@ -397,18 +482,20 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
     unmatched_complete = set(complete_df["_join_key"]) - set(table_df["_join_key"])
     unmatched_table = set(table_df["_join_key"]) - set(complete_df["_join_key"])
     if unmatched_complete:
-        print(
-            f"Warning: {len(unmatched_complete)} cohort(s) in "
+        _warn(
+            f"{len(unmatched_complete)} cohort(s) in "
             f"'{COMPLETE_DATASETS_TAB}' have no matching row in '{TABLE_TAB}' "
-            f"(validity fields will be blank for them): {sorted(unmatched_complete)}",
-            file=sys.stderr,
+            f"(validity fields will be blank for them): {sorted(unmatched_complete)}. "
+            f"This usually means the 'Cohort Name' / 'Cohort' spelling differs "
+            f"slightly between the two tabs."
         )
     if unmatched_table:
-        print(
-            f"Warning: {len(unmatched_table)} cohort(s) in '{TABLE_TAB}' have "
+        _warn(
+            f"{len(unmatched_table)} cohort(s) in '{TABLE_TAB}' have "
             f"no matching row in '{COMPLETE_DATASETS_TAB}' (dropped from "
-            f"cohorts.json): {sorted(unmatched_table)}",
-            file=sys.stderr,
+            f"cohorts.json): {sorted(unmatched_table)}. This usually means "
+            f"the 'Cohort Name' / 'Cohort' spelling differs slightly between "
+            f"the two tabs."
         )
 
     merged = complete_df.merge(
@@ -425,21 +512,26 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
         merged.loc[merged["Latitude"].isna(), "Location"].dropna().unique().tolist()
     )
     if missing_geo:
-        print(
-            "Warning: could not geocode these Location value(s) -- those "
+        _warn(
+            "Could not geocode these Location value(s) -- those "
             f"cohorts will be omitted from the map: {missing_geo}. Add them "
-            "to country_centroids.py.",
-            file=sys.stderr,
+            "to country_centroids.py."
         )
 
     merged = _jitter_coordinates(merged)
     return merged
 
 
-def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> dict:
+def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame, is_mock_data: bool = False) -> dict:
     """
     Describes which columns are which, so the dashboard front-end doesn't
     need to hardcode ~90 checklist column names.
+
+    `is_mock_data` is threaded through to the front-end so it can show a
+    banner when the site is running on the small placeholder dataset instead
+    of the real spreadsheet (e.g. because GOOGLE_CREDENTIALS / SPREADSHEET_ID
+    aren't reaching the build) -- previously this was only detectable by
+    eyeballing the cohort names against the mock data by hand.
     """
     metadata_columns = [c for c in METADATA_COLUMNS if c in complete_df.columns]
     checklist_columns = [
@@ -456,6 +548,7 @@ def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> dict:
             (c for c in validity_columns if c.endswith("Procedure Separation Type")),
             None,
         ),
+        "is_mock_data": is_mock_data,
     }
 
 
@@ -468,7 +561,7 @@ def main():
     complete_datasets = get_complete_datasets(gc)
     table = get_table(gc)
     cohorts = build_cohorts(complete_datasets, table)
-    schema = build_schema(complete_datasets, table)
+    schema = build_schema(complete_datasets, table, is_mock_data=not have_credentials)
 
     complete_datasets.to_json(
         OUTPUT_DIR / "complete_datasets.json", orient="records", indent=2

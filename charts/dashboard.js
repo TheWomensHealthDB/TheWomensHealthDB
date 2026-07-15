@@ -60,6 +60,7 @@
         );
         state.t2SelectedColumns = new Set(state.schema.checklist_columns || []);
 
+        renderDataSourceBanner();
         renderTable1();
         renderTable2();
         renderTable3Fields();
@@ -82,6 +83,29 @@
             "not opening index.html directly as a file.</p>";
         });
       });
+  }
+
+  // ---------------------------------------------------------------------
+  // Data-source banner (surfaces when the site is running on sample/mock
+  // data instead of the live spreadsheet, e.g. because GOOGLE_CREDENTIALS
+  // / SPREADSHEET_ID aren't reaching the build -- previously this was only
+  // visible by comparing values against the mock dataset by eye).
+  // ---------------------------------------------------------------------
+
+  function renderDataSourceBanner() {
+    var el = document.getElementById("data-source-banner");
+    if (!el) return;
+    if (state.schema && state.schema.is_mock_data) {
+      el.innerHTML =
+        "<strong>Heads up:</strong> this page is showing sample placeholder data, " +
+        "not your live spreadsheet. That usually means the GOOGLE_CREDENTIALS and/or " +
+        "SPREADSHEET_ID secrets aren't reaching the build. Check Settings \u2192 Secrets " +
+        "and variables \u2192 Actions in your GitHub repo, then re-run the workflow.";
+      el.classList.add("visible");
+    } else {
+      el.classList.remove("visible");
+      el.innerHTML = "";
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -166,17 +190,39 @@
   }
 
   // ---------------------------------------------------------------------
+  // Shared: categorical color legend (swatch + label pairs)
+  // ---------------------------------------------------------------------
+
+  function paletteLegendHtml(colorMap, caption) {
+    if (!colorMap || !colorMap.size) return "";
+    var html = "";
+    if (caption) {
+      html += '<span class="legend-caption">' + escapeHtml(caption) + "</span>";
+    }
+    colorMap.forEach(function (color, label) {
+      html +=
+        '<span class="legend-item"><span class="swatch" style="background:' +
+        color +
+        '"></span>' +
+        escapeHtml(label) +
+        "</span>";
+    });
+    return html;
+  }
+
+  // ---------------------------------------------------------------------
   // Table 1: Cohort summary
   // ---------------------------------------------------------------------
 
   var T1_COLUMNS = null; // resolved once schema is known
+  var T1_PROC_COLOR_MAP = null; // resolved once cohorts are known
 
   function t1Columns() {
     if (T1_COLUMNS) return T1_COLUMNS;
     var procCol = state.schema.procedure_separation_type_column;
     T1_COLUMNS = [
-      { key: procCol, label: "Procedure Separation Type" },
       { key: state.schema.cohort_name_column, label: "Cohort Name" },
+      { key: procCol, label: "Procedure Separation Type" },
       { key: "N", label: "N" },
       { key: "Age Range", label: "Age Range" },
       { key: "%male/%female", label: "%male/%female" },
@@ -184,11 +230,26 @@
     return T1_COLUMNS;
   }
 
+  function t1ProcedureColorMap() {
+    if (T1_PROC_COLOR_MAP) return T1_PROC_COLOR_MAP;
+    var procCol = state.schema.procedure_separation_type_column;
+    T1_PROC_COLOR_MAP = DD.paletteFor(
+      state.cohorts.map(function (c) {
+        return procCol ? c[procCol] : "";
+      })
+    );
+    return T1_PROC_COLOR_MAP;
+  }
+
   function renderTable1() {
     var searchInput = document.getElementById("t1-search");
     if (searchInput && !searchInput._wired) {
       searchInput.addEventListener("input", renderTable1Body);
       searchInput._wired = true;
+    }
+    var legendEl = document.getElementById("t1-legend");
+    if (legendEl) {
+      legendEl.innerHTML = paletteLegendHtml(t1ProcedureColorMap(), "Row color \u2014 Procedure Separation Type:");
     }
     renderTable1Head();
     renderTable1Body();
@@ -201,6 +262,7 @@
     t1Columns().forEach(function (col) {
       var th = document.createElement("th");
       th.textContent = col.label;
+      th.title = "Click to sort by " + col.label;
       th.addEventListener("click", function () {
         if (state.t1Sort.column === col.key) {
           state.t1Sort.direction = state.t1Sort.direction === "asc" ? "desc" : "asc";
@@ -225,6 +287,8 @@
     var query = (document.getElementById("t1-search") || {}).value || "";
     query = query.trim().toLowerCase();
     var nameCol = state.schema.cohort_name_column;
+    var procCol = state.schema.procedure_separation_type_column;
+    var colorMap = t1ProcedureColorMap();
 
     var rows = state.cohorts.filter(function (r) {
       if (!query) return true;
@@ -245,9 +309,16 @@
     } else {
       rows.forEach(function (r) {
         var tr = document.createElement("tr");
-        t1Columns().forEach(function (col) {
+        var procVal = procCol ? String(r[procCol] || "").trim() : "";
+        var accentColor = procVal ? colorMap.get(procVal) : null;
+
+        t1Columns().forEach(function (col, i) {
           var td = document.createElement("td");
           td.textContent = DD.formatValue(r[col.key]);
+          if (i === 0 && accentColor) {
+            td.classList.add("accent-cell");
+            td.style.setProperty("--row-accent", accentColor);
+          }
           tr.appendChild(td);
         });
         tr.style.cursor = "pointer";
@@ -278,8 +349,21 @@
       renderTable2Body
     );
     renderPicker("t2-column-picker", state.schema.checklist_columns || [], state.t2SelectedColumns, renderTable2Body);
-    renderLegend("t2-legend");
+    renderCategoryLegend("t2-legend");
+    renderTable2Hint();
     renderTable2Body();
+  }
+
+  function renderTable2Hint() {
+    var el = document.getElementById("t2-hint-text");
+    if (!el) return;
+    var total = (state.schema.checklist_columns || []).length;
+    el.textContent =
+      "This matrix covers " +
+      total +
+      " questionnaire item(s) across all cohorts. Use the pickers on the left to narrow " +
+      "which cohorts and items are shown. Hover a colored cell to see its exact response " +
+      "text, and click a cohort name for its full record.";
   }
 
   function renderPicker(containerId, allValues, selectedSet, onChange) {
@@ -344,7 +428,7 @@
     draw();
   }
 
-  function renderLegend(containerId) {
+  function renderCategoryLegend(containerId) {
     var el = document.getElementById(containerId);
     if (!el) return;
     var items = [
@@ -407,7 +491,7 @@
         var nameTd = document.createElement("td");
         nameTd.className = "cohort-cell";
         nameTd.textContent = r[nameCol];
-        nameTd.style.cursor = "pointer";
+        nameTd.title = "Click for full record";
         nameTd.addEventListener("click", function () {
           openCohortDetail(r);
         });
@@ -587,8 +671,15 @@
     var countEl = document.getElementById("t3-result-count");
     if (!table) return;
 
+    // A condition only actually filters anything once it's "complete": it
+    // has a field, and if its operator needs a value (most do -- is_empty /
+    // is_not_empty don't), that value has been entered. Otherwise an
+    // unfinished row (e.g. the default blank condition on first load) would
+    // make every cohort look like a non-match, which is confusing.
     var activeConditions = state.t3Conditions.filter(function (c) {
-      return c.field;
+      if (!c.field) return false;
+      if (op_needsValue(c.operator) && (!c.value || !c.value.trim())) return false;
+      return true;
     });
 
     var rows = state.cohorts.filter(function (r) {
@@ -618,6 +709,7 @@
           tr.appendChild(td);
         });
         tr.style.cursor = "pointer";
+        tr.title = "Click for full record";
         tr.addEventListener("click", function () {
           openCohortDetail(r);
         });
@@ -635,7 +727,20 @@
   // ---------------------------------------------------------------------
 
   function initMap() {
-    if (state.mapInitialized || typeof L === "undefined") return;
+    if (state.mapInitialized) return;
+
+    if (typeof L === "undefined") {
+      var panel = document.getElementById("panel-map");
+      if (panel) {
+        panel.innerHTML =
+          '<p class="empty-state">The map library failed to load from its CDN, so the map ' +
+          "can't be displayed right now. This is usually temporary (network hiccup or an " +
+          "ad/script blocker) -- try reloading the page. If it keeps happening, check your " +
+          "browser's console for a blocked-resource error.</p>";
+      }
+      return;
+    }
+
     state.mapInitialized = true;
 
     var map = L.map("map", { worldCopyJump: true }).setView([15, 10], 2);
@@ -674,13 +779,21 @@
     geocoded.forEach(function (r) {
       var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
       var color = colorMap.get(typeVal) || "#666";
-      var marker = L.circleMarker([r.Latitude, r.Longitude], {
+      var baseStyle = {
         radius: DD.markerRadius(r.N),
         color: color,
         fillColor: color,
         fillOpacity: 0.65,
         weight: 1.5,
-      });
+      };
+      var hoverStyle = {
+        radius: baseStyle.radius + 4,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.9,
+        weight: 3,
+      };
+      var marker = L.circleMarker([r.Latitude, r.Longitude], baseStyle);
 
       var tooltipHtml =
         '<div class="cohort-tooltip"><strong>' +
@@ -695,8 +808,20 @@
         "<br/>" +
         "%male/%female: " +
         escapeHtml(DD.formatValue(r["%male/%female"])) +
+        '<span class="tooltip-hint">Click marker for full details</span>' +
         "</div>";
       marker.bindTooltip(tooltipHtml);
+
+      // Highlight on hover (in addition to the tooltip Leaflet already
+      // shows) so it's visually obvious which cohort you're pointing at,
+      // especially when markers are close together.
+      marker.on("mouseover", function () {
+        marker.setStyle(hoverStyle);
+        marker.bringToFront();
+      });
+      marker.on("mouseout", function () {
+        marker.setStyle(baseStyle);
+      });
       marker.on("click", function () {
         openCohortDetail(r);
       });
@@ -706,7 +831,7 @@
     layer.addTo(state.map);
     state.mapLayer = layer;
 
-    renderMapLegend(colorMap, procCol);
+    renderMapLegend(colorMap);
 
     var missing = state.cohorts.length - geocoded.length;
     var noteEl = document.getElementById("map-note");
@@ -715,23 +840,10 @@
     }
   }
 
-  function renderMapLegend(colorMap, procCol) {
+  function renderMapLegend(colorMap) {
     var el = document.getElementById("map-legend");
     if (!el) return;
-    if (!colorMap.size) {
-      el.innerHTML = "";
-      return;
-    }
-    var html = "";
-    colorMap.forEach(function (color, label) {
-      html +=
-        '<span class="legend-item"><span class="swatch" style="background:' +
-        color +
-        '"></span>' +
-        escapeHtml(label) +
-        "</span>";
-    });
-    el.innerHTML = html;
+    el.innerHTML = paletteLegendHtml(colorMap, colorMap.size ? "Marker color \u2014 Procedure Separation Type:" : "");
   }
 
   // ---------------------------------------------------------------------

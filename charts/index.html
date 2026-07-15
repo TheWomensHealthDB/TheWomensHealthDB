@@ -8,15 +8,15 @@
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
-    integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
-    crossorigin="anonymous"
-    referrerpolicy="no-referrer"
   />
   <link rel="stylesheet" href="dashboard.css" />
 </head>
 <body>
   <header class="app-header">
-    <h1>Women's Health Cohort Database</h1>
+    <div class="header-top">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <h1>Women's Health Cohort Database</h1>
+    </div>
     <p>
       A searchable, filterable overview of longitudinal women's-health cohort
       studies: what each cohort collects, how it classifies procedure/data
@@ -31,15 +31,24 @@
     </nav>
   </header>
 
+  <div class="mock-data-banner" id="data-source-banner"></div>
+
   <main>
     <!-- Table 1: Cohort Summary -->
     <section id="panel-summary" class="tab-panel active">
+      <div class="hint-banner">
+        <span class="hint-label">Tip</span>
+        <p>Click any row to see that cohort's full record. Rows are color-coded by
+        Procedure Separation Type &mdash; see the legend below the search box. Click a
+        column header to sort.</p>
+      </div>
       <div class="panel-toolbar">
         <div class="field">
           <label for="t1-search">Search cohort name</label>
           <input type="search" id="t1-search" placeholder="e.g. Example Cohort A" />
         </div>
       </div>
+      <div class="legend" id="t1-legend"></div>
       <p class="result-count" id="t1-result-count"></p>
       <div class="table-scroll">
         <table class="data-table" id="t1-table">
@@ -51,6 +60,10 @@
 
     <!-- Table 2: Coverage Checklist -->
     <section id="panel-checklist" class="tab-panel">
+      <div class="hint-banner">
+        <span class="hint-label">Tip</span>
+        <p id="t2-hint-text"></p>
+      </div>
       <p class="result-count" id="t2-result-count"></p>
       <div class="legend" id="t2-legend"></div>
       <div class="two-col">
@@ -89,6 +102,15 @@
 
     <!-- Table 3: Custom Filter (AND/OR) -->
     <section id="panel-filter" class="tab-panel">
+      <div class="hint-banner">
+        <span class="hint-label">How to use this</span>
+        <p>Build one or more conditions below &mdash; for example, "N is greater than 1000"
+        or "Hot flashes item: equals Yes". Then choose whether a cohort needs to match
+        <em>all</em> of your conditions (AND) or <em>any</em> of them (OR) using the
+        dropdown. The table updates instantly as you add, edit, or remove conditions, so
+        it's a quick way to answer questions like "which cohorts are prospective and
+        include a hysterectomy question?" without digging through the raw spreadsheet.</p>
+      </div>
       <div class="panel-toolbar">
         <div class="field">
           <label for="t3-mode">Match</label>
@@ -111,6 +133,12 @@
 
     <!-- Map -->
     <section id="panel-map" class="tab-panel">
+      <div class="hint-banner">
+        <span class="hint-label">Tip</span>
+        <p>Hover a marker to preview a cohort; click it for full details. Marker size
+        reflects sample size (N), and marker color follows the same Procedure Separation
+        Type coding used on the Cohort Summary tab.</p>
+      </div>
       <div class="legend" id="map-legend"></div>
       <div id="map"></div>
       <p class="result-count" id="map-note"></p>
@@ -123,12 +151,7 @@
     </div>
   </div>
 
-  <script
-    src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
-    integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
-    crossorigin="anonymous"
-    referrerpolicy="no-referrer"
-  ></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="dashboard-data.js"></script>
   <script src="dashboard.js"></script>
 </body>
