@@ -97,7 +97,53 @@ def _client():
 
     creds_info = json.loads(GOOGLE_CREDENTIALS)
     creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
+
+    # Diagnostic only -- the service account's email isn't a secret (it's
+    # meant to be shared, the same way you'd share a doc with a colleague's
+    # email), so it's safe to print. Surfacing it here makes it easy to
+    # confirm your Google Sheet is actually shared with *this exact* address.
+    client_email = creds_info.get("client_email", "(no 'client_email' field found in GOOGLE_CREDENTIALS!)")
+    print(f"Authenticated to Google as service account: {client_email}")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(
+            f"::notice::Using service account '{client_email}'. Your Google Sheet "
+            f"must be shared with this exact email address (Viewer access is enough) "
+            f"or every request will fail, even with valid credentials."
+        )
+
     return gspread.authorize(creds)
+
+
+def _diagnose_spreadsheet_id() -> None:
+    """
+    Diagnostic only. SPREADSHEET_ID isn't very sensitive (it's useless
+    without the credential above), so it's safe to log a partial preview of
+    it -- this makes it easy to catch the single most common mistake: pasting
+    the sheet's full URL (or a URL with a trailing slash/fragment) into the
+    secret instead of just the ID segment.
+    """
+    if not SPREADSHEET_ID:
+        return
+    looks_like_url = (
+        "/" in SPREADSHEET_ID
+        or " " in SPREADSHEET_ID
+        or SPREADSHEET_ID.lower().startswith("http")
+    )
+    preview = SPREADSHEET_ID[:8] + ("..." if len(SPREADSHEET_ID) > 8 else "")
+    if looks_like_url:
+        _warn(
+            f"SPREADSHEET_ID doesn't look like a plain spreadsheet ID -- it's "
+            f"{len(SPREADSHEET_ID)} characters long, starts with '{preview}', and "
+            f"contains a '/', space, or 'http'. It should be ONLY the ID segment "
+            f"from your sheet's URL: "
+            f"https://docs.google.com/spreadsheets/d/<THIS PART ONLY>/edit -- "
+            f"not the full URL, and not including '/edit' or anything after it."
+        )
+    else:
+        print(
+            f"SPREADSHEET_ID looks like a plain ID: {len(SPREADSHEET_ID)} "
+            f"characters, starts with '{preview}'."
+        )
 
 
 def _mock_complete_datasets() -> pd.DataFrame:
@@ -556,6 +602,7 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     have_credentials = bool(GOOGLE_CREDENTIALS and SPREADSHEET_ID)
+    _diagnose_spreadsheet_id()
     gc = _client() if have_credentials else None
 
     complete_datasets = get_complete_datasets(gc)
