@@ -1,0 +1,58 @@
+[
+  {
+    "Cohort":"Example Cohort A",
+    "Classification Validity - Procedure Separation Type":"Direct",
+    "Classification Validity - Other Factors":"N\/A",
+    "Temporal Validity - Collection Design":"Prospective",
+    "Temporal Validity - Follow-up Interval":"Annual"
+  },
+  {
+    "Cohort":"Example Cohort B",
+    "Classification Validity - Procedure Separation Type":"Indirect",
+    "Classification Validity - Other Factors":"Self-report",
+    "Temporal Validity - Collection Design":"Retrospective",
+    "Temporal Validity - Follow-up Interval":"One-time"
+  },
+  {
+    "Cohort":"Example Cohort C",
+    "Classification Validity - Procedure Separation Type":"Direct",
+    "Classification Validity - Other Factors":"N\/A",
+    "Temporal Validity - Collection Design":"Prospective",
+    "Temporal Validity - Follow-up Interval":"Biennial"
+  },
+  {
+    "Cohort":"Example Cohort D",
+    "Classification Validity - Procedure Separation Type":"Mixed",
+    "Classification Validity - Other Factors":"Self-report",
+    "Temporal Validity - Collection Design":"Prospective",
+    "Temporal Validity - Follow-up Interval":"Annual"
+  },
+  {
+    "Cohort":"Example Cohort E",
+    "Classification Validity - Procedure Separation Type":"Direct",
+    "Classification Validity - Other Factors":"N\/A",
+    "Temporal Validity - Collection Design":"Prospective",
+    "Temporal Validity - Follow-up Interval":"Annual"
+  },
+  {
+    "Cohort":"Example Cohort F",
+    "Classification Validity - Procedure Separation Type":"Indirect",
+    "Classification Validity - Other Factors":"Self-report",
+    "Temporal Validity - Collection Design":"Retrospective",
+    "Temporal Validity - Follow-up Interval":"One-time"
+  },
+  {
+    "Cohort":"Example Cohort G",
+    "Classification Validity - Procedure Separation Type":"Direct",
+    "Classification Validity - Other Factors":"N\/A",
+    "Temporal Validity - Collection Design":"Prospective",
+    "Temporal Validity - Follow-up Interval":"Biennial"
+  },
+  {
+    "Cohort":"Example Cohort H",
+    "Classification Validity - Procedure Separation Type":"Mixed",
+    "Classification Validity - Other Factors":"Self-report",
+    "Temporal Validity - Collection Design":"Retrospective",
+    "Temporal Validity - Follow-up Interval":"One-time"
+  }
+]

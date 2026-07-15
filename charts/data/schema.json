@@ -1,0 +1,28 @@
+{
+  "cohort_name_column": "Cohort Name",
+  "metadata_columns": [
+    "Cohort Name",
+    "Location",
+    "Public Availability",
+    "N",
+    "Age Range",
+    "%male/%female",
+    "Year Started/Wave Description"
+  ],
+  "checklist_columns": [
+    "Hysterectomy Question Included",
+    "Oopherectomy Question Included",
+    "Pregnancy Question Included",
+    "PCOS/PMOS Item",
+    "Hot flashes item:",
+    "Night sweats item:",
+    "Birth control usage item"
+  ],
+  "validity_columns": [
+    "Classification Validity - Procedure Separation Type",
+    "Classification Validity - Other Factors",
+    "Temporal Validity - Collection Design",
+    "Temporal Validity - Follow-up Interval"
+  ],
+  "procedure_separation_type_column": "Classification Validity - Procedure Separation Type"
+}

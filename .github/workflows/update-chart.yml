@@ -1,0 +1,85 @@
+name: Update Data and Deploy to Pages
+
+on:
+  schedule:
+    # Every hour, at minute 0. Adjust to taste (cron is UTC).
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "fetch_data.py"
+      - "country_centroids.py"
+      - "requirements.txt"
+      - "charts/index.html"
+      - "charts/dashboard.css"
+      - "charts/dashboard-data.js"
+      - "charts/dashboard.js"
+
+# contents: write -> lets the job commit the refreshed data back to the repo
+# pages: write / id-token: write -> required by GitHub's official Pages deploy action
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Avoid two deploys racing each other if a run is still in progress.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch sheet data via Google Sheets API
+        env:
+          # Repo Secret (Settings -> Secrets and variables -> Actions -> Secrets):
+          # full contents of the service account's JSON key file. The sheet is
+          # shared only with that service account -- never published publicly.
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          # Repo Secret (Settings -> Secrets and variables -> Actions ->
+          # Secrets tab): the sheet's ID isn't sensitive by itself (useless
+          # without the credential above), but it's stored as a Secret here
+          # rather than a plain Variable.
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+        run: python fetch_data.py
+
+      - name: Commit updated data if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/data/*.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Auto-update sheet data [skip ci]"
+            git push
+          fi
+
+      - name: Upload charts folder as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: charts
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

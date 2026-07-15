@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor junk
+.DS_Store
+.Rhistory
+
+# Local credential files -- never commit these. The real credential lives
+# only as the GOOGLE_CREDENTIALS GitHub Actions secret; if you ever download
+# the service-account JSON key locally for testing, keep it out of the repo.
+*.json.key
+service-account*.json
+credentials*.json
