@@ -60,12 +60,34 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Realign onto the latest remote main right before committing. This
+          # keeps the freshly-generated charts/data/*.json files (in the
+          # working tree) but rebuilds the commit on top of whatever another
+          # concurrent run (schedule vs. push vs. manual dispatch) may have
+          # already pushed, so we never try to push a stale/non-fast-forward
+          # commit. --soft only moves HEAD/the branch pointer; it doesn't
+          # touch the working tree or staged/unstaged file contents.
+          git fetch origin main
+          git reset --soft origin/main
+
           git add charts/data/*.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
             git commit -m "Auto-update sheet data [skip ci]"
-            git push
+            # Retry a few times in case another run pushes in between our
+            # fetch/reset above and this push.
+            for attempt in 1 2 3 4 5; do
+              if git push origin HEAD:main; then
+                break
+              fi
+              echo "Push rejected (attempt $attempt) -- retrying after re-syncing with origin/main..."
+              git fetch origin main
+              git reset --soft origin/main
+              git add charts/data/*.json
+              sleep $((attempt * 5))
+            done
           fi
 
       - name: Upload charts folder as Pages artifact
