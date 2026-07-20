@@ -386,7 +386,24 @@ def get_table(gc) -> pd.DataFrame:
         return _mock_table()
 
     ws = gc.open_by_key(SPREADSHEET_ID).worksheet(TABLE_TAB)
-    rows = ws.get_all_values()
+    raw_rows = ws.get_all_values()
+
+    # Google Sheets tabs often have a blank spacer row (or a title row) above
+    # the real header -- skip any fully-blank leading rows so the two-row
+    # header logic below always sees the actual header first, regardless of
+    # how the tab happens to be laid out visually.
+    first_nonblank = next(
+        (i for i, r in enumerate(raw_rows) if any(str(c).strip() for c in r)),
+        None,
+    )
+    skipped = first_nonblank or 0
+    rows = raw_rows[skipped:]
+    if skipped:
+        _warn(
+            f"Skipped {skipped} blank row(s) at the top of the '{TABLE_TAB}' "
+            f"tab before its header."
+        )
+
     df = _parse_two_row_header_table(rows)
 
     if TABLE_COHORT_COLUMN not in df.columns:
@@ -401,8 +418,11 @@ def get_table(gc) -> pd.DataFrame:
             f"layout doesn't match what this script expects (a blank cell above "
             f"the cohort-name column, then merged group headers like "
             f"'Classification Validity' spanning the columns after it).\n"
+            f"Skipped {skipped} leading blank row(s).\n"
             f"Raw header row 1 (group headers): {rows[0] if len(rows) > 0 else '(missing)'}\n"
             f"Raw header row 2 (sub-headers): {rows[1] if len(rows) > 1 else '(missing)'}\n"
+            f"Raw header row 3 (in case there's a 3rd header row): "
+            f"{rows[2] if len(rows) > 2 else '(missing)'}\n"
             f"Columns produced after flattening: {list(df.columns)}"
         )
 
