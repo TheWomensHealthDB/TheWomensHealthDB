@@ -1,241 +1,204 @@
 [
   {
-    "":"1",
+    "":"",
     "Cohort":"The Religious Orders Study and Memory and Aging Project (ROSMAP)",
     "Classification Validity - Procedure Separation Type":"Type 3",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"retrospective",
     "Temporal Validity - Follow-up Interval":"Annual"
   },
   {
-    "":"2",
+    "":"",
     "Cohort":"The Study of Women Across the Nation (SWAN)",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"Annual, Biennial after 10 years"
   },
   {
-    "":"3",
+    "":"",
     "Cohort":"National Health and Nutrition Examination Survey (NHANES)",
     "Classification Validity - Procedure Separation Type":"Type 2",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"primarily retrospective",
     "Temporal Validity - Follow-up Interval":"New sample selected anually"
   },
   {
-    "":"4",
+    "":"",
     "Cohort":"Heath and Retirement Study (HRS)",
     "Classification Validity - Procedure Separation Type":"Type 3",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"retrospective",
     "Temporal Validity - Follow-up Interval":"Biennial"
   },
   {
-    "":"5",
+    "":"",
     "Cohort":"Candadian Longitudinal Study On Aging (CLSA)",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"retrospective",
     "Temporal Validity - Follow-up Interval":"Triennial"
   },
   {
-    "":"6",
-    "Cohort":"Reference Ability Neural Network (RANN)",
-    "Classification Validity - Procedure Separation Type":"Type 4",
-    "Classification Validity - Other Factors":"",
-    "Temporal Validity - Collection Design":"retrospective",
-    "Temporal Validity - Follow-up Interval":"5 years"
-  },
-  {
-    "":"7",
+    "":"",
     "Cohort":"Midlife in the United States (MIDUS)",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"primarily retrospective",
     "Temporal Validity - Follow-up Interval":"9-10 years"
   },
   {
-    "":"8",
+    "":"",
     "Cohort":"Women's Health Initiative (WHI)",
     "Classification Validity - Procedure Separation Type":"Type 2",
-    "Classification Validity - Other Factors":"",
-    "Temporal Validity - Collection Design":"Retrospective for most, Prospective for some",
+    "Temporal Validity - Collection Design":"retrospective for most, prospective for some",
     "Temporal Validity - Follow-up Interval":"Semi-annual"
   },
   {
-    "":"9",
+    "":"",
     "Cohort":"Nurses Health Studies (I and II)",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"Biennial"
   },
   {
-    "":"10",
+    "":"",
     "Cohort":"Black Women\u2019s Health Study (BWHS)",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"Biennial"
   },
   {
-    "":"11",
+    "":"",
     "Cohort":"UK Biobank",
     "Classification Validity - Procedure Separation Type":"Type 2",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"retrospective",
     "Temporal Validity - Follow-up Interval":"Continuous via medical records"
   },
   {
-    "":"12",
+    "":"",
     "Cohort":"All of Us Research Program",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"primarily retrospective",
     "Temporal Validity - Follow-up Interval":"Continuous"
   },
   {
-    "":"13",
+    "":"",
     "Cohort":"NYU Women's Health Study",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"3-5 years"
   },
   {
-    "":"14",
+    "":"",
     "Cohort":"National Longitudinal Survey of Young Women (NLSYW)",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"1-3 years"
   },
   {
-    "":"15",
+    "":"",
     "Cohort":"Shanghai Women's Health Study (SWHS)",
     "Classification Validity - Procedure Separation Type":"Type 2",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"Biennial"
   },
   {
-    "":"16",
+    "":"",
     "Cohort":"The National Longitudinal Study of Adolescent to Adult Health (Add Health)",
     "Classification Validity - Procedure Separation Type":"Type 4",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"retrospective",
     "Temporal Validity - Follow-up Interval":"1-10 years"
   },
   {
-    "":"17",
+    "":"",
     "Cohort":"Penn Ovarian Aging Study (POAS)",
     "Classification Validity - Procedure Separation Type":"Type 5",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"9-12 months"
   },
   {
-    "":"18",
+    "":"",
     "Cohort":"Australian Longitudinal Study on Women\u2019s Health (ALSWH)",
     "Classification Validity - Procedure Separation Type":"Type 2",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"primarily prospective",
     "Temporal Validity - Follow-up Interval":"6 months- 3 years"
   },
   {
-    "":"19",
+    "":"",
     "Cohort":"Seattle Midlife Women\u2019s Health Study (SMWHS)",
     "Classification Validity - Procedure Separation Type":"Type 5",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"Annual"
   },
   {
-    "":"20",
+    "":"",
     "Cohort":"Melbourne Women\u2019s Midlife Health Project (MWMHP)",
     "Classification Validity - Procedure Separation Type":"Type 5",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"Annual"
   },
   {
-    "":"21",
+    "":"",
     "Cohort":"Biodemographic Models of Reproductive Aging (BIMORA)",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"180 days- 2 years"
   },
   {
-    "":"22",
+    "":"",
     "Cohort":"Apple Women\u2019s Health Study",
     "Classification Validity - Procedure Separation Type":"Type 1",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"prospective",
     "Temporal Validity - Follow-up Interval":"1 month"
   },
   {
-    "":"23",
+    "":"",
     "Cohort":"Agricultural Health Study (AHS)",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"24",
+    "":"",
     "Cohort":"Prostate, Lung, Colorectal and Ovarian Cancer Screening Trial (PLCO)",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"25",
+    "":"",
     "Cohort":"Cancer Prevention Study\u2013II (CPS-II) Nutrition Cohort",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"26",
+    "":"",
     "Cohort":"Canadian Study of Diet, Lifestyle, and Health (CSLDH)",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"27",
+    "":"",
     "Cohort":"National Health Interview Survey (NHIS)",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"28",
+    "":"",
     "Cohort":"Understanding America Study (UAS)",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"29",
+    "":"",
     "Cohort":"Sex, Age, GABA, Episodic Memory (SAGE) ",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"30",
+    "":"",
     "Cohort":"The English Longitudinal Study of Ageing (ELSA)",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
@@ -243,15 +206,13 @@
     "":"",
     "Cohort":"Procedure Separation",
     "Classification Validity - Procedure Separation Type":"",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
   {
-    "":"Key:",
+    "":"",
     "Cohort":"Type 1",
     "Classification Validity - Procedure Separation Type":"Can isolate unilateral vs. bilateral oophorectomy vs. isolated hysterectomy via distinct, independent variables.",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
@@ -259,7 +220,6 @@
     "":"",
     "Cohort":"Type 2",
     "Classification Validity - Procedure Separation Type":"Tracks hysterectomy and oopherectomy, but does not distinguish unilateral vs bilateral oopherectomy",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
@@ -267,7 +227,6 @@
     "":"",
     "Cohort":"Type 3",
     "Classification Validity - Procedure Separation Type":"Tracks either hysterectomy or oopherectomy only, does not include both as variables",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
@@ -275,7 +234,6 @@
     "":"",
     "Cohort":"Type 4",
     "Classification Validity - Procedure Separation Type":"Does not ask\/track hysterectomy or oopherectomy as variables.",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
   },
@@ -283,8 +241,14 @@
     "":"",
     "Cohort":"Type 5",
     "Classification Validity - Procedure Separation Type":"Used Intact uterine and\/or ovarian status as an enrollment eligibility criterion; women with prior hysterectomy or oopherectomy were excluded from the sample rather than characterized within it ",
-    "Classification Validity - Other Factors":"",
     "Temporal Validity - Collection Design":"",
     "Temporal Validity - Follow-up Interval":""
+  },
+  {
+    "":"",
+    "Cohort":"Reference Ability Neural Network (RANN)",
+    "Classification Validity - Procedure Separation Type":"Type 4",
+    "Temporal Validity - Collection Design":"retrospective",
+    "Temporal Validity - Follow-up Interval":"5 years"
   }
 ]
