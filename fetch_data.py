@@ -419,6 +419,13 @@ def _parse_two_row_header_table(rows: "list[list[str]]") -> pd.DataFrame:
         sub = sub.strip()
         if not sub or sub == top:
             columns.append(top)
+        elif not top:
+            # No merged group header above this column (e.g. the leading
+            # "Cohort" identifier column, which sits to the left of the
+            # "Classification Validity"/"Temporal Validity" merged
+            # headers) -- use the sub-header on its own instead of
+            # producing a stray " - Cohort".
+            columns.append(sub)
         else:
             columns.append(f"{top} - {sub}")
 
