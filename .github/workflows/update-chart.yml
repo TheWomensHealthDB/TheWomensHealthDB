@@ -1,9 +1,10 @@
 name: Update Data and Deploy to Pages
 
 on:
-  schedule:
-    # Every hour, at minute 0. Adjust to taste (cron is UTC).
-    - cron: "0 * * * *"
+  # Data refreshes are manual only -- use the "Run workflow" button on the
+  # Actions tab (workflow_dispatch) whenever you want to pull the latest
+  # spreadsheet data and redeploy. There is intentionally no `schedule`
+  # trigger, so nothing runs automatically on a timer.
   workflow_dispatch: {}
   push:
     branches: [main]

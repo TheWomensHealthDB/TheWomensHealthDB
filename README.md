@@ -1,9 +1,12 @@
-# Women's Health Cohort Database -- Visualization Pipeline
+# The Women's Health Database -- Visualization Pipeline
 
-Automatically pulls cohort data from a private Google Sheet, exports it as
-JSON, and publishes it to a public URL via GitHub Pages. Embed that URL in
-the lab's WordPress site with an iframe, and it will always show the latest
-version -- no manual updates needed after initial setup.
+Pulls cohort data from a private Google Sheet, exports it as JSON, and
+publishes it to a public URL via GitHub Pages. Embed that URL in the lab's
+WordPress site with an iframe, and it will show whatever was published on
+the most recent run. Updates are **manual only** -- nothing runs on a
+timer. To publish fresh data, go to **Actions -> "Update Data and Deploy to
+Pages" -> Run workflow** whenever the spreadsheet has changes you want to
+go live.
 
 The source Google Sheet itself is **never made public**. Data is read via
 an authenticated Google Sheets API call (a service account), not a
@@ -39,8 +42,9 @@ Data comes from two tabs -- **Complete Datasets** and **Table** -- read
 live on every run via the Google Sheets API using a service account. The
 sheet is shared only with that service account's email address, the same
 way you'd share it with a person; it's never published to the open web.
-The repo never stores a copy of the raw sheet -- edit it, and the next
-scheduled run picks up the change automatically.
+The repo never stores a copy of the raw sheet -- edit it, then manually
+trigger the workflow (**Actions -> "Update Data and Deploy to Pages" ->
+Run workflow**) whenever you want that change to go live.
 
 **One-time Google Cloud setup (~10-15 minutes):**
 
@@ -110,13 +114,13 @@ Have the lab member with `wp-admin` access add a **Custom HTML block**
   width="100%"
   height="550"
   style="border:none;"
-  title="Women's Health Cohort Database">
+  title="The Women's Health Database">
 </iframe>
 ```
 
-This only needs to be done once. From then on, the Action refreshes the
-data automatically (default: every hour) and the WordPress page always
-shows the latest version.
+This only needs to be done once. The WordPress page always shows whatever
+was published by the most recent manual run of the Action -- see "Editing
+the data source" below for how to trigger one.
 
 ## Editing the data source
 
@@ -127,7 +131,12 @@ shows the latest version.
   **Secrets** the same way as `GOOGLE_CREDENTIALS` (**Settings -> Secrets
   and variables -> Actions -> Secrets tab**), and reference them in the
   workflow as `${{ secrets.YOUR_SECRET_NAME }}`.
-- Adjust the schedule by editing the `cron` line in
+- Updates are manual only -- run **Actions -> "Update Data and Deploy to
+  Pages" -> Run workflow** whenever you want to publish the latest
+  spreadsheet data. (Pushing a code change to `fetch_data.py`, the chart
+  files, etc. also triggers a run automatically, since that's when you'd
+  want the live site rebuilt anyway.) If you ever want a scheduled
+  refresh again, add a `schedule:` trigger back into the `on:` block in
   `.github/workflows/update-chart.yml`.
 - The dashboard front-end lives in `charts/index.html` (shell + tab nav),
   `charts/dashboard.css` (styling), `charts/dashboard-data.js` (pure

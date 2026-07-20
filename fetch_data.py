@@ -434,45 +434,19 @@ def _normalize_cohort_name(name) -> str:
     return re.sub(r"\s+", " ", str(name).strip().lower())
 
 
-def _jitter_coordinates(
-    df: pd.DataFrame,
-    lat_col: str = "Latitude",
-    lon_col: str = "Longitude",
-    base_radius_deg: float = 1.2,
-) -> pd.DataFrame:
-    """
-    When multiple cohorts share the same country (and therefore the same
-    centroid), spreads their markers apart in a small ring around that
-    centroid so they don't render as a single overlapping dot on the map.
-    Cohorts that are the only one in their country are left at the exact
-    centroid.
-    """
-    df = df.copy()
-    grouped = df.groupby([lat_col, lon_col], dropna=True).indices
-
-    for (lat, lon), positions in grouped.items():
-        positions = list(positions)
-        k = len(positions)
-        if k <= 1:
-            continue
-        # Counteract longitude compression at higher latitudes so the ring
-        # looks roughly circular rather than squashed near the poles.
-        lon_scale = max(math.cos(math.radians(lat)), 0.2)
-        for i, pos in enumerate(positions):
-            angle = 2 * math.pi * i / k
-            dlat = base_radius_deg * math.sin(angle)
-            dlon = (base_radius_deg * math.cos(angle)) / lon_scale
-            df.iloc[pos, df.columns.get_loc(lat_col)] = lat + dlat
-            df.iloc[pos, df.columns.get_loc(lon_col)] = lon + dlon
-
-    return df
-
-
 def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Joins the two tabs on cohort name, geocodes each cohort's country-level
-    Location to an approximate lat/lon, and jitters cohorts sharing a
-    country so map markers don't overlap.
+    Joins the two tabs on cohort name and geocodes each cohort's
+    country-level Location to an approximate lat/lon centroid.
+
+    Cohorts sharing a country intentionally get the exact same Latitude/
+    Longitude here -- separating overlapping markers is handled client-side
+    (see renderMapMarkers() in charts/dashboard.js), which spaces them apart
+    in *screen-pixel* space and recomputes on every zoom change. A static,
+    degrees-based offset computed once here would look right at one zoom
+    level and collapse back into an overlapping blob at any other (map
+    degrees-per-pixel shrinks a lot when zoomed out), which is exactly the
+    overlap this used to produce at the default whole-world view.
     """
     complete_df = complete_df.copy()
     table_df = table_df.copy()
@@ -519,7 +493,6 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
             "to country_centroids.py."
         )
 
-    merged = _jitter_coordinates(merged)
     return merged
 
 

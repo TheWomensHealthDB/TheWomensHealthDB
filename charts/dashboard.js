@@ -1,7 +1,7 @@
 /*
  * dashboard.js
  *
- * DOM rendering + event wiring for the Women's Health Cohort Database
+ * DOM rendering + event wiring for The Women's Health Database
  * dashboard. Depends on `window.DashboardData` (dashboard-data.js) for
  * pure logic, and the global Leaflet `L` object (loaded via CDN in
  * index.html) for the map tab. Reads pre-generated JSON
@@ -18,6 +18,7 @@
     mapInitialized: false,
     map: null,
     mapLayer: null,
+    mapMarkerGroups: null, // [{centroid, entries:[{marker, radius, angle}]}]
     // Table 1
     t1Sort: { column: null, direction: "asc" },
     // Table 2
@@ -311,13 +312,21 @@
         var tr = document.createElement("tr");
         var procVal = procCol ? String(r[procCol] || "").trim() : "";
         var accentColor = procVal ? colorMap.get(procVal) : null;
+        // Set the accent color on the <tr> itself (not just a child cell) --
+        // CSS custom properties only cascade downward, so a row-level tint
+        // rule can't see a value set on one of its own cells. This is what
+        // makes the always-on tint and full-row hover highlight below
+        // actually work across the whole row, not just the first cell.
+        if (accentColor) {
+          tr.classList.add("accent-row");
+          tr.style.setProperty("--row-accent", accentColor);
+        }
 
         t1Columns().forEach(function (col, i) {
           var td = document.createElement("td");
           td.textContent = DD.formatValue(r[col.key]);
           if (i === 0 && accentColor) {
             td.classList.add("accent-cell");
-            td.style.setProperty("--row-accent", accentColor);
           }
           tr.appendChild(td);
         });
@@ -600,6 +609,7 @@
       });
       fieldSelect.addEventListener("change", function () {
         cond.field = fieldSelect.value;
+        refreshDatalist();
         renderTable3();
       });
 
@@ -620,12 +630,37 @@
       var valueInput = document.createElement("input");
       valueInput.type = "text";
       valueInput.placeholder = "value";
+      valueInput.title =
+        "Start typing to see existing values for this field. Close " +
+        "matches (different spacing/punctuation, minor typos, numbers " +
+        "inside a range) are still found even if you don't pick one.";
+      valueInput.setAttribute("autocomplete", "off");
       valueInput.value = cond.value;
       valueInput.style.display = op_needsValue(cond.operator) ? "" : "none";
       valueInput.addEventListener("input", function () {
         cond.value = valueInput.value;
         renderTable3();
       });
+
+      // Native <datalist> autocomplete: shows the actual values present in
+      // the currently-selected field as a dropdown while typing, so you
+      // can see what's available instead of having to guess exact
+      // spelling/formatting. Kept in sync whenever the field changes.
+      var datalist = document.createElement("datalist");
+      var datalistId = "t3-options-" + cond.id;
+      datalist.id = datalistId;
+      valueInput.setAttribute("list", datalistId);
+
+      function refreshDatalist() {
+        datalist.innerHTML = "";
+        if (!cond.field) return;
+        DD.uniqueValues(state.cohorts, cond.field).forEach(function (val) {
+          var opt = document.createElement("option");
+          opt.value = val;
+          datalist.appendChild(opt);
+        });
+      }
+      refreshDatalist();
 
       var removeBtn = document.createElement("button");
       removeBtn.type = "button";
@@ -643,6 +678,7 @@
       row.appendChild(fieldSelect);
       row.appendChild(opSelect);
       row.appendChild(valueInput);
+      row.appendChild(datalist);
       row.appendChild(removeBtn);
       container.appendChild(row);
     });
@@ -744,12 +780,27 @@
     state.mapInitialized = true;
 
     var map = L.map("map", { worldCopyJump: true }).setView([15, 10], 2);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+    // CARTO's "Voyager" basemap (built on OpenStreetMap data) renders place
+    // labels in English/Latin script everywhere, unlike the stock OSM
+    // Mapnik tiles which label each place in its local language/script.
+    // No API key required.
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      {
+        maxZoom: 18,
+        subdomains: "abcd",
+        detectRetina: true,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
+          '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+      }
+    ).addTo(map);
 
     state.map = map;
+    // Re-space overlapping markers every time the zoom level changes -- see
+    // repositionJitteredMarkers() for why this has to be recomputed per
+    // zoom rather than baked in once.
+    map.on("zoomend", repositionJitteredMarkers);
     renderMapMarkers();
     setTimeout(function () {
       map.invalidateSize();
@@ -776,60 +827,96 @@
     }
     var layer = L.layerGroup();
 
+    // Cohorts geocoded to the same country share the exact same centroid
+    // coordinate (see fetch_data.py). Group them here so
+    // repositionJitteredMarkers() can spread each group apart in
+    // screen-pixel space, sized to fit however many cohorts and however
+    // large their markers are.
+    var groups = new Map();
     geocoded.forEach(function (r) {
-      var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
-      var color = colorMap.get(typeVal) || "#666";
-      var baseStyle = {
-        radius: DD.markerRadius(r.N),
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.65,
-        weight: 1.5,
-      };
-      var hoverStyle = {
-        radius: baseStyle.radius + 4,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.9,
-        weight: 3,
-      };
-      var marker = L.circleMarker([r.Latitude, r.Longitude], baseStyle);
+      var key = r.Latitude.toFixed(4) + "," + r.Longitude.toFixed(4);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    });
 
-      var tooltipHtml =
-        '<div class="cohort-tooltip"><strong>' +
-        escapeHtml(r[nameCol] || "") +
-        "</strong>" +
-        (typeVal ? escapeHtml(typeVal) + "<br/>" : "") +
-        "N: " +
-        escapeHtml(DD.formatValue(r.N)) +
-        "<br/>" +
-        "Age range: " +
-        escapeHtml(DD.formatValue(r["Age Range"])) +
-        "<br/>" +
-        "%male/%female: " +
-        escapeHtml(DD.formatValue(r["%male/%female"])) +
-        '<span class="tooltip-hint">Click marker for full details</span>' +
-        "</div>";
-      marker.bindTooltip(tooltipHtml);
+    var markerGroups = [];
 
-      // Highlight on hover (in addition to the tooltip Leaflet already
-      // shows) so it's visually obvious which cohort you're pointing at,
-      // especially when markers are close together.
-      marker.on("mouseover", function () {
-        marker.setStyle(hoverStyle);
-        marker.bringToFront();
+    groups.forEach(function (rowsInGroup) {
+      // Deterministic order so the ring layout doesn't shuffle between
+      // reloads/re-renders.
+      rowsInGroup.sort(function (a, b) {
+        return String(a[nameCol] || "").localeCompare(String(b[nameCol] || ""));
       });
-      marker.on("mouseout", function () {
-        marker.setStyle(baseStyle);
+
+      var centroid = L.latLng(rowsInGroup[0].Latitude, rowsInGroup[0].Longitude);
+      var groupEntries = [];
+
+      rowsInGroup.forEach(function (r, i) {
+        var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
+        var color = colorMap.get(typeVal) || "#666";
+        var radius = DD.markerRadius(r.N);
+        var baseStyle = {
+          radius: radius,
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.65,
+          weight: 1.5,
+        };
+        var hoverStyle = {
+          radius: radius + 3,
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.9,
+          weight: 3,
+        };
+        var marker = L.circleMarker(centroid, baseStyle);
+
+        var tooltipHtml =
+          '<div class="cohort-tooltip"><strong>' +
+          escapeHtml(r[nameCol] || "") +
+          "</strong>" +
+          (typeVal ? escapeHtml(typeVal) + "<br/>" : "") +
+          "N: " +
+          escapeHtml(DD.formatValue(r.N)) +
+          "<br/>" +
+          "Age range: " +
+          escapeHtml(DD.formatValue(r["Age Range"])) +
+          "<br/>" +
+          "%male/%female: " +
+          escapeHtml(DD.formatValue(r["%male/%female"])) +
+          '<span class="tooltip-hint">Click marker for full details</span>' +
+          "</div>";
+        marker.bindTooltip(tooltipHtml);
+
+        // Highlight on hover (in addition to the tooltip Leaflet already
+        // shows) so it's visually obvious which cohort you're pointing at,
+        // especially when markers are close together.
+        marker.on("mouseover", function () {
+          marker.setStyle(hoverStyle);
+          marker.bringToFront();
+        });
+        marker.on("mouseout", function () {
+          marker.setStyle(baseStyle);
+        });
+        marker.on("click", function () {
+          openCohortDetail(r);
+        });
+
+        layer.addLayer(marker);
+        groupEntries.push({
+          marker: marker,
+          radius: radius,
+          angle: rowsInGroup.length > 1 ? (2 * Math.PI * i) / rowsInGroup.length : 0,
+        });
       });
-      marker.on("click", function () {
-        openCohortDetail(r);
-      });
-      layer.addLayer(marker);
+
+      markerGroups.push({ centroid: centroid, entries: groupEntries });
     });
 
     layer.addTo(state.map);
     state.mapLayer = layer;
+    state.mapMarkerGroups = markerGroups;
+    repositionJitteredMarkers();
 
     renderMapLegend(colorMap);
 
@@ -838,6 +925,57 @@
     if (noteEl) {
       noteEl.textContent = missing > 0 ? missing + " cohort(s) omitted (no geocodable location)." : "";
     }
+  }
+
+  /**
+   * Spreads apart markers that share an identical geocoded centroid (i.e.
+   * cohorts in the same country) around a small ring, computed in
+   * *screen-pixel* space at the map's current zoom level rather than as a
+   * fixed lat/lon offset. That's the key fix for markers overlapping at a
+   * zoomed-out view: a degrees-based offset looks fine at one zoom level
+   * but collapses back into an overlapping blob at any other, since
+   * degrees-per-pixel shrinks a lot as you zoom out. Re-run on every zoom
+   * change (wired up in initMap()) so the on-screen spacing stays roughly
+   * constant no matter how far in or out you are.
+   */
+  function repositionJitteredMarkers() {
+    if (!state.map || !state.mapMarkerGroups) return;
+    var zoom = state.map.getZoom();
+
+    state.mapMarkerGroups.forEach(function (group) {
+      var k = group.entries.length;
+      if (k <= 1) {
+        if (k === 1) group.entries[0].marker.setLatLng(group.centroid);
+        return;
+      }
+
+      var maxRadius = Math.max.apply(
+        null,
+        group.entries.map(function (e) {
+          return e.radius;
+        })
+      );
+      // Ring radius large enough that adjacent markers (spaced angleStep
+      // apart around the circle) don't touch, given their own size, with a
+      // floor so even 2-marker groups get comfortable separation.
+      var angleStep = (2 * Math.PI) / k;
+      var minSin = Math.max(Math.sin(angleStep / 2), 0.05);
+      var desiredGapPx = 6;
+      var ringRadiusPx = Math.max(
+        maxRadius + 14,
+        (2 * maxRadius + desiredGapPx) / (2 * minSin)
+      );
+
+      var centerPoint = state.map.project(group.centroid, zoom);
+
+      group.entries.forEach(function (entry) {
+        var offsetPoint = L.point(
+          centerPoint.x + ringRadiusPx * Math.cos(entry.angle),
+          centerPoint.y + ringRadiusPx * Math.sin(entry.angle)
+        );
+        entry.marker.setLatLng(state.map.unproject(offsetPoint, zoom));
+      });
+    });
   }
 
   function renderMapLegend(colorMap) {

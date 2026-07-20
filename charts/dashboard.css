@@ -23,6 +23,10 @@
      overt gender-coded styling anywhere else in the UI. */
   --accent-rose: #c2698a;
   --accent-rose-soft: #f7e9ee;
+  /* Light pastel pink used specifically for the "TWHDB" wordmark in the
+     header -- a touch bolder than a true pastel so the small bold text
+     stays legible against the white header, while still reading as pink. */
+  --accent-pastel-pink: #ee8fbb;
 
   --warn: #b06a00;
   --warn-bg: #fdf3e2;
@@ -42,7 +46,18 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   margin: 0;
   color: var(--text-main);
-  background: var(--bg-page);
+  /* Soft color wash in the corners plus a faint dot-grid, evoking graph
+     paper / a scientific data platform without competing with the actual
+     data. All three layers are intentionally subtle -- this reads as
+     "textured" rather than "decorated" at normal viewing distance. */
+  background-color: var(--bg-page);
+  background-image:
+    radial-gradient(1100px 550px at 8% -12%, var(--accent-soft) 0%, transparent 60%),
+    radial-gradient(900px 480px at 104% 0%, var(--accent-rose-soft) 0%, transparent 55%),
+    radial-gradient(circle, rgba(47, 95, 138, 0.07) 1px, transparent 1px);
+  background-size: auto, auto, 24px 24px;
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-attachment: fixed, fixed, fixed;
 }
 
 /* ---------------------------------------------------------------------
@@ -51,15 +66,16 @@ body {
 
 header.app-header {
   padding: 1.5rem 1.75rem 0;
-  background: #fff;
+  background: linear-gradient(120deg, #ffffff 0%, #ffffff 55%, var(--accent-soft) 130%);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   position: relative;
 }
 
-/* A thin two-tone gradient line: mostly the neutral accent, with a soft
-   rose sweep at the end -- a subtle, non-literal hint that this is a
-   women's-health resource, without color-coding the whole interface. */
+/* A gradient line across the very top of the page: mostly the neutral
+   accent, sweeping into a soft rose at the end -- a subtle, non-literal
+   hint that this is a women's-health resource, without color-coding the
+   whole interface. */
 header.app-header::before {
   content: "";
   display: block;
@@ -67,8 +83,8 @@ header.app-header::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 65%, var(--accent-rose) 100%);
+  height: 5px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 45%, var(--accent) 70%, var(--accent-rose) 100%);
 }
 
 .header-top {
@@ -79,12 +95,11 @@ header.app-header::before {
 
 .brand-mark {
   display: inline-block;
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 8px;
   flex: none;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 55%, var(--accent-rose) 130%);
-  box-shadow: var(--shadow-sm);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  color: var(--accent-pastel-pink);
 }
 
 header.app-header h1 {
@@ -147,9 +162,22 @@ nav.tabs button.active {
   font-weight: 700;
   color: var(--accent-dark);
   border-color: var(--border);
-  border-bottom: 3px solid var(--accent);
+  border-bottom: 3px solid transparent;
   margin-bottom: -1px;
   position: relative;
+}
+
+/* Gradient underline on the active tab instead of a flat color, echoing
+   the header's top accent bar. */
+nav.tabs button.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-rose) 100%);
 }
 
 /* ---------------------------------------------------------------------
@@ -254,7 +282,7 @@ input[type="text"]:focus, input[type="search"]:focus, input[type="number"]:focus
 
 button.btn {
   border: 1px solid var(--accent);
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: #fff;
   border-radius: 6px;
   padding: 0.5rem 0.9rem;
@@ -265,7 +293,7 @@ button.btn {
 }
 
 button.btn:hover {
-  background: var(--accent-dark);
+  background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent-rose) 145%);
   box-shadow: var(--shadow-sm);
 }
 
@@ -317,7 +345,7 @@ table.data-table th, table.data-table td {
 }
 
 table.data-table thead th {
-  background: var(--bg-subtle);
+  background: linear-gradient(180deg, #fdfefe 0%, var(--bg-subtle) 100%);
   cursor: pointer;
   white-space: nowrap;
   position: sticky;
@@ -350,24 +378,33 @@ table.data-table tbody tr:hover td {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
+  /* Echoes the header's top gradient bar so each data panel reads as part
+     of the same visual system, without repeating the exact same treatment
+     everywhere. */
+  border-top: 3px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, var(--accent) 0%, var(--accent-rose) 100%) border-box;
 }
 
 /* Row color-coding by Procedure Separation Type (Cohort Summary tab). The
-   accent color is set per-row via a CSS custom property in inline style;
-   this rule just draws a colored stripe on the first cell of that row and
-   (where supported) tints the row very lightly so the coding reads at a
-   glance without overpowering the data. */
+   accent color is set per-row via a CSS custom property on the <tr> itself
+   (see dashboard.js), so the whole row -- not just one cell -- can read it:
+   a colored stripe on the first (Cohort Name) cell for a quick visual
+   anchor, a light always-on tint across the entire row so the coding is
+   visible at a glance without hovering, and a bolder full-row tint on
+   hover. */
 td.accent-cell {
   border-left: 4px solid var(--row-accent, transparent);
 }
-table.data-table tbody tr:has(td.accent-cell) {
-  background: color-mix(in srgb, var(--row-accent, transparent) 6%, #fff);
+table.data-table tbody tr.accent-row {
+  background: color-mix(in srgb, var(--row-accent, transparent) 13%, #fff);
 }
-table.data-table tbody tr:has(td.accent-cell):nth-child(even) {
-  background: color-mix(in srgb, var(--row-accent, transparent) 10%, #fbfcfd);
+table.data-table tbody tr.accent-row:nth-child(even) {
+  background: color-mix(in srgb, var(--row-accent, transparent) 18%, #fbfcfd);
 }
-table.data-table tbody tr:has(td.accent-cell):hover td {
-  background: color-mix(in srgb, var(--row-accent, transparent) 16%, var(--hover-bg));
+table.data-table tbody tr.accent-row:hover td {
+  background: color-mix(in srgb, var(--row-accent, transparent) 32%, var(--hover-bg));
 }
 
 .legend {
@@ -492,9 +529,12 @@ table.matrix-table td.cohort-cell:hover {
   box-shadow: var(--shadow-sm);
 }
 .picker h3 {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.35rem;
   font-size: 0.85rem;
   color: var(--accent-dark);
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--accent) 0%, var(--accent-rose-soft) 100%) 1;
 }
 .picker .picker-actions {
   display: flex;
@@ -552,6 +592,10 @@ table.matrix-table td.cohort-cell:hover {
   height: 65vh;
   border-radius: var(--radius);
   border: 1px solid var(--border);
+  border-top: 3px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(90deg, var(--accent) 0%, var(--accent-rose) 100%) border-box;
   box-shadow: var(--shadow-sm);
 }
 
@@ -586,10 +630,22 @@ table.matrix-table td.cohort-cell:hover {
   border-radius: 12px;
   max-width: 46em;
   width: 100%;
-  padding: 1.4rem 1.6rem;
+  padding: 1.5rem 1.6rem 1.4rem;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-md);
+  position: relative;
+}
+
+.modal::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 45%, var(--accent-rose) 100%);
 }
 .modal h2 {
   margin-top: 0;
