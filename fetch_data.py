@@ -387,7 +387,26 @@ def get_table(gc) -> pd.DataFrame:
 
     ws = gc.open_by_key(SPREADSHEET_ID).worksheet(TABLE_TAB)
     rows = ws.get_all_values()
-    return _parse_two_row_header_table(rows)
+    df = _parse_two_row_header_table(rows)
+
+    if TABLE_COHORT_COLUMN not in df.columns:
+        # Don't let this fail with a bare pandas KeyError several steps
+        # later -- show exactly what the real sheet's header rows look
+        # like so a mismatch (different wording, an extra header row, a
+        # merged cell that isn't blank where we expect it, etc.) can be
+        # diagnosed from the Actions log directly instead of guessing.
+        raise ValueError(
+            f"Could not find a '{TABLE_COHORT_COLUMN}' column in '{TABLE_TAB}' "
+            f"after flattening its two-row header. This means the tab's header "
+            f"layout doesn't match what this script expects (a blank cell above "
+            f"the cohort-name column, then merged group headers like "
+            f"'Classification Validity' spanning the columns after it).\n"
+            f"Raw header row 1 (group headers): {rows[0] if len(rows) > 0 else '(missing)'}\n"
+            f"Raw header row 2 (sub-headers): {rows[1] if len(rows) > 1 else '(missing)'}\n"
+            f"Columns produced after flattening: {list(df.columns)}"
+        )
+
+    return df
 
 
 def _parse_two_row_header_table(rows: "list[list[str]]") -> pd.DataFrame:
