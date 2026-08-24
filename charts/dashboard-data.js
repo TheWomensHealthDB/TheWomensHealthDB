@@ -396,6 +396,22 @@
     return Math.max(4, Math.min(20, Math.sqrt(value) * 0.42));
   }
 
+  /**
+   * Multiplier applied to a marker's base (N-derived) radius for the map's
+   * current zoom level, relative to `referenceZoom` (the zoom level
+   * markerRadius()'s pixel sizes are calibrated for -- i.e. scale is 1 when
+   * zoom === referenceZoom). Grows/shrinks modestly per zoom step rather
+   * than 1:1 with the tile grid's doubling pixel scale, and is clamped, so
+   * relative sizing between cohorts (by N) stays legible at every zoom
+   * level without markers either ballooning into huge circles when zoomed
+   * in far or shrinking to an unreadable speck when zoomed out to the
+   * whole world.
+   */
+  function zoomRadiusScale(zoom, referenceZoom) {
+    var delta = (typeof zoom === "number" ? zoom : referenceZoom) - referenceZoom;
+    return Math.max(0.5, Math.min(3, Math.pow(1.15, delta)));
+  }
+
   // ---------------------------------------------------------------------
   // Misc table helpers
   // ---------------------------------------------------------------------
@@ -463,6 +479,7 @@
     evaluateCondition: evaluateCondition,
     evaluateGroup: evaluateGroup,
     markerRadius: markerRadius,
+    zoomRadiusScale: zoomRadiusScale,
     uniqueValues: uniqueValues,
     formatValue: formatValue,
     sortRecords: sortRecords,

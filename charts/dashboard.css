@@ -432,8 +432,6 @@ table.data-table tbody tr.accent-row:hover td {
 
 /* Checklist / matrix table specifics */
 table.matrix-table thead th {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
   /* No height/max-height here on purpose -- table cell height is only ever
      a minimum per the CSS table spec, so leaving it unset lets the header
      row grow to fit whichever label is longest. A fixed max-height was
@@ -445,9 +443,21 @@ table.matrix-table thead th {
   cursor: default;
   vertical-align: bottom;
 }
+/* The rotated label text lives in its own inner span (see dashboard.js)
+   rather than directly on the <th>. Combining `position: sticky` (set on
+   `table.data-table thead th` above) with a `transform` on the *same*
+   element is a known trigger for a browser repaint bug: after scrolling,
+   hovering the sticky header could make it flash transparent for a frame,
+   briefly showing the data rows scrolled underneath it. Keeping the
+   transform on this separate, non-positioned child avoids that entirely
+   while looking identical. */
+table.matrix-table thead th .th-label {
+  display: inline-block;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
 table.matrix-table thead th.cohort-col-header {
-  writing-mode: horizontal-tb;
-  transform: none;
   height: auto;
   vertical-align: middle;
 }

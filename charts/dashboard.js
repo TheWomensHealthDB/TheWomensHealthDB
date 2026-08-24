@@ -370,9 +370,10 @@
     el.textContent =
       "This matrix covers " +
       total +
-      " questionnaire item(s) across all cohorts. Use the pickers on the left to narrow " +
-      "which cohorts and items are shown. Hover a colored cell to see its exact response " +
-      "text, and click a cohort name for its full record.";
+      " questionnaire item(s) across all cohorts. Use the checkboxes on the menu in the " +
+      "left-hand side of the page to narrow which cohorts and items are shown. Hover a " +
+      "colored cell to see its exact response text, and click a cohort name for its full " +
+      "record.";
   }
 
   function renderPicker(containerId, allValues, selectedSet, onChange) {
@@ -485,7 +486,15 @@
     headRow.appendChild(cornerTh);
     columns.forEach(function (col) {
       var th = document.createElement("th");
-      th.textContent = col;
+      // The rotated label text lives in its own inner span rather than
+      // directly on the <th> -- see the ".th-label" rule in dashboard.css
+      // for why (keeping `transform` off the sticky-positioned <th> itself
+      // avoids a hover repaint glitch where the header briefly goes
+      // transparent).
+      var label = document.createElement("span");
+      label.className = "th-label";
+      label.textContent = col;
+      th.appendChild(label);
       th.title = col;
       headRow.appendChild(th);
     });
@@ -762,6 +771,17 @@
   // Map
   // ---------------------------------------------------------------------
 
+  // The zoom level DD.markerRadius()'s pixel sizes are calibrated for (must
+  // match the initial map.setView() zoom below) -- markers grow/shrink
+  // relative to this as the user zooms, via DD.zoomRadiusScale().
+  var MAP_REFERENCE_ZOOM = 2;
+
+  /** A cohort's on-screen marker radius (px) at the map's current zoom. */
+  function markerRadiusForZoom(baseRadius) {
+    var zoom = state.map ? state.map.getZoom() : MAP_REFERENCE_ZOOM;
+    return baseRadius * DD.zoomRadiusScale(zoom, MAP_REFERENCE_ZOOM);
+  }
+
   function initMap() {
     if (state.mapInitialized) return;
 
@@ -811,6 +831,7 @@
     if (!state.map) return;
     var procCol = state.schema.procedure_separation_type_column;
     var nameCol = state.schema.cohort_name_column;
+    var locationCol = state.schema.resolved_location_column;
 
     var geocoded = state.cohorts.filter(function (r) {
       return typeof r.Latitude === "number" && typeof r.Longitude === "number";
@@ -854,28 +875,28 @@
       rowsInGroup.forEach(function (r, i) {
         var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
         var color = colorMap.get(typeVal) || "#666";
-        var radius = DD.markerRadius(r.N);
-        var baseStyle = {
-          radius: radius,
+        // Radius at the map's current zoom, derived from the cohort's N --
+        // baseRadius itself never changes, but the on-screen size does as
+        // the user zooms (see markerRadiusForZoom()/DD.zoomRadiusScale()),
+        // so it's recomputed from this on every zoomend via
+        // repositionJitteredMarkers() rather than baked into a fixed style.
+        var baseRadius = DD.markerRadius(r.N);
+        var marker = L.circleMarker(centroid, {
+          radius: markerRadiusForZoom(baseRadius),
           color: color,
           fillColor: color,
           fillOpacity: 0.65,
           weight: 1.5,
-        };
-        var hoverStyle = {
-          radius: radius + 3,
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.9,
-          weight: 3,
-        };
-        var marker = L.circleMarker(centroid, baseStyle);
+        });
 
         var tooltipHtml =
           '<div class="cohort-tooltip"><strong>' +
           escapeHtml(r[nameCol] || "") +
           "</strong>" +
           (typeVal ? escapeHtml(typeVal) + "<br/>" : "") +
+          "Mapped to: " +
+          escapeHtml(DD.formatValue(r[locationCol])) +
+          "<br/>" +
           "N: " +
           escapeHtml(DD.formatValue(r.N)) +
           "<br/>" +
@@ -890,13 +911,24 @@
 
         // Highlight on hover (in addition to the tooltip Leaflet already
         // shows) so it's visually obvious which cohort you're pointing at,
-        // especially when markers are close together.
+        // especially when markers are close together. Radius is
+        // recomputed from the current zoom on every hover (rather than
+        // reusing a fixed value from when the marker was created) since
+        // the map may have been zoomed since then.
         marker.on("mouseover", function () {
-          marker.setStyle(hoverStyle);
+          marker.setStyle({
+            radius: markerRadiusForZoom(baseRadius) + 3,
+            fillOpacity: 0.9,
+            weight: 3,
+          });
           marker.bringToFront();
         });
         marker.on("mouseout", function () {
-          marker.setStyle(baseStyle);
+          marker.setStyle({
+            radius: markerRadiusForZoom(baseRadius),
+            fillOpacity: 0.65,
+            weight: 1.5,
+          });
         });
         marker.on("click", function () {
           openCohortDetail(r);
@@ -905,7 +937,7 @@
         layer.addLayer(marker);
         groupEntries.push({
           marker: marker,
-          radius: radius,
+          baseRadius: baseRadius,
           angle: rowsInGroup.length > 1 ? (2 * Math.PI * i) / rowsInGroup.length : 0,
         });
       });
@@ -937,12 +969,23 @@
    * degrees-per-pixel shrinks a lot as you zoom out. Re-run on every zoom
    * change (wired up in initMap()) so the on-screen spacing stays roughly
    * constant no matter how far in or out you are.
+   *
+   * Also resizes every marker to match the new zoom level (see
+   * markerRadiusForZoom()) before computing ring spacing, so dots grow
+   * when you zoom in and shrink when you zoom out -- while every marker is
+   * scaled by the same factor, relative sizing between cohorts (by N)
+   * stays intact -- and the ring spacing itself reflects each marker's
+   * up-to-date on-screen size rather than its size at the previous zoom.
    */
   function repositionJitteredMarkers() {
     if (!state.map || !state.mapMarkerGroups) return;
     var zoom = state.map.getZoom();
 
     state.mapMarkerGroups.forEach(function (group) {
+      group.entries.forEach(function (entry) {
+        entry.marker.setRadius(markerRadiusForZoom(entry.baseRadius));
+      });
+
       var k = group.entries.length;
       if (k <= 1) {
         if (k === 1) group.entries[0].marker.setLatLng(group.centroid);
@@ -952,7 +995,7 @@
       var maxRadius = Math.max.apply(
         null,
         group.entries.map(function (e) {
-          return e.radius;
+          return markerRadiusForZoom(e.baseRadius);
         })
       );
       // Ring radius large enough that adjacent markers (spaced angleStep

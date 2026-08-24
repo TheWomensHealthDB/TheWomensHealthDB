@@ -189,12 +189,8 @@ def _normalize(name: str) -> str:
     return name
 
 
-def geocode_country(name: str):
-    """
-    Looks up an approximate (lat, lon) centroid for a country name string.
-    Returns None if not found (caller should log/handle that case rather
-    than silently dropping the cohort from the map).
-    """
+def _lookup_key(name: str):
+    """Returns the canonical COUNTRY_CENTROIDS key for a name, or None."""
     if not name or not str(name).strip():
         return None
 
@@ -202,12 +198,40 @@ def geocode_country(name: str):
     key = ALIASES.get(key, key)
 
     if key in COUNTRY_CENTROIDS:
-        return COUNTRY_CENTROIDS[key]
+        return key
 
-    # Fall back to a loose "starts with" / "contains" match for strings
-    # like "USA (multi-site)" or "Australia - Victoria".
-    for candidate, coords in COUNTRY_CENTROIDS.items():
-        if key.startswith(candidate) or candidate in key:
-            return coords
+    # Fall back to a loose whole-word match for strings like
+    # "USA (multi-site)" or "Australia - Victoria", where the country name
+    # is only part of a longer string. This is intentionally anchored to
+    # word boundaries (\b) rather than a bare substring/startswith check --
+    # a bare substring check would let short candidates like "uk"/"us"
+    # falsely match *inside* unrelated words (e.g. "uk" inside "Timbuktu").
+    for candidate in COUNTRY_CENTROIDS:
+        if re.search(rf"\b{re.escape(candidate)}\b", key):
+            return candidate
 
     return None
+
+
+def geocode_country(name: str):
+    """
+    Looks up an approximate (lat, lon) centroid for a country name string.
+    Returns None if not found (caller should log/handle that case rather
+    than silently dropping the cohort from the map).
+    """
+    key = _lookup_key(name)
+    return COUNTRY_CENTROIDS[key] if key else None
+
+
+_DISPLAY_OVERRIDES = {
+    "usa": "USA", "us": "US", "u.s.": "U.S.", "u.s.a.": "U.S.A.",
+    "uk": "UK", "uae": "UAE",
+}
+
+
+def country_display_name(name: str):
+    """Returns a nicely-cased canonical country name, or None if not found."""
+    key = _lookup_key(name)
+    if not key:
+        return None
+    return _DISPLAY_OVERRIDES.get(key, key.title())

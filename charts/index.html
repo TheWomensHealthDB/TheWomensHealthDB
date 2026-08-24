@@ -18,10 +18,10 @@
       <h1>The Women's Health Database</h1>
     </div>
     <p>
-      A searchable, filterable overview of longitudinal women's-health cohort
-      studies: what each cohort collects, how it classifies procedure/data
-      validity, and where in the world it's based. Data is refreshed manually
-      from the lab's source spreadsheet whenever the team runs an update.
+      A searchable, filterable overview of women's-health cohort studies:
+      what each cohort collects, what its summary statistics are, how
+      specifically it classifies hysterectomy/oophorectomy-related items,
+      and where in the world it's based.
     </p>
     <nav class="tabs">
       <button type="button" class="active" data-tab="summary">Cohort Summary</button>
@@ -38,7 +38,7 @@
     <section id="panel-summary" class="tab-panel active">
       <div class="hint-banner">
         <span class="hint-label">Tip</span>
-        <p>Click any row to see that cohort's full record. Rows are color-coded by
+        <p>Click any row to see more information on that cohort. Rows are color-coded by
         Procedure Separation Type &mdash; see the legend below the search box. Click a
         column header to sort.</p>
       </div>
@@ -108,7 +108,7 @@
         or "Hot flashes item: equals Yes". Then choose whether a cohort needs to match
         <em>all</em> of your conditions (AND) or <em>any</em> of them (OR) using the
         dropdown. The table updates instantly as you add, edit, or remove conditions, so
-        it's a quick way to answer questions like "which cohorts are prospective and
+        it's a quick way to answer questions like "which cohorts are publicly available and
         include a hysterectomy question?" without digging through the raw spreadsheet.</p>
       </div>
       <div class="panel-toolbar">
@@ -135,9 +135,12 @@
     <section id="panel-map" class="tab-panel">
       <div class="hint-banner">
         <span class="hint-label">Tip</span>
-        <p>Hover a marker to preview a cohort; click it for full details. Marker size
+        <p>Hover over a marker to preview that cohort; click it for full details. Marker size
         reflects sample size (N), and marker color follows the same Procedure Separation
-        Type coding used on the Cohort Summary tab.</p>
+        Type. Markers are placed using each
+        cohort's participant location where one is clearly listed, falling back to the
+        study's PI/site location when the participant location is missing, "Nationwide,"
+        or lists more than one place &mdash; see "Mapped to" in each marker's tooltip.</p>
       </div>
       <div class="legend" id="map-legend"></div>
       <div id="map"></div>
