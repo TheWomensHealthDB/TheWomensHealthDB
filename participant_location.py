@@ -29,15 +29,29 @@ Resolution rules (see resolve_participant_location()):
      warning is emitted so it can be investigated/added to the lookup
      tables.
 
-This module only figures out *which state/region/country* a cohort should
-be geocoded to (returning its canonical display name); turning that into
-map coordinates is still done via state_centroids.geocode_state() /
-country_centroids.geocode_country(), same as before.
+This module figures out *which* place a cohort should be geocoded to,
+returning its canonical display name -- turning that into map coordinates
+is normally done via state_centroids.geocode_state() /
+country_centroids.geocode_country(), same as before. The one exception:
+when a value names a specific *non-U.S. city* that's in
+country_centroids.CITY_CENTROIDS (e.g. "Melbourne", or "Melbourne,
+Australia"), this module also returns that city's own precise (lat, lon)
+directly, so the caller can place the cohort there instead of falling all
+the way back to its country's much coarser centroid. U.S. locations
+intentionally stay state-level only, even when a city is named (see
+resolve_participant_location() rule 2) -- there's no equivalent U.S.
+city-level centroid table, since state-level precision was the original,
+deliberate design for U.S. cohorts.
 """
 
 import re
 
-from country_centroids import country_display_name, country_from_city
+from country_centroids import (
+    city_display_name,
+    country_display_name,
+    country_from_city,
+    geocode_city,
+)
 from state_centroids import state_display_name, state_from_city
 
 # Recognized spellings of "this study recruited from all over, not one
@@ -99,63 +113,117 @@ def _resolve_segment_place(segment: str):
     return state_display_name(segment)
 
 
+def _resolve_segment_international_city(segment: str):
+    """
+    If `segment` names a recognized non-U.S. city (see
+    country_centroids.CITY_CENTROIDS), returns (display_name, (lat, lon))
+    using that city's own precise centroid -- e.g. "Melbourne" ->
+    ("Melbourne, Australia", (-37.8136, 144.9631)). Returns None if the
+    segment isn't a recognized city, or is recognized in
+    country_centroids.CITY_TO_COUNTRY but doesn't (yet) have a matching
+    entry in CITY_CENTROIDS.
+
+    Deliberately doesn't consult state_centroids.CITY_TO_STATE -- U.S.
+    locations intentionally stay state-level only (see module docstring),
+    so this only ever returns a *non-U.S.* city.
+    """
+    segment = segment.strip().strip(".")
+    if not segment:
+        return None
+    country = country_from_city(segment)
+    city = city_display_name(segment)
+    coords = geocode_city(segment)
+    if not (country and city and coords):
+        return None
+    return f"{city}, {country}", coords
+
+
 def _distinct_resolved_locations(text: str):
     """
     Splits `text` into segments and resolves them to distinct places, in the
-    order first seen.
+    order first seen. Each returned item is a (display_name, coords) tuple,
+    where `coords` is a precise (lat, lon) pair for a recognized non-U.S.
+    city (see _resolve_segment_international_city()), or None for a
+    country/U.S. state-level result (the caller geocodes those the same way
+    as before, via state_centroids.geocode_state()/
+    country_centroids.geocode_country()).
 
-    This resolves in two passes rather than resolving each segment
-    independently and merging the results, because the two lookup
-    strategies -- "is this segment itself a state/country name" vs. "is this
-    segment a city we can map to a state" -- can genuinely disagree, and a
-    named city is inherently ambiguous (e.g. "Rochester" could be Rochester,
-    NY or Rochester, MN). If any segment is itself a recognizable
-    state/region/country, that always wins: a plain "City, State" pair (e.g.
-    "Rochester, Minnesota") should resolve to that one named state, not get
-    miscounted as two different locations just because "Rochester" also
-    happens to be a major city in a *different* state per
-    state_centroids.CITY_TO_STATE. The city lookup is only consulted as a
-    fallback when *no* segment in the cell names a recognizable
-    state/region/country at all.
+    Resolves in three passes:
+      1. Precise non-U.S. city matches. Tried first so that when a segment
+         names a specific known city (e.g. "Melbourne"), the result is that
+         city's own centroid rather than the coarser country-level one a
+         second pass would otherwise find.
+      2. Plain country/U.S. state segment matches (the original "is this
+         segment itself a state/country name" pass), *excluding* any
+         country already implied by a pass-1 city match -- e.g. for
+         "Melbourne, Australia", the "Australia" segment shouldn't count as
+         a second, distinct location on top of "Melbourne, Australia";
+         it's the same one place, just restated.
+      3. A best-effort city-only fallback (unchanged from before), only
+         reached if neither pass above found anything -- e.g. a bare U.S.
+         city name with no state attached.
+
+    A named city is inherently ambiguous with a same-named U.S. state/city
+    (e.g. "Rochester" could be Rochester, NY or Rochester, MN) or a country
+    substring match, which is why an explicit state/country name always
+    wins over a same-cell city guess for anything pass 1 doesn't already
+    resolve precisely.
     """
     text = _normalize(text)
     if not text:
         return []
     segments = _SPLIT_RE.split(text)
 
-    places = []
+    city_matches = []  # [(display_name, (lat, lon)), ...]
+    city_countries = set()
+    for segment in segments:
+        match = _resolve_segment_international_city(segment)
+        if match and match[0] not in [m[0] for m in city_matches]:
+            city_matches.append(match)
+            city_countries.add(match[0].rsplit(", ", 1)[-1])
+
+    place_matches = []
     for segment in segments:
         resolved = _resolve_segment_place(segment)
-        if resolved and resolved not in places:
-            places.append(resolved)
-    if places:
-        return places
+        if resolved and resolved not in city_countries and resolved not in place_matches:
+            place_matches.append(resolved)
+
+    combined = city_matches + [(p, None) for p in place_matches]
+    if combined:
+        return combined
 
     cities = []
     for segment in segments:
         seg = segment.strip().strip(".")
         # Try the U.S. city table first (larger/most common in this
-        # dataset), then fall back to the international city table.
+        # dataset), then fall back to the international city table (only
+        # reachable here for a city missing from CITY_CENTROIDS, since
+        # anything present there was already handled by pass 1 above).
         resolved = state_from_city(seg) or country_from_city(seg)
         if resolved and resolved not in cities:
             cities.append(resolved)
-    return cities
+    return [(c, None) for c in cities]
 
 
 def _first_from_pi(pi_text: str):
-    """Resolves the PI/study location column, taking the first state/region/
-    country it names (per "if it lists multiple, just use the first one
-    listed")."""
+    """Resolves the PI/study location column, taking the first (display,
+    coords) result it names (per "if it lists multiple, just use the first
+    one listed")."""
     locations = _distinct_resolved_locations(pi_text)
     return locations[0] if locations else None
 
 
 def resolve_participant_location(subject_population_location: str, pi_location: str):
     """
-    Returns (display_name, source) for a single cohort, where `source` is a
-    short string describing which column/rule produced the answer (useful
-    for debugging/warnings) -- or (None, None) if nothing could be
-    resolved at all.
+    Returns (display_name, source, precise_coords) for a single cohort,
+    where `source` is a short string describing which column/rule produced
+    the answer (useful for debugging/warnings), and `precise_coords` is a
+    (lat, lon) pair when `display_name` resolved to a specific recognized
+    non-U.S. city (see _resolve_segment_international_city()) or None when
+    it's a country/U.S.-state-level result -- the caller geocodes those the
+    usual way, via state_centroids.geocode_state()/
+    country_centroids.geocode_country(). Returns (None, None, None) if
+    nothing could be resolved at all.
     """
     spl = _normalize(subject_population_location)
 
@@ -164,26 +232,33 @@ def resolve_participant_location(subject_population_location: str, pi_location: 
         if hint_match:
             country = country_display_name(hint_match.group(1))
             if country:
-                return country, "subject_population_location (nationwide, country given)"
+                return country, "subject_population_location (nationwide, country given)", None
             # Parenthetical hint isn't a country we recognize -- fall
             # through to the standard blank/nationwide handling below
             # (PI/study location fallback), same as plain "Nationwide".
 
     if not spl or spl.lower() in NATIONWIDE_TOKENS or _NATIONWIDE_HINT_RE.match(spl):
         result = _first_from_pi(pi_location)
-        return (result, "pi_location (subject location blank/nationwide)") if result else (None, None)
+        if not result:
+            return None, None, None
+        display, coords = result
+        return display, "pi_location (subject location blank/nationwide)", coords
 
     locations = _distinct_resolved_locations(spl)
 
     if len(locations) == 1:
-        return locations[0], "subject_population_location"
+        display, coords = locations[0]
+        return display, "subject_population_location", coords
 
     if len(locations) >= 2:
         result = _first_from_pi(pi_location)
-        return (result, "pi_location (subject location listed multiple)") if result else (None, None)
+        if not result:
+            return None, None, None
+        display, coords = result
+        return display, "pi_location (subject location listed multiple)", coords
 
     # SPL was non-empty but nothing in it resolved (e.g. an unrecognized
     # city, or free text with no state/country/city we know about). Don't
     # silently fall back to the PI location here -- that would mask a gap
     # in state_centroids.CITY_TO_STATE that's worth surfacing instead.
-    return None, None
+    return None, None, None

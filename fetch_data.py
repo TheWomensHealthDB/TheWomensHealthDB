@@ -96,6 +96,18 @@ PI_LOCATION_COLUMN = (
 # the raw, inconsistently-formatted source columns.
 RESOLVED_LOCATION_COLUMN = "Location of Cohort's Participants (or of PI, if Unlisted/Multiple/Nationwide)"
 
+# Internal-only columns (never shown anywhere in the dashboard, never
+# written to complete_datasets.json/schema.json -- stripped out again right
+# after build_cohorts() consumes them, see main()) that carry a precise
+# (lat, lon) alongside RESOLVED_LOCATION_COLUMN when
+# resolve_participant_location() recognized a specific non-U.S. city (e.g.
+# "Melbourne, Australia") rather than only a country/U.S. state. Kept as a
+# pair of plain float-or-blank columns (rather than a single tuple/list
+# column) so they survive DataFrame construction, the empty-row filter, and
+# the Complete Datasets/Table merge the same way every other column does.
+PRECISE_LOCATION_LAT_COLUMN = "_ResolvedLocationPreciseLat"
+PRECISE_LOCATION_LON_COLUMN = "_ResolvedLocationPreciseLon"
+
 # The raw sheet's sex-composition column has already been renamed at least
 # once (originally "%male/%female", holding a paired "0/100"-style value;
 # as of 2026 it's just "%female." holding a single percentage) and may well
@@ -559,8 +571,10 @@ def _mock_complete_datasets() -> pd.DataFrame:
         ("", "Texas"),
     ]
     for row, (spl, pi) in zip(rows, mock_spl_pi):
-        resolved, _source = resolve_participant_location(spl, pi)
+        resolved, _source, precise_coords = resolve_participant_location(spl, pi)
         row[RESOLVED_LOCATION_COLUMN] = resolved or ""
+        row[PRECISE_LOCATION_LAT_COLUMN] = precise_coords[0] if precise_coords else ""
+        row[PRECISE_LOCATION_LON_COLUMN] = precise_coords[1] if precise_coords else ""
 
     return pd.DataFrame(rows)
 
@@ -775,7 +789,10 @@ def _add_resolved_location_column(header: "list[str]", data_rows: "list[list[str
             f"'{RESOLVED_LOCATION_COLUMN}' will be blank and no cohorts will "
             f"be placed on the map. Columns found: {header}"
         )
-        return header + [RESOLVED_LOCATION_COLUMN], [list(r) + [""] for r in data_rows]
+        return (
+            header + [RESOLVED_LOCATION_COLUMN, PRECISE_LOCATION_LAT_COLUMN, PRECISE_LOCATION_LON_COLUMN],
+            [list(r) + ["", "", ""] for r in data_rows],
+        )
 
     if spl_idx is None:
         _warn(
@@ -794,14 +811,16 @@ def _add_resolved_location_column(header: "list[str]", data_rows: "list[list[str
 
     cohort_idx = header.index(COHORT_NAME_COLUMN) if COHORT_NAME_COLUMN in header else None
 
-    new_header = header + [RESOLVED_LOCATION_COLUMN]
+    new_header = header + [RESOLVED_LOCATION_COLUMN, PRECISE_LOCATION_LAT_COLUMN, PRECISE_LOCATION_LON_COLUMN]
     new_rows = []
     unresolved_cohorts = []
     for row in data_rows:
         spl_value = row[spl_idx] if spl_idx is not None and len(row) > spl_idx else ""
         pi_value = row[pi_idx] if pi_idx is not None and len(row) > pi_idx else ""
-        resolved, _source = resolve_participant_location(spl_value, pi_value)
-        new_rows.append(list(row) + [resolved or ""])
+        resolved, _source, precise_coords = resolve_participant_location(spl_value, pi_value)
+        lat = precise_coords[0] if precise_coords else ""
+        lon = precise_coords[1] if precise_coords else ""
+        new_rows.append(list(row) + [resolved or "", lat, lon])
         if not resolved and (str(spl_value).strip() or str(pi_value).strip()):
             name = row[cohort_idx] if cohort_idx is not None and len(row) > cohort_idx else "(unknown cohort)"
             unresolved_cohorts.append(name)
@@ -1149,9 +1168,24 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
         how="left",
     ).drop(columns=["_join_key"])
 
-    coords = merged[RESOLVED_LOCATION_COLUMN].map(_geocode_resolved_location)
+    def _row_coords(row):
+        # A precise non-U.S. city centroid (see PRECISE_LOCATION_LAT/LON_
+        # COLUMN / participant_location.py) always wins when present --
+        # it's strictly more specific than re-deriving a coarser state/
+        # country centroid from the RESOLVED_LOCATION_COLUMN text below.
+        lat = row.get(PRECISE_LOCATION_LAT_COLUMN)
+        lon = row.get(PRECISE_LOCATION_LON_COLUMN)
+        if lat not in (None, "") and lon not in (None, ""):
+            try:
+                return float(lat), float(lon)
+            except (TypeError, ValueError):
+                pass
+        return _geocode_resolved_location(row.get(RESOLVED_LOCATION_COLUMN))
+
+    coords = merged.apply(_row_coords, axis=1)
     merged["Latitude"] = coords.map(lambda c: c[0] if c else None)
     merged["Longitude"] = coords.map(lambda c: c[1] if c else None)
+    merged = merged.drop(columns=[PRECISE_LOCATION_LAT_COLUMN, PRECISE_LOCATION_LON_COLUMN], errors="ignore")
 
     missing_geo = (
         merged.loc[merged["Latitude"].isna(), RESOLVED_LOCATION_COLUMN]
@@ -1354,6 +1388,15 @@ def main():
     )
     table = _drop_excluded_cohorts(table, TABLE_COHORT_COLUMN, TABLE_TAB)
     cohorts = build_cohorts(complete_datasets, table)
+
+    # PRECISE_LOCATION_LAT/LON_COLUMN only exist to hand a precise non-U.S.
+    # city centroid from _add_resolved_location_column()/
+    # _mock_complete_datasets() through to build_cohorts() above -- drop
+    # them now so they never leak into complete_datasets.json or get
+    # miscounted as checklist columns in schema.json (see build_schema()).
+    complete_datasets = complete_datasets.drop(
+        columns=[PRECISE_LOCATION_LAT_COLUMN, PRECISE_LOCATION_LON_COLUMN], errors="ignore"
+    )
     schema = build_schema(complete_datasets, table, is_mock_data=not have_credentials)
 
     complete_datasets.to_json(

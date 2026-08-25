@@ -852,16 +852,13 @@
     // checklist items below), since it isn't a per-cohort yes/no item.
     var typeTh = document.createElement("th");
     typeTh.className = "type-col-header";
-    typeTh.textContent = "Procedure Separation Type";
+    typeTh.textContent = "Procedure separation type";
     headRow.appendChild(typeTh);
 
     columns.forEach(function (col) {
       var th = document.createElement("th");
-      // The rotated label text lives in its own inner span rather than
-      // directly on the <th> -- see the ".th-label" rule in dashboard.css
-      // for why (keeping `transform` off the sticky-positioned <th> itself
-      // avoids a hover repaint glitch where the header briefly goes
-      // transparent).
+      // The label text lives in its own inner span rather than directly on
+      // the <th> -- see the ".th-label" rule in dashboard.css.
       var label = document.createElement("span");
       label.className = "th-label";
       label.textContent = col;
@@ -944,10 +941,27 @@
 
   function t3AllFields() {
     var s = state.schema;
-    return []
-      .concat(s.metadata_columns || [])
-      .concat(s.validity_columns || [])
-      .concat(s.checklist_columns || []);
+    var procCol = s.procedure_separation_type_column;
+    var metadata = s.metadata_columns || [];
+    var validity = s.validity_columns || [];
+
+    // Procedure Separation Type is one of the more commonly-used filter
+    // conditions, but structurally it's just another entry inside
+    // validity_columns (see fetch_data.py), so left alone it lands wherever
+    // it happens to sort among the other validity/metadata columns --
+    // usually buried mid-list. Pull it out and pin it as the second option
+    // (right after Cohort Name, which is always metadata_columns[0]) so
+    // it's easy to find, then let the rest of validity_columns follow in
+    // their original order minus this one entry.
+    var restValidity = validity.filter(function (c) {
+      return c !== procCol;
+    });
+
+    var fields = [].concat(metadata);
+    if (procCol && metadata.indexOf(procCol) === -1) {
+      fields.push(procCol);
+    }
+    return fields.concat(restValidity).concat(s.checklist_columns || []);
   }
 
   function renderTable3Fields() {
@@ -1202,19 +1216,24 @@
     state.mapInitialized = true;
 
     var map = L.map("map", { worldCopyJump: true }).setView([15, 10], 2);
-    // CARTO's "Voyager" basemap (built on OpenStreetMap data) renders place
-    // labels in English/Latin script everywhere, unlike the stock OSM
-    // Mapnik tiles which label each place in its local language/script.
-    // No API key required.
+    // Esri's "World Street Map" basemap labels places in English worldwide
+    // (Esri's own cartographic reference data, curated in English by
+    // default) -- unlike CARTO's "Voyager" tiles (used here previously),
+    // which are built on OpenStreetMap's community-contributed place names
+    // and label many countries/continents/oceans in their local
+    // language/script (e.g. "AMÉRICA", "ÁFRICA/افريقيا", "OCEANIA") rather
+    // than English, especially at low (world-view) zoom levels. No API key
+    // required. Note the {z}/{y}/{x} tile coordinate order below -- Esri's
+    // REST tile service uses this order, the reverse of the {z}/{x}/{y}
+    // convention most other XYZ tile providers (including CARTO) use.
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
       {
         maxZoom: 18,
-        subdomains: "abcd",
-        detectRetina: true,
         attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
-          '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+          "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, " +
+          "METI, Esri China (Hong Kong), Esri (Thailand), TomTom, MapmyIndia, &copy; OpenStreetMap contributors, " +
+          "and the GIS User Community",
       }
     ).addTo(map);
 

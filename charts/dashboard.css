@@ -448,14 +448,20 @@ table.data-table tbody tr.accent-row:hover td {
    its main content in `.panel-main` and the Procedure Separation Type key
    in a `.panel-key` aside alongside it, so the key consistently lives in
    the negative space on the right rather than taking up a horizontal
-   strip above the content. Collapses to a single column on narrow
-   viewports (see the media query below) so the key doesn't crowd out the
-   table on small screens -- it just drops beneath the content instead. */
+   strip above the content. `align-items: stretch` (rather than `start`)
+   makes `.panel-key` match `.panel-main`'s full rendered height every time,
+   so the key's box bottom always lines up with the bottom edge of whatever
+   is in `.panel-main` (the table-scroll or the map) instead of stopping
+   short after its own, usually much shorter, content. Collapses to a
+   single column on narrow viewports (see the media query below) so the key
+   doesn't crowd out the table on small screens -- it just drops beneath
+   the content instead (and each becomes its own row there, so `stretch`
+   has no effect on that layout). */
 .panel-body-with-key {
   display: grid;
   grid-template-columns: 1fr 17rem;
   gap: 1.1rem;
-  align-items: start;
+  align-items: stretch;
 }
 .panel-main {
   min-width: 0; /* allow the table-scroll/map to shrink inside the grid track */
@@ -465,8 +471,20 @@ table.data-table tbody tr.accent-row:hover td {
   top: 0.75rem;
 }
 
+/* Coverage Checklist tab: the key's content (five fixed Type 1..5 entries)
+   never needs the full 17rem every other tab's key column gets, so give it
+   a narrower column here specifically -- moving it further right, closer
+   to the true edge of the negative space it sits in -- and hand the
+   reclaimed width back to `.panel-main` (and, inside that, to the matrix
+   table's 1fr column in `.two-col`), so more checklist-item columns fit
+   in view before the table needs to scroll horizontally. */
+#panel-checklist .panel-body-with-key {
+  grid-template-columns: 1fr 12rem;
+}
+
 @media (max-width: 900px) {
-  .panel-body-with-key {
+  .panel-body-with-key,
+  #panel-checklist .panel-body-with-key {
     grid-template-columns: 1fr;
   }
   .panel-key {
@@ -531,28 +549,38 @@ table.data-table tbody tr.accent-row:hover td {
 table.matrix-table thead th {
   /* No height/max-height here on purpose -- table cell height is only ever
      a minimum per the CSS table spec, so leaving it unset lets the header
-     row grow to fit whichever label is longest. A fixed max-height was
+     row grow to fit whichever label is longest (now downward, by wrapping
+     onto more lines, rather than sideways). A fixed max-height was
      clipping longer labels (they were cutting off mid-word). */
-  white-space: nowrap;
+  white-space: normal;
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   font-size: 0.72rem;
   cursor: default;
   vertical-align: bottom;
 }
-/* The rotated label text lives in its own inner span (see dashboard.js)
-   rather than directly on the <th>. Combining `position: sticky` (set on
-   `table.data-table thead th` above) with a `transform` on the *same*
-   element is a known trigger for a browser repaint bug: after scrolling,
-   hovering the sticky header could make it flash transparent for a frame,
-   briefly showing the data rows scrolled underneath it. Keeping the
-   transform on this separate, non-positioned child avoids that entirely
-   while looking identical. */
+/* Checklist-item column headers (everything except the sticky Cohort Name
+   column and the Procedure separation type column, which each set their
+   own width below): capped at the same ~8em width as the Procedure
+   separation type column, so no column -- however long its variable name
+   -- ever gets wider than that shared baseline. Long labels wrap onto
+   multiple lines within that width instead. */
+table.matrix-table thead th:not(.cohort-col-header):not(.type-col-header) {
+  width: 8em;
+  max-width: 8em;
+  text-align: center;
+}
+/* The label text used to live in its own inner span so a `transform:
+   rotate(180deg)` (for vertical text) could be kept off the sticky/
+   positioned `<th>` itself, avoiding a browser repaint bug. Headers are
+   horizontal now, so that transform is gone, but the label is kept in its
+   own span regardless -- harmless, and one less thing to change if a
+   similar positioning need comes up again later. */
 table.matrix-table thead th .th-label {
-  display: inline-block;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  white-space: nowrap;
+  display: block;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.25;
 }
 table.matrix-table thead th.cohort-col-header {
   height: auto;
