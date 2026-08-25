@@ -8,55 +8,55 @@
     "Age Range",
     "% Female",
     "Year Started/Wave Description",
-    "Wording of Related Questions/Variables",
+    "Hysterectomy and Oophorectomy Related Questions/Variables",
     "Location of Cohort's Participants (or of PI, if Unlisted/Multiple/Nationwide)"
   ],
   "checklist_columns": [
     "Hysterectomy Question Included",
-    "Oopherectomy Question Included",
+    "Oophorectomy Question Included",
     "Date of Menses Question Included",
     "FMP Date Question Included",
     "Pregnancy Question Included",
     "Other Women's Health Questions",
-    "Age at menarche",
-    "PCOS/PMOS Item",
-    "POI Item",
+    "Age at menarche item",
+    "PCOS/PMOS item",
+    "POI item",
     "Endometriosis item",
     "Pelvic prolapse or relaxation item",
-    "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item:",
-    "Abnormal vaginal bleeding",
-    "Fibroids (benign growths in the uterus or womb) item:",
+    "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item",
+    "Abnormal vaginal bleeding item",
+    "Fibroids (benign growths in the uterus or womb) item",
     "Birth control usage item",
-    "type item (if yes, for \"Birth control usage item\")",
-    "Primary reason for taking birth control pills item (if yes, for \"Birth control usage item\")",
-    "when start item (if yes, for \"Birth control usage item\")",
-    "duration of use item (if yes, for \"Birth control usage item\")",
+    "Type of birth control used (if yes, for \"Birth control usage item\")",
+    "Primary reason for taking birth control pills (if yes, for \"Birth control usage item\")",
+    "Age when started using birth control (if yes, for \"Birth control usage item\")",
+    "Duration of birth control use (if yes, for \"Birth control usage item\")",
     "Ever pregnant item",
     "Number pregnancies item",
-    "Age at pregnancies item:",
-    "Type of Pregnancy item",
+    "Age at pregnancies item",
+    "Type of pregnancy item",
     "Complications of pregnancy item",
     "Number of live births item",
-    "sex of live births item",
-    "breastfeeding item",
-    "Time of breastfeeding",
-    "Fertility medications to help you get pregnant item:",
-    "type item (if yes, for \"Fertility medications to help you get pregnant item:\")",
-    "Menopausal status item:",
+    "Sex of live births item",
+    "Breastfeeding item",
+    "Time of breastfeeding item",
+    "Fertility medications to help you get pregnant item",
+    "Type of fertility medication used (if yes, for \"Fertility medications to help you get pregnant item\")",
+    "Menopausal status item",
     "Age at menopause item",
     "Age at final menstrual period item",
     "Menstrual cycle / bleeding pattern item",
-    "Cycle regularity item:",
+    "Cycle regularity item",
     "Cycle length in days item",
     "Change in cycle length item",
     "Skipped cycles item",
-    "Bleeding flow / amount item:",
+    "Bleeding flow / amount item",
     "Time since last period item",
-    "Length of time without a period (amenorrhea) item:",
+    "Length of time without a period (amenorrhea) item",
     "Menopause-related symptom items",
-    "Vasomotor symptoms:",
-    "Hot flashes item:",
-    "Night sweats item:",
+    "Vasomotor symptoms",
+    "Hot flashes item",
+    "Night sweats item",
     "Sleep symptoms",
     "Difficulty getting to sleep item",
     "Difficulty staying asleep item",
@@ -104,13 +104,84 @@
     "Hormone therapy frequency/duration item",
     "Hormone therapy start/stop age item",
     "Hormone therapy type item",
-    "Knowledge of HT",
-    "Views or perceptions of HT",
-    "Sources of knowledge about HT",
+    "Knowledge of hormone therapy",
+    "Views or perceptions of hormone therapy",
+    "Sources of knowledge about hormone therapy",
     "Sex Hormones/Biomarkers collected?",
     "Health Records Linked",
     "Cognitive Variables",
     "Neuroimaging Variables"
+  ],
+  "checklist_groups": [
+    {
+      "header": "Vasomotor symptoms",
+      "children": [
+        "Hot flashes item",
+        "Night sweats item"
+      ]
+    },
+    {
+      "header": "Sleep symptoms",
+      "children": [
+        "Difficulty getting to sleep item",
+        "Difficulty staying asleep item",
+        "Nighttime awakening item"
+      ]
+    },
+    {
+      "header": "Somatic symptoms",
+      "children": [
+        "Heart palpitations item",
+        "Skin itching item",
+        "Headaches item",
+        "Bloated stomach item",
+        "Breast tenderness item",
+        "Joint pains item"
+      ]
+    },
+    {
+      "header": "Mood symptoms item",
+      "children": [
+        "Tiredness item",
+        "Irritability item",
+        "Feeling anxious item",
+        "Feeling depressed item",
+        "Mood swings item",
+        "Crying spells item"
+      ]
+    },
+    {
+      "header": "Cognitive symptoms item",
+      "children": [
+        "Difficulty concentrating item",
+        "Poor memory item"
+      ]
+    },
+    {
+      "header": "Genitourinary symptoms item",
+      "children": [
+        "Frequent urination item",
+        "Urine leakage item",
+        "Painful urination item",
+        "Bladder infection item",
+        "Stool or gas item",
+        "Dry vagina item",
+        "Vaginal itching item",
+        "Abnormal vaginal discharge item",
+        "Vaginal infection item",
+        "Pain during intercourse item",
+        "Pain inside vagina during intercourse item",
+        "Bleeding after intercourse item"
+      ]
+    },
+    {
+      "header": "Sexual/libido symptoms item",
+      "children": [
+        "Lack of sexual desire item",
+        "Orgasm difficulty item",
+        "Limited sexual opportunity item"
+      ]
+    }
   ],
   "validity_columns": [
     "",
