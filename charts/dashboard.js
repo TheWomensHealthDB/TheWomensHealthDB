@@ -886,7 +886,11 @@
         var nameTd = document.createElement("td");
         nameTd.className = "cohort-cell" + (accentColor ? " accent-cell" : "");
         nameTd.textContent = r[nameCol];
-        nameTd.title = "Click for full record";
+        // This column is now width-capped with ellipsis truncation (see
+        // ".cohort-cell" in dashboard.css) so long names can get cut off
+        // visually -- lead the tooltip with the full name so hovering
+        // reveals it, then keep the existing click hint after it.
+        nameTd.title = (r[nameCol] || "") + " \u2014 click for full record";
         nameTd.addEventListener("click", function () {
           openCohortDetail(r);
         });
