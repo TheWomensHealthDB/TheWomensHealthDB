@@ -287,6 +287,17 @@
     return (DD.PROCEDURE_SEPARATION_TYPE_COLORS || {})[val] || null;
   }
 
+  // Optional hand-picked pastel override for a type's "always-on" row
+  // background (see DD.PROCEDURE_SEPARATION_TYPE_ROW_TINTS for why only
+  // some types need one). Returns null when there's no override, so
+  // callers can leave dashboard.css's automatic color-mix() formula in
+  // place for those types instead.
+  function procedureTypeRowTint(rawVal) {
+    var val = rawVal === null || rawVal === undefined ? "" : String(rawVal).trim();
+    if (!val) return null;
+    return (DD.PROCEDURE_SEPARATION_TYPE_ROW_TINTS || {})[val] || null;
+  }
+
   // Same lookup pattern as procedureTypeColor() above, but returns the
   // fixed definition text (from DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS --
   // the same list renderProcedureSeparationKey() draws its key/legend text
@@ -394,6 +405,8 @@
         if (accentColor) {
           tr.classList.add("accent-row");
           tr.style.setProperty("--row-accent", accentColor);
+          var rowTint = procedureTypeRowTint(procVal);
+          if (rowTint) tr.style.setProperty("--row-tint", rowTint);
         }
 
         t1Columns().forEach(function (col, i) {
@@ -927,6 +940,8 @@
         if (accentColor) {
           tr.classList.add("accent-row");
           tr.style.setProperty("--row-accent", accentColor);
+          var rowTint = procedureTypeRowTint(procVal);
+          if (rowTint) tr.style.setProperty("--row-tint", rowTint);
         }
 
         var nameTd = document.createElement("td");
@@ -952,7 +967,16 @@
 
         var typeTd = document.createElement("td");
         typeTd.className = "type-cell";
-        typeTd.textContent = procVal || "\u2014";
+        // The text lives in its own inner span (like the checklist item
+        // chips' own element) rather than directly on the <td>, so the
+        // hover "enlarge" transform below can be scoped to just the text
+        // -- see ".type-cell .type-text:hover" in dashboard.css -- instead
+        // of transforming (and potentially overlapping neighboring cells
+        // with) the whole table cell.
+        var typeText = document.createElement("span");
+        typeText.className = "type-text";
+        typeText.textContent = procVal || "\u2014";
+        typeTd.appendChild(typeText);
         if (accentColor) {
           typeTd.style.color = accentColor;
         }
@@ -1271,6 +1295,8 @@
         if (accentColor) {
           tr.classList.add("accent-row");
           tr.style.setProperty("--row-accent", accentColor);
+          var rowTint = procedureTypeRowTint(procVal);
+          if (rowTint) tr.style.setProperty("--row-tint", rowTint);
         }
         t1Columns().forEach(function (col, i) {
           var td = document.createElement("td");

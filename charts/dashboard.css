@@ -403,11 +403,12 @@ table.data-table tbody tr:hover td {
 }
 
 /* The Coverage Checklist's table-scroll is left to its own natural height
-   (no cap) -- it's the "source of truth" that the picker sidebar and the
-   Procedure Separation Type key are matched to instead, via
-   syncChecklistHeight() in dashboard.js -- so the table's box is always
-   exactly as tall as its own rows need, never taller. The generic 65vh cap
-   above would otherwise clip that natural height back down. */
+   (no cap), so the table's box is always exactly as tall as its own rows
+   need, never taller/shorter than that. The generic 65vh cap above would
+   otherwise clip that natural height back down. The picker sidebar next
+   to it is likewise left to its own natural height (see ".two-col"'s
+   `align-items: start` and "#t2-sidebar" below) rather than being forced
+   to match this table -- each side sizes independently now. */
 #t2-table-scroll {
   max-height: none;
 }
@@ -422,11 +423,18 @@ table.data-table tbody tr:hover td {
 td.accent-cell {
   border-left: 4px solid var(--row-accent, transparent);
 }
+/* A single, fixed tint -- not varied by the row's even/odd position in the
+   table -- so the same Type always reads as exactly the same shade
+   wherever it appears, instead of quietly alternating between two
+   different tints (13%/18% mix, to compensate for the plain zebra-
+   striping background beneath it) depending on where a row happens to
+   land. `--row-tint` is an optional hand-picked pastel override (see
+   DD.PROCEDURE_SEPARATION_TYPE_ROW_TINTS in dashboard-data.js) for the
+   couple of types -- currently the red/magenta pair -- whose automatic
+   color-mix() tint reads too similar to each other once diluted this
+   light; every other type falls back to the plain formula. */
 table.data-table tbody tr.accent-row {
-  background: color-mix(in srgb, var(--row-accent, transparent) 13%, #fff);
-}
-table.data-table tbody tr.accent-row:nth-child(even) {
-  background: color-mix(in srgb, var(--row-accent, transparent) 18%, #fbfcfd);
+  background: var(--row-tint, color-mix(in srgb, var(--row-accent, transparent) 18%, #fff));
 }
 table.data-table tbody tr.accent-row:hover td {
   background: color-mix(in srgb, var(--row-accent, transparent) 32%, var(--hover-bg));
@@ -775,6 +783,19 @@ table.matrix-table td.type-cell {
   font-weight: 700;
   white-space: nowrap;
   text-align: center;
+}
+/* Same "enlarge on hover" affordance as the Yes/No/To some extent/Other
+   value chips below (.chip:hover), applied here to the Procedure
+   Separation Type text instead of a chip -- scoped to the inner
+   ".type-text" span (see renderTable2Body() in dashboard.js) rather than
+   the whole <td>, so the transform scales just the text in place instead
+   of the table cell itself. */
+table.matrix-table td.type-cell .type-text {
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+table.matrix-table td.type-cell:hover .type-text {
+  transform: scale(1.18);
 }
 
 .chip {

@@ -79,6 +79,22 @@
     if (PARTIAL.has(key)) return { category: "partial", label: label };
     if (EMPTY_ISH.has(key)) return { category: "empty", label: label };
 
+    // A value like "Yes, per self-report" or "No - see notes" is still a
+    // definite Yes/No answer with extra explanatory text tacked on -- not
+    // free text in the "other" sense, which should be reserved for values
+    // that aren't a yes/no answer at all. Fall back to matching just the
+    // *leading* word (e.g. "yes" out of "yes, based on chart review")
+    // against the Yes/No sets above. Splitting on non-letter characters
+    // (rather than just spaces) means punctuation like "Yes/No" or
+    // "Yes(self-reported)" still isolates a clean leading word, and using
+    // only the first word (not a substring match) means this doesn't
+    // misfire on words that merely start with "yes"/"no", like "None" or
+    // "Nonspecific" (those still resolve correctly above via the
+    // whole-string checks, since "none" is itself a full entry in NO).
+    var leadingWord = key.split(/[^a-z]+/)[0];
+    if (YES.has(leadingWord)) return { category: "yes", label: label };
+    if (NO.has(leadingWord)) return { category: "no", label: label };
+
     return { category: "other", label: label };
   }
 
@@ -182,6 +198,24 @@
     // side-by-side (e.g. in the checklist key), so it's now a lighter
     // magenta shade, kept apart from both blue and the darker red above.
     "Type 5": "#e63280",
+  };
+
+  // Row-tint overrides for the Cohort Summary / Coverage Checklist /
+  // Custom Filter tables' "always-on" row background (see accent-row in
+  // dashboard.css). Most types don't need an entry here -- the CSS just
+  // derives a light pastel wash directly from PROCEDURE_SEPARATION_TYPE_
+  // COLORS above via color-mix(). But mixing Type 2's dark red and Type
+  // 5's magenta down to a ~15-18% tint with white desaturates both toward
+  // the same washed-out grey-pink, since color-mix in sRGB loses
+  // saturation fast at low percentages -- exactly the two colors that need
+  // to stay visually distinct in their bold form (see the comments above)
+  // also become the hardest pair to tell apart once pastel-ified. These
+  // two hand-picked pastels keep Type 2's row wash reading warm/neutral
+  // pink-red (equal green/blue) and Type 5's reading cooler/purpler (blue
+  // > green), rather than leaving it to automatic mixing.
+  var PROCEDURE_SEPARATION_TYPE_ROW_TINTS = {
+    "Type 2": "#f3cccc",
+    "Type 5": "#f8d3ef",
   };
 
   // ---------------------------------------------------------------------
@@ -545,6 +579,7 @@
     paletteFor: paletteFor,
     PROCEDURE_SEPARATION_TYPE_DEFINITIONS: PROCEDURE_SEPARATION_TYPE_DEFINITIONS,
     PROCEDURE_SEPARATION_TYPE_COLORS: PROCEDURE_SEPARATION_TYPE_COLORS,
+    PROCEDURE_SEPARATION_TYPE_ROW_TINTS: PROCEDURE_SEPARATION_TYPE_ROW_TINTS,
     parseNumeric: parseNumeric,
     OPERATORS: OPERATORS,
     evaluateCondition: evaluateCondition,
