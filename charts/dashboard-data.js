@@ -116,6 +116,38 @@
   }
 
   // ---------------------------------------------------------------------
+  // Procedure Separation Type definitions (Cohort Summary row color /
+  // Map marker color legend key -- see renderProcedureSeparationKey() in
+  // dashboard.js). Kept here as plain data, alongside the other
+  // classification/coloring constants above, rather than fetched from the
+  // sheet, since these definitions are fixed regardless of which cohorts
+  // are in the data.
+  // ---------------------------------------------------------------------
+
+  var PROCEDURE_SEPARATION_TYPE_DEFINITIONS = [
+    {
+      type: "Type 1",
+      text: "Can isolate unilateral vs. bilateral oophorectomy vs. isolated hysterectomy via distinct, independent variables.",
+    },
+    {
+      type: "Type 2",
+      text: "Tracks hysterectomy and oophorectomy, but does not distinguish unilateral vs bilateral oophorectomy.",
+    },
+    {
+      type: "Type 3",
+      text: "Tracks either hysterectomy or oophorectomy only, does not include both as variables.",
+    },
+    {
+      type: "Type 4",
+      text: "Does not ask/track hysterectomy or oophorectomy as variables.",
+    },
+    {
+      type: "Type 5",
+      text: "Used intact uterine and/or ovarian status as an enrollment eligibility criterion; women with prior hysterectomy or oophorectomy were excluded from the sample rather than characterized within it.",
+    },
+  ];
+
+  // ---------------------------------------------------------------------
   // Numeric parsing (handles "1,234", "~500", "N=120", "45%", etc.)
   // ---------------------------------------------------------------------
 
@@ -474,6 +506,7 @@
     CATEGORY_COLORS: CATEGORY_COLORS,
     PALETTE: PALETTE,
     paletteFor: paletteFor,
+    PROCEDURE_SEPARATION_TYPE_DEFINITIONS: PROCEDURE_SEPARATION_TYPE_DEFINITIONS,
     parseNumeric: parseNumeric,
     OPERATORS: OPERATORS,
     evaluateCondition: evaluateCondition,

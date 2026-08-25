@@ -440,6 +440,44 @@ table.data-table tbody tr.accent-row:hover td {
   box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
 }
 
+/* Procedure Separation Type definitions key -- spells out what "Type 1"
+   .. "Type 5" (the color-coding used in the Cohort Summary table and Map
+   marker colors, see the .legend swatches above) actually mean, since the
+   swatches alone only show the short label. See
+   renderProcedureSeparationKey() / DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS
+   in dashboard.js / dashboard-data.js. */
+.procedure-key {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.85rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.procedure-key .procedure-key-title {
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.procedure-key .procedure-key-list {
+  display: grid;
+  grid-template-columns: 5.5em 1fr;
+  gap: 0.3rem 0.7rem;
+  margin: 0;
+}
+.procedure-key .procedure-key-list dt {
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+.procedure-key .procedure-key-list dd {
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* Checklist / matrix table specifics */
 table.matrix-table thead th {
   /* No height/max-height here on purpose -- table cell height is only ever

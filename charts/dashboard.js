@@ -292,6 +292,7 @@
     if (legendEl) {
       legendEl.innerHTML = paletteLegendHtml(t1ProcedureColorMap(), "Row color \u2014 Procedure Separation Type:");
     }
+    renderProcedureSeparationKey("t1-procedure-key");
     renderTable1Head();
     renderTable1Body();
   }
@@ -754,6 +755,23 @@
       _checklistHeightObserver = new ResizeObserver(apply);
       _checklistHeightObserver.observe(sidebar);
     }
+  }
+
+  // Renders the fixed Procedure Separation Type definitions (see
+  // DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS) as a small definition list --
+  // used everywhere the "Type 1".."Type 5" color-coding shows up (Cohort
+  // Summary row color, Map marker color) so a viewer doesn't have to
+  // already know what those labels mean. Static/data-independent, so it's
+  // safe to call unconditionally on every render of a panel that shows it.
+  function renderProcedureSeparationKey(containerId) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    var html = '<p class="procedure-key-title">Procedure Separation Type key:</p><dl class="procedure-key-list">';
+    (DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS || []).forEach(function (def) {
+      html += "<dt>" + escapeHtml(def.type) + "</dt><dd>" + escapeHtml(def.text) + "</dd>";
+    });
+    html += "</dl>";
+    el.innerHTML = html;
   }
 
   function renderCategoryLegend(containerId) {
@@ -1385,6 +1403,7 @@
     var el = document.getElementById("map-legend");
     if (!el) return;
     el.innerHTML = paletteLegendHtml(colorMap, colorMap.size ? "Marker color \u2014 Procedure Separation Type:" : "");
+    renderProcedureSeparationKey("map-procedure-key");
   }
 
   // ---------------------------------------------------------------------
