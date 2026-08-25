@@ -12,12 +12,12 @@
     "Location of Cohort's Participants (or of PI, if Unlisted/Multiple/Nationwide)"
   ],
   "checklist_columns": [
-    "Hysterectomy Question Included",
-    "Oophorectomy Question Included",
-    "Date of Menses Question Included",
-    "FMP Date Question Included",
-    "Pregnancy Question Included",
-    "Other Women's Health Questions",
+    "Hysterectomy item",
+    "Oophorectomy item",
+    "Date of menses item",
+    "FMP date item",
+    "Pregnancy item",
+    "Other women's health item",
     "Age at menarche item",
     "PCOS/PMOS item",
     "POI item",
@@ -54,31 +54,31 @@
     "Time since last period item",
     "Length of time without a period (amenorrhea) item",
     "Menopause-related symptom items",
-    "Vasomotor symptoms",
+    "Vasomotor symptom items",
     "Hot flashes item",
     "Night sweats item",
-    "Sleep symptoms",
+    "Sleep symptom items",
     "Difficulty getting to sleep item",
     "Difficulty staying asleep item",
     "Nighttime awakening item",
-    "Somatic symptoms",
+    "Somatic symptom items",
     "Heart palpitations item",
     "Skin itching item",
     "Headaches item",
     "Bloated stomach item",
     "Breast tenderness item",
     "Joint pains item",
-    "Mood symptoms item",
+    "Mood symptom items",
     "Tiredness item",
     "Irritability item",
     "Feeling anxious item",
     "Feeling depressed item",
     "Mood swings item",
     "Crying spells item",
-    "Cognitive symptoms item",
+    "Cognitive symptom items",
     "Difficulty concentrating item",
     "Poor memory item",
-    "Genitourinary symptoms item",
+    "Genitourinary symptom items",
     "Frequent urination item",
     "Urine leakage item",
     "Painful urination item",
@@ -88,103 +88,118 @@
     "Vaginal itching item",
     "Abnormal vaginal discharge item",
     "Vaginal infection item",
-    "Pain during intercourse item",
+    "Pain during intercourse (general) item",
     "Pain inside vagina during intercourse item",
     "Bleeding after intercourse item",
-    "Sexual/libido symptoms item",
+    "Sexual/libido symptom items",
     "Lack of sexual desire item",
     "Orgasm difficulty item",
     "Limited sexual opportunity item",
-    "Symptom severity item",
-    "Symptom time frame item",
-    "Knowledge of menopause",
-    "Views or perceptions of menopause",
-    "Sources of knowledge about menopause",
+    "Symptom severity items",
+    "Symptom time frame items",
+    "Knowledge of menopause item",
+    "Views or perceptions of menopause item",
+    "Sources of knowledge about menopause item",
     "Hormone therapy use item",
     "Hormone therapy frequency/duration item",
     "Hormone therapy start/stop age item",
     "Hormone therapy type item",
-    "Knowledge of hormone therapy",
-    "Views or perceptions of hormone therapy",
-    "Sources of knowledge about hormone therapy",
-    "Sex Hormones/Biomarkers collected?",
-    "Health Records Linked",
-    "Cognitive Variables",
-    "Neuroimaging Variables"
+    "Knowledge of hormone therapy item",
+    "Views or perceptions of hormone therapy item",
+    "Sources of knowledge about hormone therapy item",
+    "Sex hormones/biomarkers collected?",
+    "Health records linked?",
+    "Cognitive data collected?",
+    "Neuroimaging data collected?"
   ],
   "checklist_groups": [
     {
-      "header": "Vasomotor symptoms",
+      "header": "Menstrual cycle / bleeding pattern item",
       "children": [
-        "Hot flashes item",
-        "Night sweats item"
+        "Cycle regularity item",
+        "Cycle length in days item",
+        "Change in cycle length item",
+        "Skipped cycles item",
+        "Bleeding flow / amount item",
+        "Time since last period item",
+        "Length of time without a period (amenorrhea) item"
       ]
     },
     {
-      "header": "Sleep symptoms",
+      "header": "Menopause-related symptom items",
       "children": [
-        "Difficulty getting to sleep item",
-        "Difficulty staying asleep item",
-        "Nighttime awakening item"
-      ]
-    },
-    {
-      "header": "Somatic symptoms",
-      "children": [
-        "Heart palpitations item",
-        "Skin itching item",
-        "Headaches item",
-        "Bloated stomach item",
-        "Breast tenderness item",
-        "Joint pains item"
-      ]
-    },
-    {
-      "header": "Mood symptoms item",
-      "children": [
-        "Tiredness item",
-        "Irritability item",
-        "Feeling anxious item",
-        "Feeling depressed item",
-        "Mood swings item",
-        "Crying spells item"
-      ]
-    },
-    {
-      "header": "Cognitive symptoms item",
-      "children": [
-        "Difficulty concentrating item",
-        "Poor memory item"
-      ]
-    },
-    {
-      "header": "Genitourinary symptoms item",
-      "children": [
-        "Frequent urination item",
-        "Urine leakage item",
-        "Painful urination item",
-        "Bladder infection item",
-        "Stool or gas item",
-        "Dry vagina item",
-        "Vaginal itching item",
-        "Abnormal vaginal discharge item",
-        "Vaginal infection item",
-        "Pain during intercourse item",
-        "Pain inside vagina during intercourse item",
-        "Bleeding after intercourse item"
-      ]
-    },
-    {
-      "header": "Sexual/libido symptoms item",
-      "children": [
-        "Lack of sexual desire item",
-        "Orgasm difficulty item",
-        "Limited sexual opportunity item"
+        {
+          "header": "Vasomotor symptom items",
+          "children": [
+            "Hot flashes item",
+            "Night sweats item"
+          ]
+        },
+        {
+          "header": "Sleep symptom items",
+          "children": [
+            "Difficulty getting to sleep item",
+            "Difficulty staying asleep item",
+            "Nighttime awakening item"
+          ]
+        },
+        {
+          "header": "Somatic symptom items",
+          "children": [
+            "Heart palpitations item",
+            "Skin itching item",
+            "Headaches item",
+            "Bloated stomach item",
+            "Breast tenderness item",
+            "Joint pains item"
+          ]
+        },
+        {
+          "header": "Mood symptom items",
+          "children": [
+            "Tiredness item",
+            "Irritability item",
+            "Feeling anxious item",
+            "Feeling depressed item",
+            "Mood swings item",
+            "Crying spells item"
+          ]
+        },
+        {
+          "header": "Cognitive symptom items",
+          "children": [
+            "Difficulty concentrating item",
+            "Poor memory item"
+          ]
+        },
+        {
+          "header": "Genitourinary symptom items",
+          "children": [
+            "Frequent urination item",
+            "Urine leakage item",
+            "Painful urination item",
+            "Bladder infection item",
+            "Stool or gas item",
+            "Dry vagina item",
+            "Vaginal itching item",
+            "Abnormal vaginal discharge item",
+            "Vaginal infection item",
+            "Pain inside vagina during intercourse item",
+            "Bleeding after intercourse item"
+          ]
+        },
+        {
+          "header": "Sexual/libido symptom items",
+          "children": [
+            "Lack of sexual desire item",
+            "Orgasm difficulty item",
+            "Limited sexual opportunity item"
+          ]
+        }
       ]
     }
   ],
   "validity_columns": [
-    "",
     "Classification Validity - Procedure Separation Type",
     "Temporal Validity - Collection Design",
     "Temporal Validity - Follow-up Interval"
