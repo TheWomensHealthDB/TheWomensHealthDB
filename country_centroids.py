@@ -142,12 +142,6 @@ COUNTRY_CENTROIDS = {
     "uae": (23.4, 53.8),
     "united kingdom": (54.0, -2.5),
     "uk": (54.0, -2.5),
-    "england": (52.5, -1.5),
-    "scotland": (56.5, -4.2),
-    "wales": (52.3, -3.8),
-    "northern ireland": (54.6, -6.7),
-    "great britain": (54.0, -2.5),
-    "britain": (54.0, -2.5),
     "united states": (39.8, -98.6),
     "united states of america": (39.8, -98.6),
     "usa": (39.8, -98.6),
@@ -179,6 +173,32 @@ ALIASES = {
     "ivory coast": "ivory coast",
     "viet nam": "vietnam",
     "czechoslovakia": "czech republic",
+    # Constituent countries of the UK -- treated as the same map pin as
+    # "United Kingdom" rather than their own distinct centroid, so a value
+    # like "England, Scotland, and Wales" resolves to one location
+    # ("United Kingdom") instead of being mistaken for 3 different places
+    # and triggering the PI/study-location fallback.
+    "england": "united kingdom",
+    "scotland": "united kingdom",
+    "wales": "united kingdom",
+    "northern ireland": "united kingdom",
+    "great britain": "united kingdom",
+    "britain": "united kingdom",
+    # ISO 3166-1 alpha-3 codes, as seen in values like "Nationwide (CAN)" or
+    # "Nationwide (AUS)" -- see the _NATIONWIDE_HINT_RE handling in
+    # participant_location.py.
+    "can": "canada",
+    "aus": "australia",
+    "gbr": "united kingdom",
+    "nzl": "new zealand",
+    "chn": "china",
+    "jpn": "japan",
+    "deu": "germany",
+    "fra": "france",
+    "mex": "mexico",
+    "bra": "brazil",
+    "ind": "india",
+    "kor": "south korea",
 }
 
 
@@ -235,3 +255,55 @@ def country_display_name(name: str):
     if not key:
         return None
     return _DISPLAY_OVERRIDES.get(key, key.title())
+
+
+# Best-effort "major international city -> country" table, mirroring
+# state_centroids.CITY_TO_STATE, for Subject population location entries
+# that name only a non-U.S. city with no accompanying country (e.g.
+# "Shanghai", "Melbourne"). Not exhaustive -- if a real cohort's city isn't
+# found here, add it (normalized, lowercase, no country/punctuation) mapped
+# to the COUNTRY_CENTROIDS key it belongs in. Deliberately excludes any city
+# that's ambiguous with a same-named U.S. city already in
+# state_centroids.CITY_TO_STATE (e.g. "London, Ontario" vs. London, UK) --
+# participant_location.py only consults this as a last-resort fallback after
+# the U.S. city table comes up empty, so an unambiguous non-U.S. city here is
+# safe.
+CITY_TO_COUNTRY = {
+    "shanghai": "china", "beijing": "china", "guangzhou": "china",
+    "shenzhen": "china", "wuhan": "china", "hong kong": "hong kong",
+    "melbourne": "australia", "sydney": "australia", "brisbane": "australia",
+    "perth": "australia", "adelaide": "australia", "canberra": "australia",
+    "toronto": "canada", "vancouver": "canada", "montreal": "canada",
+    "ottawa": "canada", "calgary": "canada", "edmonton": "canada",
+    "winnipeg": "canada", "quebec city": "canada", "halifax": "canada",
+    "tokyo": "japan", "osaka": "japan", "kyoto": "japan", "yokohama": "japan",
+    "auckland": "new zealand", "wellington": "new zealand",
+    "christchurch": "new zealand",
+    "dublin": "ireland",
+    "berlin": "germany", "munich": "germany", "hamburg": "germany",
+    "paris": "france", "marseille": "france", "lyon": "france",
+    "madrid": "spain", "barcelona": "spain",
+    "rome": "italy", "milan": "italy",
+    "amsterdam": "netherlands", "rotterdam": "netherlands",
+    "stockholm": "sweden", "oslo": "norway", "copenhagen": "denmark",
+    "helsinki": "finland",
+    "seoul": "south korea", "busan": "south korea",
+    "singapore": "singapore",
+    "mumbai": "india", "delhi": "india", "new delhi": "india",
+    "bangalore": "india", "chennai": "india", "kolkata": "india",
+    "mexico city": "mexico",
+    "sao paulo": "brazil", "rio de janeiro": "brazil",
+}
+
+
+def country_from_city(name: str):
+    """
+    Best-effort city -> canonical country name lookup for Subject
+    population location entries that name only a (non-U.S.) city. Returns
+    None if the city isn't in CITY_TO_COUNTRY.
+    """
+    if not name or not str(name).strip():
+        return None
+    key = _normalize(str(name))
+    country_key = CITY_TO_COUNTRY.get(key)
+    return country_display_name(country_key) if country_key else None

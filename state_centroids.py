@@ -230,6 +230,20 @@ def _lookup_key(name: str):
     key = ALIASES.get(key, key)
     if key in STATE_CENTROIDS:
         return key
+
+    # Fall back to a loose whole-word match for strings like "Subset of
+    # women drawn from TREMIN originally in Minnesota", where the state
+    # name is only part of a longer free-text sentence. Deliberately only
+    # checks the full canonical names in STATE_CENTROIDS here (never the
+    # short postal-code/abbreviation entries in ALIASES, like "in", "or",
+    # "me", "hi", "la", "ok", "pa", "de", "va", "ma", "co", "id") -- those
+    # are far too likely to appear as ordinary English words inside a
+    # longer sentence and would falsely match (e.g. the word "in" in
+    # "...originally in Minnesota" would otherwise match Indiana).
+    for candidate in STATE_CENTROIDS:
+        if re.search(rf"\b{re.escape(candidate)}\b", key):
+            return candidate
+
     return None
 
 

@@ -37,7 +37,7 @@ country_centroids.geocode_country(), same as before.
 
 import re
 
-from country_centroids import country_display_name
+from country_centroids import country_display_name, country_from_city
 from state_centroids import state_display_name, state_from_city
 
 # Recognized spellings of "this study recruited from all over, not one
@@ -62,6 +62,16 @@ NATIONWIDE_TOKENS = {
 # both segments of a "City, State" pair resolve to the *same* state, so
 # de-duplication downstream collapses them back into a single location.
 _SPLIT_RE = re.compile(r"\s*(?:,|;|/|\band\b|&|\bor\b|[\r\n])\s*", re.IGNORECASE)
+
+# Matches "Nationwide (CAN)", "Nationwide (AUS)", "Nationwide (US)", etc. --
+# a "Nationwide" value with a parenthetical country hint attached. Checked
+# before the plain NATIONWIDE_TOKENS set below so the country hint can be
+# used directly instead of always falling back to the PI/study location
+# (which may not even be filled in).
+_NATIONWIDE_HINT_RE = re.compile(
+    r"^(?:nationwide|nation-wide|national)\s*\(\s*([^)]+?)\s*\)\.?$",
+    re.IGNORECASE,
+)
 
 
 def _normalize(text) -> str:
@@ -123,7 +133,10 @@ def _distinct_resolved_locations(text: str):
 
     cities = []
     for segment in segments:
-        resolved = state_from_city(segment.strip().strip("."))
+        seg = segment.strip().strip(".")
+        # Try the U.S. city table first (larger/most common in this
+        # dataset), then fall back to the international city table.
+        resolved = state_from_city(seg) or country_from_city(seg)
         if resolved and resolved not in cities:
             cities.append(resolved)
     return cities
@@ -146,7 +159,17 @@ def resolve_participant_location(subject_population_location: str, pi_location: 
     """
     spl = _normalize(subject_population_location)
 
-    if not spl or spl.lower() in NATIONWIDE_TOKENS:
+    if spl:
+        hint_match = _NATIONWIDE_HINT_RE.match(spl)
+        if hint_match:
+            country = country_display_name(hint_match.group(1))
+            if country:
+                return country, "subject_population_location (nationwide, country given)"
+            # Parenthetical hint isn't a country we recognize -- fall
+            # through to the standard blank/nationwide handling below
+            # (PI/study location fallback), same as plain "Nationwide".
+
+    if not spl or spl.lower() in NATIONWIDE_TOKENS or _NATIONWIDE_HINT_RE.match(spl):
         result = _first_from_pi(pi_location)
         return (result, "pi_location (subject location blank/nationwide)") if result else (None, None)
 

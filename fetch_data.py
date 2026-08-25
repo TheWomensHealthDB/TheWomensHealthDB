@@ -408,6 +408,43 @@ def _mock_table() -> pd.DataFrame:
     )
 
 
+def _dedupe_columns(columns: "list[str]") -> "list[str]":
+    """
+    Renames any duplicate column names by appending " (2)", " (3)", etc. to
+    the 2nd/3rd/... occurrence, and warns about it.
+
+    A live spreadsheet can end up with two columns sharing the exact same
+    header text -- a copy/paste slip, or (for the "Table" tab) a merged-cell
+    flattening quirk -- and left alone, that crashes
+    pd.DataFrame.to_json(orient="records") with a bare "columns must be
+    unique" error at the very end of the script, with no indication of
+    *which* columns collided. Deduping here instead keeps the pipeline
+    running (so everything else still gets published) while still
+    surfacing exactly what collided, so it can be fixed at the source.
+    """
+    seen = {}
+    result = []
+    duplicates = set()
+    for col in columns:
+        count = seen.get(col, 0) + 1
+        seen[col] = count
+        if count == 1:
+            result.append(col)
+        else:
+            duplicates.add(col)
+            result.append(f"{col} ({count})")
+    if duplicates:
+        _warn(
+            f"Found duplicate column header(s): {sorted(duplicates)}. "
+            f"Renamed the repeats with a ' (2)', ' (3)', etc. suffix so the "
+            f"pipeline doesn't crash, but this usually means two columns in "
+            f"the sheet accidentally share the exact same header text -- "
+            f"worth fixing at the source so the renamed one doesn't stay "
+            f"mislabeled."
+        )
+    return result
+
+
 def _warn(message: str) -> None:
     """
     Prints a warning to stderr. When running inside GitHub Actions, also
@@ -617,6 +654,7 @@ def get_complete_datasets(gc) -> pd.DataFrame:
         )
     header = [header[i] for i in keep_idx]
     data_rows = [[row[i] for i in keep_idx] for row in data_rows]
+    header = _dedupe_columns(header)
 
     df = pd.DataFrame(data_rows, columns=header)
     # Drop fully-empty trailing rows, if any.
@@ -701,6 +739,27 @@ def _parse_two_row_header_table(rows: "list[list[str]]") -> pd.DataFrame:
 
     top_header, sub_header, *data_rows = rows
 
+    # Stop at the first fully-blank row after the header, rather than
+    # scanning every remaining row in the tab. Sheets in this lab commonly
+    # have a color-coding legend/notes section a row or two below the real
+    # table (e.g. explaining what "Procedure Separation Type" levels 1-5
+    # mean) -- without this, that legend's rows get parsed as if they were
+    # more cohorts, showing up downstream as bogus "cohort(s) with no
+    # matching row" warnings (e.g. "type 1".."type 5").
+    first_blank = next(
+        (i for i, r in enumerate(data_rows) if not any(str(c).strip() for c in r)),
+        None,
+    )
+    if first_blank is not None and first_blank < len(data_rows):
+        ignored = len(data_rows) - first_blank
+        if ignored:
+            _warn(
+                f"Ignoring {ignored} row(s) in '{TABLE_TAB}' after a blank "
+                f"separator row (assumed to be a legend/notes section below "
+                f"the real table, not more cohorts)."
+            )
+        data_rows = data_rows[:first_blank]
+
     # Merged cells come back from the API as the value in the first cell and
     # "" in the cells they span, so forward-fill left-to-right to
     # reconstruct which group each sub-header belongs to.
@@ -725,6 +784,8 @@ def _parse_two_row_header_table(rows: "list[list[str]]") -> pd.DataFrame:
             columns.append(sub)
         else:
             columns.append(f"{top} - {sub}")
+
+    columns = _dedupe_columns(columns)
 
     df = pd.DataFrame(data_rows, columns=columns)
     # Drop fully-empty trailing rows, if any
