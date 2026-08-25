@@ -1602,12 +1602,12 @@
     "Health records linked?":"",
     "Cognitive data collected?":"",
     "Neuroimaging data collected?":"",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"China",
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Shanghai, China",
     "Classification Validity - Procedure Separation Type":"Type 2",
     "Temporal Validity - Collection Design":"Prospective",
     "Temporal Validity - Follow-up Interval":"Biennial",
-    "Latitude":35.9,
-    "Longitude":104.2
+    "Latitude":31.2304,
+    "Longitude":121.4737
   },
   {
     "Cohort Name":"The National Longitudinal Study of Adolescent to Adult Health (Add Health)",
@@ -2177,12 +2177,12 @@
     "Health records linked?":"",
     "Cognitive data collected?":"",
     "Neuroimaging data collected?":"",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Australia",
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Melbourne, Australia",
     "Classification Validity - Procedure Separation Type":"Type 5",
     "Temporal Validity - Collection Design":"Prospective",
     "Temporal Validity - Follow-up Interval":"Annual",
-    "Latitude":-25.3,
-    "Longitude":133.8
+    "Latitude":-37.8136,
+    "Longitude":144.9631
   },
   {
     "Cohort Name":"Biodemographic Models of Reproductive Aging (BIMORA)",
