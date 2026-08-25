@@ -24,6 +24,7 @@
     // Table 2
     t2SelectedCohorts: null, // Set, populated once data loads
     t2SelectedColumns: null, // Set
+    t2SelectedTypes: null, // Set of selected "Type N" values (Procedure Separation Type filter)
     t2Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
     // Table 3
     t3Conditions: [], // [{id, field, operator, value}]
@@ -39,6 +40,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     wireTabs();
     wireModal();
+    renderAllProcedureSeparationKeys();
     loadData();
   });
 
@@ -62,6 +64,9 @@
           })
         );
         state.t2SelectedColumns = new Set(state.schema.checklist_columns || []);
+        state.t2SelectedTypes = new Set(
+          DD.uniqueValues(state.cohorts, state.schema.procedure_separation_type_column)
+        );
 
         renderDataSourceBanner();
         renderTable1();
@@ -226,32 +231,23 @@
   }
 
   // ---------------------------------------------------------------------
-  // Shared: categorical color legend (swatch + label pairs)
-  // ---------------------------------------------------------------------
-
-  function paletteLegendHtml(colorMap, caption) {
-    if (!colorMap || !colorMap.size) return "";
-    var html = "";
-    if (caption) {
-      html += '<span class="legend-caption">' + escapeHtml(caption) + "</span>";
-    }
-    colorMap.forEach(function (color, label) {
-      html +=
-        '<span class="legend-item"><span class="swatch" style="background:' +
-        color +
-        '"></span>' +
-        escapeHtml(label) +
-        "</span>";
-    });
-    return html;
-  }
-
-  // ---------------------------------------------------------------------
   // Table 1: Cohort summary
   // ---------------------------------------------------------------------
 
   var T1_COLUMNS = null; // resolved once schema is known
-  var T1_PROC_COLOR_MAP = null; // resolved once cohorts are known
+
+  // Fixed-color lookup for a raw Procedure Separation Type cell value (e.g.
+  // "Type 3"). Returns null for blank/unrecognized values so callers can
+  // decide whether/how to fall back (see accent-row/-cell usage below).
+  // Unlike the old DD.paletteFor()-based approach, this is independent of
+  // which types happen to be present in whatever subset of cohorts is being
+  // rendered, so the same type always gets the same color everywhere it
+  // appears (Cohort Summary, Coverage Checklist, Custom Filter, Map).
+  function procedureTypeColor(rawVal) {
+    var val = rawVal === null || rawVal === undefined ? "" : String(rawVal).trim();
+    if (!val) return null;
+    return (DD.PROCEDURE_SEPARATION_TYPE_COLORS || {})[val] || null;
+  }
 
   function t1Columns() {
     if (T1_COLUMNS) return T1_COLUMNS;
@@ -271,28 +267,12 @@
     return T1_COLUMNS;
   }
 
-  function t1ProcedureColorMap() {
-    if (T1_PROC_COLOR_MAP) return T1_PROC_COLOR_MAP;
-    var procCol = state.schema.procedure_separation_type_column;
-    T1_PROC_COLOR_MAP = DD.paletteFor(
-      state.cohorts.map(function (c) {
-        return procCol ? c[procCol] : "";
-      })
-    );
-    return T1_PROC_COLOR_MAP;
-  }
-
   function renderTable1() {
     var searchInput = document.getElementById("t1-search");
     if (searchInput && !searchInput._wired) {
       searchInput.addEventListener("input", renderTable1Body);
       searchInput._wired = true;
     }
-    var legendEl = document.getElementById("t1-legend");
-    if (legendEl) {
-      legendEl.innerHTML = paletteLegendHtml(t1ProcedureColorMap(), "Row color \u2014 Procedure Separation Type:");
-    }
-    renderProcedureSeparationKey("t1-procedure-key");
     renderTable1Head();
     renderTable1Body();
   }
@@ -330,7 +310,6 @@
     query = query.trim().toLowerCase();
     var nameCol = state.schema.cohort_name_column;
     var procCol = state.schema.procedure_separation_type_column;
-    var colorMap = t1ProcedureColorMap();
 
     var rows = state.cohorts.filter(function (r) {
       if (!query) return true;
@@ -352,7 +331,7 @@
       rows.forEach(function (r) {
         var tr = document.createElement("tr");
         var procVal = procCol ? String(r[procCol] || "").trim() : "";
-        var accentColor = procVal ? colorMap.get(procVal) : null;
+        var accentColor = procedureTypeColor(procVal);
         // Set the accent color on the <tr> itself (not just a child cell) --
         // CSS custom properties only cascade downward, so a row-level tint
         // rule can't see a value set on one of its own cells. This is what
@@ -405,6 +384,18 @@
       state.t2SelectedColumns,
       renderTable2Body
     );
+    // Procedure Separation Type isn't a per-cohort yes/no checklist item, so
+    // it doesn't belong in the checkbox-toggle "Checklist items" picker
+    // above -- instead it gets its own multi-select filter (reusing the
+    // plain renderPicker(), same as the Cohorts picker) that narrows which
+    // cohort *rows* are shown, plus its own dedicated matrix column (see
+    // renderTable2Body()).
+    renderPicker(
+      "t2-type-picker",
+      DD.uniqueValues(state.cohorts, state.schema.procedure_separation_type_column),
+      state.t2SelectedTypes,
+      renderTable2Body
+    );
     renderCategoryLegend("t2-legend");
     renderTable2Hint();
     renderTable2Body();
@@ -419,7 +410,8 @@
       "This matrix covers " +
       total +
       " questionnaire item(s) across all cohorts. Use the checkboxes on the menu in the " +
-      "left-hand side of the page to narrow which cohorts and items are shown. Hover a " +
+      "left-hand side of the page to narrow which cohorts and items are shown, including " +
+      "the Procedure Separation Type filter (select one or more types). Hover a " +
       "colored cell to see its exact response text, and click a cohort name for its full " +
       "record.";
   }
@@ -758,20 +750,45 @@
   }
 
   // Renders the fixed Procedure Separation Type definitions (see
-  // DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS) as a small definition list --
-  // used everywhere the "Type 1".."Type 5" color-coding shows up (Cohort
-  // Summary row color, Map marker color) so a viewer doesn't have to
-  // already know what those labels mean. Static/data-independent, so it's
-  // safe to call unconditionally on every render of a panel that shows it.
+  // DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS), each paired with its fixed
+  // color swatch (DD.PROCEDURE_SEPARATION_TYPE_COLORS) -- this is the
+  // *only* legend for Procedure Separation Type color-coding anywhere on
+  // the site (there's no separate flat swatch-only legend elsewhere), so a
+  // viewer can see both what a color means and what a type actually is in
+  // one place. Static/data-independent (every type is always listed,
+  // regardless of which types are actually present among the currently
+  // visible cohorts), so it's safe to call unconditionally, once, for every
+  // panel's key container -- see renderAllProcedureSeparationKeys() below.
   function renderProcedureSeparationKey(containerId) {
     var el = document.getElementById(containerId);
     if (!el) return;
-    var html = '<p class="procedure-key-title">Procedure Separation Type key:</p><dl class="procedure-key-list">';
+    var html =
+      '<p class="procedure-key-title">Procedure Separation Type<br />(row / marker color)</p>' +
+      '<div class="procedure-key-list">';
     (DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS || []).forEach(function (def) {
-      html += "<dt>" + escapeHtml(def.type) + "</dt><dd>" + escapeHtml(def.text) + "</dd>";
+      var color = (DD.PROCEDURE_SEPARATION_TYPE_COLORS || {})[def.type] || "#999";
+      html +=
+        '<div class="procedure-key-item">' +
+        '<span class="procedure-key-swatch" style="background:' + color + '"></span>' +
+        "<div>" +
+        '<span class="procedure-key-type">' + escapeHtml(def.type) + "</span>" +
+        '<p class="procedure-key-text">' + escapeHtml(def.text) + "</p>" +
+        "</div>" +
+        "</div>";
     });
-    html += "</dl>";
+    html += "</div>";
     el.innerHTML = html;
+  }
+
+  // The key's content is identical everywhere it appears -- called once per
+  // container, for all four tabs' key sidebars, right after the static DOM
+  // is in place (see DOMContentLoaded below). Doesn't depend on
+  // state.cohorts/state.schema at all, so it doesn't need to wait for
+  // loadData()'s fetch to resolve.
+  function renderAllProcedureSeparationKeys() {
+    ["t1-procedure-key", "t2-procedure-key", "t3-procedure-key", "map-procedure-key"].forEach(
+      renderProcedureSeparationKey
+    );
   }
 
   function renderCategoryLegend(containerId) {
@@ -803,11 +820,20 @@
     if (!table) return;
 
     var nameCol = state.schema.cohort_name_column;
+    var procCol = state.schema.procedure_separation_type_column;
     var columns = (state.schema.checklist_columns || []).filter(function (c) {
       return state.t2SelectedColumns.has(c);
     });
     var rows = state.cohorts.filter(function (r) {
-      return state.t2SelectedCohorts.has(r[nameCol]);
+      if (!state.t2SelectedCohorts.has(r[nameCol])) return false;
+      // Procedure Separation Type filtering: a cohort with no recognizable
+      // type value isn't represented by any checkbox in the type picker
+      // (see DD.uniqueValues() in renderTable2()), so it can never be
+      // deliberately excluded by the user -- always show it rather than
+      // silently hiding it because its blank value can't match anything in
+      // t2SelectedTypes.
+      var procVal = procCol ? String(r[procCol] || "").trim() : "";
+      return procVal === "" || state.t2SelectedTypes.has(procVal);
     });
 
     var thead = table.querySelector("thead");
@@ -820,6 +846,15 @@
     cornerTh.className = "cohort-col-header";
     cornerTh.textContent = "Cohort";
     headRow.appendChild(cornerTh);
+
+    // Procedure Separation Type gets its own dedicated column (showing
+    // "Type N" text, not a Yes/No/Partial-classified chip like the
+    // checklist items below), since it isn't a per-cohort yes/no item.
+    var typeTh = document.createElement("th");
+    typeTh.className = "type-col-header";
+    typeTh.textContent = "Procedure Separation Type";
+    headRow.appendChild(typeTh);
+
     columns.forEach(function (col) {
       var th = document.createElement("th");
       // The rotated label text lives in its own inner span rather than
@@ -842,14 +877,31 @@
     } else {
       rows.forEach(function (r) {
         var tr = document.createElement("tr");
+        var procVal = procCol ? String(r[procCol] || "").trim() : "";
+        var accentColor = procedureTypeColor(procVal);
+        // Same row-level accent pattern as Table 1 -- see the comment in
+        // renderTable1Body() for why this is set on the <tr> itself.
+        if (accentColor) {
+          tr.classList.add("accent-row");
+          tr.style.setProperty("--row-accent", accentColor);
+        }
+
         var nameTd = document.createElement("td");
-        nameTd.className = "cohort-cell";
+        nameTd.className = "cohort-cell" + (accentColor ? " accent-cell" : "");
         nameTd.textContent = r[nameCol];
         nameTd.title = "Click for full record";
         nameTd.addEventListener("click", function () {
           openCohortDetail(r);
         });
         tr.appendChild(nameTd);
+
+        var typeTd = document.createElement("td");
+        typeTd.className = "type-cell";
+        typeTd.textContent = procVal || "\u2014";
+        if (accentColor) {
+          typeTd.style.color = accentColor;
+        }
+        tr.appendChild(typeTd);
 
         columns.forEach(function (col) {
           var td = document.createElement("td");
@@ -1078,15 +1130,29 @@
       thead.appendChild(th);
     });
 
+    var procCol = state.schema.procedure_separation_type_column;
+
     if (!rows.length) {
       tbody.innerHTML =
         '<tr><td colspan="' + t1Columns().length + '" class="empty-state">No cohorts match these conditions.</td></tr>';
     } else {
       rows.forEach(function (r) {
         var tr = document.createElement("tr");
-        t1Columns().forEach(function (col) {
+        var procVal = procCol ? String(r[procCol] || "").trim() : "";
+        var accentColor = procedureTypeColor(procVal);
+        // Same row-level accent pattern as Table 1/Table 2 -- see the
+        // comment in renderTable1Body() for why this is set on the <tr>
+        // itself.
+        if (accentColor) {
+          tr.classList.add("accent-row");
+          tr.style.setProperty("--row-accent", accentColor);
+        }
+        t1Columns().forEach(function (col, i) {
           var td = document.createElement("td");
           td.textContent = DD.formatValue(r[col.key]);
+          if (i === 0 && accentColor) {
+            td.classList.add("accent-cell");
+          }
           tr.appendChild(td);
         });
         tr.style.cursor = "pointer";
@@ -1173,12 +1239,6 @@
       return typeof r.Latitude === "number" && typeof r.Longitude === "number";
     });
 
-    var colorMap = DD.paletteFor(
-      geocoded.map(function (r) {
-        return r[procCol];
-      })
-    );
-
     if (state.mapLayer) {
       state.map.removeLayer(state.mapLayer);
     }
@@ -1210,7 +1270,7 @@
 
       rowsInGroup.forEach(function (r, i) {
         var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
-        var color = colorMap.get(typeVal) || "#666";
+        var color = procedureTypeColor(typeVal) || "#666";
         // Radius at the map's current zoom, derived from the cohort's N --
         // baseRadius itself never changes, but the on-screen size does as
         // the user zooms (see markerRadiusForZoom()/DD.zoomRadiusScale()),
@@ -1289,8 +1349,6 @@
     state.mapLayer = layer;
     state.mapMarkerGroups = markerGroups;
     repositionJitteredMarkers();
-
-    renderMapLegend(colorMap);
 
     var missing = state.cohorts.length - geocoded.length;
     var noteEl = document.getElementById("map-note");
@@ -1399,12 +1457,6 @@
     });
   }
 
-  function renderMapLegend(colorMap) {
-    var el = document.getElementById("map-legend");
-    if (!el) return;
-    el.innerHTML = paletteLegendHtml(colorMap, colorMap.size ? "Marker color \u2014 Procedure Separation Type:" : "");
-    renderProcedureSeparationKey("map-procedure-key");
-  }
 
   // ---------------------------------------------------------------------
   // Utilities

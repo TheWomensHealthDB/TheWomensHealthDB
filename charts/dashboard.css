@@ -440,41 +440,90 @@ table.data-table tbody tr.accent-row:hover td {
   box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
 }
 
-/* Procedure Separation Type definitions key -- spells out what "Type 1"
-   .. "Type 5" (the color-coding used in the Cohort Summary table and Map
-   marker colors, see the .legend swatches above) actually mean, since the
-   swatches alone only show the short label. See
+/* ---------------------------------------------------------------------
+   Per-panel layout: main content + a right-hand-side key sidebar
+   --------------------------------------------------------------------- */
+
+/* Every tab (Cohort Summary, Coverage Checklist, Custom Filter, Map) puts
+   its main content in `.panel-main` and the Procedure Separation Type key
+   in a `.panel-key` aside alongside it, so the key consistently lives in
+   the negative space on the right rather than taking up a horizontal
+   strip above the content. Collapses to a single column on narrow
+   viewports (see the media query below) so the key doesn't crowd out the
+   table on small screens -- it just drops beneath the content instead. */
+.panel-body-with-key {
+  display: grid;
+  grid-template-columns: 1fr 17rem;
+  gap: 1.1rem;
+  align-items: start;
+}
+.panel-main {
+  min-width: 0; /* allow the table-scroll/map to shrink inside the grid track */
+}
+.panel-key {
+  position: sticky;
+  top: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .panel-body-with-key {
+    grid-template-columns: 1fr;
+  }
+  .panel-key {
+    position: static;
+  }
+}
+
+/* Procedure Separation Type key -- the *only* legend for the "Type 1" ..
+   "Type 5" color-coding used everywhere it shows up (Cohort Summary and
+   Custom Filter row color, Coverage Checklist matrix row/column color, Map
+   marker color): each entry pairs a fixed color swatch with its full
+   definition text, so a viewer never has to cross-reference a separate
+   flat swatch legend to know what a color means. See
    renderProcedureSeparationKey() / DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS
-   in dashboard.js / dashboard-data.js. */
+   + DD.PROCEDURE_SEPARATION_TYPE_COLORS in dashboard.js / dashboard-data.js. */
 .procedure-key {
   background: var(--bg-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.6rem 0.85rem;
-  margin: 0 0 0.9rem;
+  padding: 0.75rem 0.85rem;
   font-size: 0.8rem;
   color: var(--text-muted);
 }
 .procedure-key .procedure-key-title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.65rem;
   font-weight: 700;
   color: var(--text-main);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  line-height: 1.35;
 }
 .procedure-key .procedure-key-list {
-  display: grid;
-  grid-template-columns: 5.5em 1fr;
-  gap: 0.3rem 0.7rem;
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
 }
-.procedure-key .procedure-key-list dt {
+.procedure-key .procedure-key-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.procedure-key .procedure-key-swatch {
+  width: 0.9em;
+  height: 0.9em;
+  flex: none;
+  margin-top: 0.2em;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
+}
+.procedure-key .procedure-key-type {
+  display: block;
   font-weight: 700;
   color: var(--accent-dark);
 }
-.procedure-key .procedure-key-list dd {
-  margin: 0;
+.procedure-key .procedure-key-text {
+  margin: 0.15rem 0 0;
   line-height: 1.4;
 }
 
@@ -532,6 +581,24 @@ table.matrix-table td.cohort-cell {
 }
 table.matrix-table td.cohort-cell:hover {
   text-decoration: underline;
+}
+
+/* Procedure Separation Type's own dedicated matrix column -- plain "Type
+   N" text (colored to match the fixed key/row color, see
+   renderTable2Body() in dashboard.js), not a rotated header or a
+   yes/no/partial chip like the checklist item columns next to it. */
+table.matrix-table th.type-col-header {
+  vertical-align: middle;
+  white-space: normal;
+  width: 8em;
+  min-width: 8em;
+  text-align: center;
+  line-height: 1.3;
+}
+table.matrix-table td.type-cell {
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .chip {

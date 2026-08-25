@@ -147,6 +147,22 @@
     },
   ];
 
+  // Fixed Type -> color mapping, independent of which types are actually
+  // present in any given subset of the data. Unlike PALETTE/paletteFor()
+  // above (which assigns colors based on the sorted order of whichever
+  // values happen to be present), this guarantees "Type 3" is always the
+  // same color everywhere it shows up -- Cohort Summary rows, Map markers,
+  // the Coverage Checklist matrix, and Custom Filter results -- even when
+  // one tab's visible subset of cohorts happens to omit a type that
+  // another tab's subset includes.
+  var PROCEDURE_SEPARATION_TYPE_COLORS = {
+    "Type 1": PALETTE[0],
+    "Type 2": PALETTE[1],
+    "Type 3": PALETTE[2],
+    "Type 4": PALETTE[3],
+    "Type 5": PALETTE[4],
+  };
+
   // ---------------------------------------------------------------------
   // Numeric parsing (handles "1,234", "~500", "N=120", "45%", etc.)
   // ---------------------------------------------------------------------
@@ -507,6 +523,7 @@
     PALETTE: PALETTE,
     paletteFor: paletteFor,
     PROCEDURE_SEPARATION_TYPE_DEFINITIONS: PROCEDURE_SEPARATION_TYPE_DEFINITIONS,
+    PROCEDURE_SEPARATION_TYPE_COLORS: PROCEDURE_SEPARATION_TYPE_COLORS,
     parseNumeric: parseNumeric,
     OPERATORS: OPERATORS,
     evaluateCondition: evaluateCondition,

@@ -39,23 +39,26 @@
       <div class="hint-banner">
         <span class="hint-label">Tip</span>
         <p>Click any row to see more information on that cohort. Rows are color-coded by
-        Procedure Separation Type &mdash; see the legend below the search box. Click a
+        Procedure Separation Type &mdash; see the key on the right. Click a
         column header to sort.</p>
       </div>
-      <div class="panel-toolbar">
-        <div class="field">
-          <label for="t1-search">Search cohort name</label>
-          <input type="search" id="t1-search" placeholder="e.g. Example Cohort A" />
+      <div class="panel-body-with-key">
+        <div class="panel-main">
+          <div class="panel-toolbar">
+            <div class="field">
+              <label for="t1-search">Search cohort name</label>
+              <input type="search" id="t1-search" placeholder="e.g. Example Cohort A" />
+            </div>
+          </div>
+          <p class="result-count" id="t1-result-count"></p>
+          <div class="table-scroll">
+            <table class="data-table" id="t1-table">
+              <thead><tr></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
-      </div>
-      <div class="legend" id="t1-legend"></div>
-      <div class="procedure-key" id="t1-procedure-key"></div>
-      <p class="result-count" id="t1-result-count"></p>
-      <div class="table-scroll">
-        <table class="data-table" id="t1-table">
-          <thead><tr></tr></thead>
-          <tbody></tbody>
-        </table>
+        <aside class="panel-key procedure-key" id="t1-procedure-key"></aside>
       </div>
     </section>
 
@@ -67,37 +70,50 @@
       </div>
       <p class="result-count" id="t2-result-count"></p>
       <div class="legend" id="t2-legend"></div>
-      <div class="two-col">
-        <div id="t2-sidebar">
-          <div class="picker" id="t2-cohort-picker">
-            <h3>Cohorts</h3>
-            <div class="field">
-              <input type="search" class="picker-search" placeholder="Search cohorts&hellip;" />
+      <div class="panel-body-with-key">
+        <div class="panel-main">
+          <div class="two-col">
+            <div id="t2-sidebar">
+              <div class="picker" id="t2-cohort-picker">
+                <h3>Cohorts</h3>
+                <div class="field">
+                  <input type="search" class="picker-search" placeholder="Search cohorts&hellip;" />
+                </div>
+                <div class="picker-actions">
+                  <button type="button" class="btn small secondary picker-select-all">Select all</button>
+                  <button type="button" class="btn small secondary picker-select-none">Select none</button>
+                </div>
+                <div class="picker-list"></div>
+              </div>
+              <div class="picker" id="t2-type-picker" style="margin-top: 0.75rem;">
+                <h3>Procedure Separation Type</h3>
+                <div class="picker-actions">
+                  <button type="button" class="btn small secondary picker-select-all">Select all</button>
+                  <button type="button" class="btn small secondary picker-select-none">Select none</button>
+                </div>
+                <div class="picker-list"></div>
+              </div>
+              <div class="picker" id="t2-column-picker" style="margin-top: 0.75rem;">
+                <h3>Checklist items</h3>
+                <div class="field">
+                  <input type="search" class="picker-search" placeholder="Search items&hellip;" />
+                </div>
+                <div class="picker-actions">
+                  <button type="button" class="btn small secondary picker-select-all">Select all</button>
+                  <button type="button" class="btn small secondary picker-select-none">Select none</button>
+                </div>
+                <div class="picker-list"></div>
+              </div>
             </div>
-            <div class="picker-actions">
-              <button type="button" class="btn small secondary picker-select-all">Select all</button>
-              <button type="button" class="btn small secondary picker-select-none">Select none</button>
+            <div class="table-scroll" id="t2-table-scroll">
+              <table class="data-table matrix-table" id="t2-table">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
             </div>
-            <div class="picker-list"></div>
-          </div>
-          <div class="picker" id="t2-column-picker" style="margin-top: 0.75rem;">
-            <h3>Checklist items</h3>
-            <div class="field">
-              <input type="search" class="picker-search" placeholder="Search items&hellip;" />
-            </div>
-            <div class="picker-actions">
-              <button type="button" class="btn small secondary picker-select-all">Select all</button>
-              <button type="button" class="btn small secondary picker-select-none">Select none</button>
-            </div>
-            <div class="picker-list"></div>
           </div>
         </div>
-        <div class="table-scroll" id="t2-table-scroll">
-          <table class="data-table matrix-table" id="t2-table">
-            <thead></thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <aside class="panel-key procedure-key" id="t2-procedure-key"></aside>
       </div>
     </section>
 
@@ -110,7 +126,9 @@
         <em>all</em> of your conditions (AND) or <em>any</em> of them (OR) using the
         dropdown. The table updates instantly as you add, edit, or remove conditions, so
         it's a quick way to answer questions like "which cohorts are publicly available and
-        include a hysterectomy question?" without digging through the raw spreadsheet.</p>
+        include a hysterectomy question?" without digging through the raw spreadsheet.
+        Procedure Separation Type is also available as a condition field, and matching rows
+        are color-coded by type &mdash; see the key on the right.</p>
       </div>
       <div class="panel-toolbar">
         <div class="field">
@@ -123,12 +141,17 @@
         <button type="button" class="btn secondary" id="t3-add-condition">+ Add condition</button>
       </div>
       <div id="t3-conditions"></div>
-      <p class="result-count" id="t3-result-count"></p>
-      <div class="table-scroll">
-        <table class="data-table" id="t3-table">
-          <thead><tr></tr></thead>
-          <tbody></tbody>
-        </table>
+      <div class="panel-body-with-key">
+        <div class="panel-main">
+          <p class="result-count" id="t3-result-count"></p>
+          <div class="table-scroll">
+            <table class="data-table" id="t3-table">
+              <thead><tr></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <aside class="panel-key procedure-key" id="t3-procedure-key"></aside>
       </div>
     </section>
 
@@ -138,15 +161,18 @@
         <span class="hint-label">Tip</span>
         <p>Hover over a marker to preview that cohort; click it for full details. Marker size
         reflects sample size (N), and marker color follows the same Procedure Separation
-        Type. Markers are placed using each
+        Type &mdash; see the key on the right. Markers are placed using each
         cohort's participant location where one is clearly listed, falling back to the
         study's PI/site location when the participant location is missing, "Nationwide,"
         or lists more than one place &mdash; see "Mapped to" in each marker's tooltip.</p>
       </div>
-      <div class="legend" id="map-legend"></div>
-      <div class="procedure-key" id="map-procedure-key"></div>
-      <div id="map"></div>
-      <p class="result-count" id="map-note"></p>
+      <div class="panel-body-with-key">
+        <div class="panel-main">
+          <div id="map"></div>
+          <p class="result-count" id="map-note"></p>
+        </div>
+        <aside class="panel-key procedure-key" id="map-procedure-key"></aside>
+      </div>
     </section>
   </main>
 
