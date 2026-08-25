@@ -217,14 +217,52 @@
     body.innerHTML = html;
     var closeBtn = body.querySelector(".close-btn");
     if (closeBtn) closeBtn.addEventListener("click", closeModal);
+    // The Procedure Separation Type row (see renderDetailSection() below)
+    // is marked with this class and a `data-proc-type` attribute holding
+    // its raw "Type N" value, rather than being colored/tooltipped inline
+    // via the HTML string -- attachTooltip() needs a real DOM element to
+    // wire event listeners to, which only exists after this innerHTML
+    // assignment runs.
+    var procDd = body.querySelector(".detail-proc-type");
+    if (procDd) {
+      var procVal = procDd.getAttribute("data-proc-type") || "";
+      var typeDef = procedureTypeDefinition(procVal);
+      if (typeDef) {
+        // Instant (0ms), matching the cohort name's immediacy elsewhere in
+        // the app, rather than the 500ms used for the checklist matrix's
+        // value chips -- this is a single, deliberately-clicked-into detail
+        // view rather than a table full of cells to skim quickly.
+        attachTooltip(procDd, typeDef, 0);
+      }
+    }
     backdrop.classList.add("open");
   }
 
   function renderDetailSection(title, columns, record) {
     if (!columns || !columns.length) return "";
+    var procCol = state.schema && state.schema.procedure_separation_type_column;
     var html = "<h3>" + title + "</h3><dl>";
     columns.forEach(function (col) {
-      html += "<dt>" + escapeHtml(col) + "</dt><dd>" + escapeHtml(DD.formatValue(record[col])) + "</dd>";
+      var rawVal = record[col];
+      // Color-code the Procedure Separation Type value the same way it's
+      // colored everywhere else (Cohort Summary/Custom Filter row accents,
+      // Coverage Checklist matrix, Map markers) -- see procedureTypeColor()
+      // -- and mark it with a class + data attribute so openCohortDetail()
+      // above can attach the instant definition tooltip once this HTML is
+      // actually in the DOM.
+      if (procCol && col === procCol) {
+        var typeVal = String(rawVal || "").trim();
+        var color = procedureTypeColor(typeVal);
+        html +=
+          "<dt>" + escapeHtml(t3FieldLabel(col)) + "</dt>" +
+          '<dd class="detail-proc-type"' +
+          (color ? ' style="color:' + color + '; font-weight:700;"' : "") +
+          ' data-proc-type="' + escapeHtml(typeVal) + '">' +
+          escapeHtml(DD.formatValue(rawVal)) +
+          "</dd>";
+      } else {
+        html += "<dt>" + escapeHtml(col) + "</dt><dd>" + escapeHtml(DD.formatValue(rawVal)) + "</dd>";
+      }
     });
     html += "</dl>";
     return html;
@@ -247,6 +285,22 @@
     var val = rawVal === null || rawVal === undefined ? "" : String(rawVal).trim();
     if (!val) return null;
     return (DD.PROCEDURE_SEPARATION_TYPE_COLORS || {})[val] || null;
+  }
+
+  // Same lookup pattern as procedureTypeColor() above, but returns the
+  // fixed definition text (from DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS --
+  // the same list renderProcedureSeparationKey() draws its key/legend text
+  // from) for a given raw "Type N" value. Used to power the Coverage
+  // Checklist's Procedure separation type cell tooltip below, so hovering
+  // a "Type 3" cell shows that type's definition without having to look it
+  // up in the key off to the side.
+  function procedureTypeDefinition(rawVal) {
+    var val = rawVal === null || rawVal === undefined ? "" : String(rawVal).trim();
+    if (!val) return null;
+    var match = (DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS || []).filter(function (def) {
+      return def.type === val;
+    })[0];
+    return match ? match.type + ": " + match.text : null;
   }
 
   function t1Columns() {
@@ -718,30 +772,35 @@
     draw();
   }
 
-  // Keeps the picker sidebar's and the Procedure Separation Type key's
-  // rendered heights in sync with the Coverage Checklist *table's* rendered
-  // height. This used to run the other way -- table matched to sidebar --
-  // so the table would stretch to show as many rows as fit next to the
-  // (previously often-taller) sidebar. With the full picker stack (Cohorts
-  // + Procedure Separation Type + Checklist items, all three stacked in
-  // #t2-sidebar) now regularly taller than the table's own row count needs,
-  // that direction left dead space below the table's last row -- the
-  // table's box was forced tall enough to match the sidebar, but its actual
-  // rows didn't fill it. Matching the *sidebar* and *key* to the *table*
-  // instead means the table's box height is always exactly its own content
-  // (no leftover space below the last row); the sidebar scrolls internally
-  // (see "#t2-sidebar" in dashboard.css) if its pickers add up to more than
-  // that height, and the key just leaves any leftover room at the bottom of
-  // its box, which is fine since its five entries no longer stretch to fill
-  // it (see ".procedure-key-list" override in dashboard.css). Uses
-  // ResizeObserver (rather than a one-time measurement) since the table's
-  // height itself changes -- row filtering, window resize, the tab
+  // Keeps the picker sidebar's rendered height in sync with the Coverage
+  // Checklist *table's* rendered height. This used to run the other way --
+  // table matched to sidebar -- so the table would stretch to show as many
+  // rows as fit next to the (previously often-taller) sidebar. With the
+  // full picker stack (Cohorts + Procedure Separation Type + Checklist
+  // items, all three stacked in #t2-sidebar) now regularly taller than the
+  // table's own row count needs, that direction left dead space below the
+  // table's last row -- the table's box was forced tall enough to match the
+  // sidebar, but its actual rows didn't fill it. Matching the *sidebar* to
+  // the *table* instead means the table's box height is always exactly its
+  // own content (no leftover space below the last row); the sidebar
+  // scrolls internally (see "#t2-sidebar" in dashboard.css) if its pickers
+  // add up to more than that height.
+  //
+  // The Procedure Separation Type key is deliberately NOT included in this
+  // sync (it used to be) -- the key's own box now just hugs its own fixed
+  // five-item content (see "#panel-checklist .panel-key" in dashboard.css
+  // overriding the grid's default `align-items: stretch`), ending right
+  // after its last line of text instead of being stretched down to match
+  // the table, which left a slab of empty space below the key's content
+  // whenever the table was taller than the key.
+  //
+  // Uses ResizeObserver (rather than a one-time measurement) since the
+  // table's height itself changes -- row filtering, window resize, the tab
   // becoming visible for the first time, etc.
   var _checklistHeightObserver = null;
   function syncChecklistHeight() {
     var sidebar = document.getElementById("t2-sidebar");
     var tableScroll = document.getElementById("t2-table-scroll");
-    var key = document.getElementById("t2-procedure-key");
     if (!sidebar || !tableScroll) return;
 
     function apply() {
@@ -753,9 +812,6 @@
       var h = tableScroll.getBoundingClientRect().height;
       if (h > 0) {
         sidebar.style.height = h + "px";
-        if (key) {
-          key.style.height = h + "px";
-        }
       }
     }
 
@@ -928,6 +984,18 @@
         if (accentColor) {
           typeTd.style.color = accentColor;
         }
+        // Custom tooltip (see attachTooltip() above) showing this type's
+        // full definition -- the same text shown in the key/legend off to
+        // the side (renderProcedureSeparationKey()) -- so hovering "Type 3"
+        // here explains what that means without having to look it up
+        // elsewhere. A short (500ms) delay, same as the value chips below,
+        // rather than instant like the cohort name -- only the cohort name
+        // (which is truncated and needs immediate confirmation of what it
+        // says) gets the 0ms treatment.
+        var typeDef = procedureTypeDefinition(procVal);
+        if (typeDef) {
+          attachTooltip(typeTd, typeDef, 500);
+        }
         tr.appendChild(typeTd);
 
         columns.forEach(function (col) {
@@ -939,7 +1007,7 @@
           // see attachTooltip() above -- so quickly passing the mouse
           // across a row of chips doesn't spam a tooltip for every cell,
           // while still being noticeably faster than the native `title`
-          // default.
+          // default. Only the cohort name cell (see above) is instant.
           attachTooltip(chip, col + ": " + (classified.label || "(no data)"), 500);
           chip.textContent = chipSymbol(classified.category, classified.label);
           td.appendChild(chip);
@@ -1016,6 +1084,25 @@
       .concat(s.checklist_columns || []);
   }
 
+  // The Procedure Separation Type column's actual header in the source
+  // spreadsheet is "Classification Validity - Procedure Separation Type"
+  // (see schema.json's procedure_separation_type_column) -- every lookup
+  // against the data (state.schema, DD.uniqueValues(), evaluateGroup()
+  // filtering, etc.) has to keep using that exact string as-is, but
+  // showing the whole thing as a dropdown option reads as confusing/
+  // redundant. Table 1's column definitions already shorten it the same
+  // way for its header (see the "Procedure Separation Type" label in
+  // t1Columns() above) -- this mirrors that here for the Custom Filter
+  // field dropdown specifically. Every other field's raw column name is
+  // left untouched.
+  function t3FieldLabel(field) {
+    var procCol = state.schema && state.schema.procedure_separation_type_column;
+    if (procCol && field === procCol) {
+      return "Procedure Separation Type";
+    }
+    return field;
+  }
+
   function renderTable3Fields() {
     var addBtn = document.getElementById("t3-add-condition");
     var modeSelect = document.getElementById("t3-mode");
@@ -1066,7 +1153,7 @@
       fields.forEach(function (f) {
         var opt = document.createElement("option");
         opt.value = f;
-        opt.textContent = f;
+        opt.textContent = t3FieldLabel(f);
         if (f === cond.field) opt.selected = true;
         fieldSelect.appendChild(opt);
       });

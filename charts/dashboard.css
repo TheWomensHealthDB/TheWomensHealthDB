@@ -3,7 +3,14 @@
   --color-no: #9e9e9e;
   --color-partial: #f9a825;
   --color-empty: #e0e0e0;
-  --color-other: #1565c0;
+  /* Deliberately NOT PALETTE[0] (#1565c0, "blue") -- that's the exact same
+     color as the Procedure Separation Type key's Type 1 swatch (see
+     PROCEDURE_SEPARATION_TYPE_COLORS in dashboard-data.js), which made the
+     Coverage Checklist's "Other/free text" chip and a Type 1 row's colored
+     accents read as the same category at a glance. #00838f is PALETTE[5]
+     ("teal") -- part of the same fixed color set, but not used by any of
+     the five Procedure Separation Types, so it stays visually distinct. */
+  --color-other: #00838f;
 
   --border: #dde2e8;
   --bg-subtle: #f6f8fb;
@@ -489,6 +496,18 @@ table.data-table tbody tr.accent-row:hover td {
 #panel-checklist .panel-body-with-key {
   grid-template-columns: 1fr 12rem;
 }
+/* Unlike every other tab, the Coverage Checklist's key box should NOT be
+   stretched down to match `.panel-main`'s height (the table's own,
+   data-driven, often-tall height) -- it should just end right after its
+   own fixed five-entry content, like a normal document flow box would.
+   `align-self: start` overrides the grid's inherited `align-items:
+   stretch` (see ".panel-body-with-key" above) for this one instance,
+   sizing the box to its content instead of the shared grid row's height.
+   See also syncChecklistHeight() in dashboard.js, which used to stretch
+   this box to match the table via JS and no longer does. */
+#panel-checklist .panel-key {
+  align-self: start;
+}
 
 /* Custom Filter tab: `.table-scroll` caps at 65vh (see `.table-scroll`
    above), but the key's own content -- title plus all five Type 1-5
@@ -509,12 +528,26 @@ table.data-table tbody tr.accent-row:hover td {
   overflow-y: auto;
 }
 
+/* Cohort Summary tab: same mismatch, same fix, as the Custom Filter tab
+   above -- this tab's `.table-scroll` is also capped at the generic 65vh
+   (nothing here overrides it back to "none" the way the Coverage
+   Checklist tab does), but the key's five full-sentence Type entries are
+   naturally taller than that, so without a pinned row height the key's
+   box trailed off well below the table's actual bottom edge. */
+#panel-summary .panel-body-with-key {
+  grid-template-rows: 65vh;
+}
+#panel-summary .panel-key {
+  overflow-y: auto;
+}
+
 @media (max-width: 900px) {
   .panel-body-with-key,
   #panel-checklist .panel-body-with-key {
     grid-template-columns: 1fr;
   }
-  #panel-filter .panel-body-with-key {
+  #panel-filter .panel-body-with-key,
+  #panel-summary .panel-body-with-key {
     grid-template-rows: none;
   }
   .panel-key {
@@ -599,6 +632,20 @@ table.data-table tbody tr.accent-row:hover td {
 }
 
 /* Checklist / matrix table specifics */
+/* `table-layout: fixed` (instead of the default `auto`) is required for
+   the header hyphenation below to actually work. Under `auto` layout, a
+   column's width isn't "definite" until the browser has already measured
+   all its content -- a chicken-and-egg problem that leads most browsers to
+   silently skip hyphenation inside auto-layout table cells altogether, so
+   long words were breaking wherever they ran out of room with no hyphen
+   shown at all, rather than at a proper syllable boundary. Every column
+   here already gets an explicit width below (8em checklist columns, 32em
+   cohort, 8em type), so fixed layout doesn't lose anything -- it just
+   makes those widths definite up front, which is exactly what hyphenation
+   needs to kick in. */
+table.matrix-table {
+  table-layout: fixed;
+}
 table.matrix-table thead th {
   /* No height/max-height here on purpose -- table cell height is only ever
      a minimum per the CSS table spec, so leaving it unset lets the header
@@ -660,13 +707,18 @@ table.matrix-table thead th.cohort-col-header {
   height: auto;
   vertical-align: middle;
 }
-/* Capped so long cohort names (e.g. "The Religious Orders Study and
-   Memory and Aging Project (ROSMAP)") don't dominate the sticky first
-   column and push the checklist-item columns off-screen. 22em fits most
-   cohort names in full (actual name lengths in the data range from ~10 to
-   ~74 characters, with a median around 39 and about a quarter of them 52+
-   -- 22em comfortably covers the median and then some, only truncating
-   that longer tail). Overflowing names are ellipsis-truncated -- white-
+/* Capped so the very longest cohort names (e.g. the ~74-character full
+   title of Add Health) don't dominate the sticky first column and push
+   the checklist-item columns off-screen -- but wide enough that only that
+   extreme tail ever truncates. Actual name lengths in the data range from
+   ~10 to ~74 characters, with a median around 39 and about a quarter of
+   them 52+; at this column's ~13.6px bold font plus its 2x0.6rem cell
+   padding, 32em (~440px of text-rendering room) comfortably fits names up
+   through and a bit past that 75th-percentile mark, so only a handful of
+   the longest outliers are ever truncated. The table-scroll container
+   this sits in scrolls horizontally as well as vertically, so a wider
+   sticky column doesn't break the layout -- it just uses more of that
+   scrollable width. Overflowing names are ellipsis-truncated -- white-
    space: nowrap (needed anyway for the sticky column) plus overflow:
    hidden + text-overflow: ellipsis is the standard combination required
    for single-line truncation to render at all; the full name is still
@@ -683,8 +735,8 @@ table.matrix-table td.cohort-cell, table.matrix-table th.cohort-col-header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 22em;
-  max-width: 22em;
+  width: 32em;
+  max-width: 32em;
   font-weight: 600;
   transition: background 0.1s ease, color 0.1s ease;
 }
@@ -747,9 +799,22 @@ table.matrix-table td.type-cell {
    fixed white "T" glyph set in chipSymbol() in dashboard.js -- previously
    an outlined/transparent chip showing either a bit of the actual free-
    text value or, once that got too long, just a small dot, which read as
-   an odd, half-empty square next to the solid Y/N/~ ones beside it. */
+   an odd, half-empty square next to the solid Y/N/~ ones beside it. A
+   dashed inset border frames the "T", echoing the classic "text box"
+   insertion icon (a dashed-border rectangle) so the glyph reads as
+   "free text" rather than just a letter -- drawn via ::before so it
+   overlays the solid fill without disturbing the centered text itself. */
 .chip.cat-other {
   background: var(--color-other);
+  position: relative;
+}
+.chip.cat-other::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px dashed rgba(255, 255, 255, 0.85);
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 /* ---------------------------------------------------------------------
@@ -963,6 +1028,14 @@ table.matrix-table td.type-cell {
 .modal dl { display: grid; grid-template-columns: 40% 1fr; gap: 0.35rem 0.8rem; margin: 0; }
 .modal dt { font-weight: 600; color: var(--text-muted); font-size: 0.8rem; }
 .modal dd { margin: 0 0 0.4rem; font-size: 0.88rem; }
+/* Procedure Separation Type's value row -- colored inline via a `style`
+   attribute set in renderDetailSection() (dashboard.js), matching that
+   type's fixed color everywhere else it appears. `cursor: help` hints
+   that hovering it (see attachTooltip() call in openCohortDetail())
+   reveals that type's definition. */
+.modal dd.detail-proc-type {
+  cursor: help;
+}
 .modal h3 { font-size: 0.9rem; margin: 1.1rem 0 0.4rem; border-top: 1px solid var(--border); padding-top: 0.65rem; color: var(--accent-dark); }
 
 .empty-state {

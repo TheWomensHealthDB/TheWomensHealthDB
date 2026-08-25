@@ -160,7 +160,12 @@
     "Type 2": PALETTE[1],
     "Type 3": PALETTE[2],
     "Type 4": PALETTE[3],
-    "Type 5": PALETTE[4],
+    // PALETTE[4] ("#6a1b9a", purple) read too close to Type 1's blue at a
+    // glance, especially in the small key swatches and thin accent-row
+    // tints. PALETTE[8] ("#ad1457", pink/magenta) isn't used by any other
+    // Type or by any of the Yes/No/Partial/Other chip colors, and sits
+    // clearly apart from blue on the color wheel.
+    "Type 5": PALETTE[8],
   };
 
   // ---------------------------------------------------------------------
