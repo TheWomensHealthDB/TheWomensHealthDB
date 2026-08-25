@@ -130,6 +130,17 @@ def _rename_sex_composition_column(header: "list[str]") -> "list[str]":
     ]
 
 
+# The raw sheet's column for this was originally named "Wording of Related
+# Questions/Variables" -- too generic given it's specifically about
+# hysterectomy/oophorectomy question wording, easy to confuse with the ~90
+# other "related questions/variables" style columns. Same rename-to-a-
+# stable-name pattern as RESOLVED_LOCATION_COLUMN/SEX_COMPOSITION_COLUMN
+# above: HEADER_STANDARDIZATION_MAP below maps the raw header to this name,
+# so it only needs to be defined once here.
+HYSTERECTOMY_OOPHORECTOMY_RELATED_COLUMN = (
+    "Hysterectomy and Oophorectomy Related Questions/Variables"
+)
+
 METADATA_COLUMNS = [
     "Cohort Name",
     # Was "Location" -- the raw sheet's column of this kind is now named
@@ -143,12 +154,30 @@ METADATA_COLUMNS = [
     "Age Range",
     SEX_COMPOSITION_COLUMN,
     "Year Started/Wave Description",
-    "Wording of Related Questions/Variables",
+    HYSTERECTOMY_OOPHORECTOMY_RELATED_COLUMN,
     RESOLVED_LOCATION_COLUMN,
 ]
 
 COHORT_NAME_COLUMN = "Cohort Name"
 TABLE_COHORT_COLUMN = "Cohort"
+
+# Cohorts to drop entirely from every published output (complete_datasets
+# .json, table.json, and -- since it's built from those two -- cohorts.json)
+# even though they're still present in the raw sheet. Use this for a cohort
+# that's been cut from the project but hasn't been deleted from the source
+# spreadsheet yet, rather than waiting on that spreadsheet edit.
+#
+# Matched case-/whitespace-insensitively as a *whole word* anywhere in the
+# cohort name (see _is_excluded_cohort() below) -- not just a prefix -- so a
+# single "RANN" entry here catches every way the raw sheet currently spells
+# this one out: "RANN (Columbia PI Stern)" (starts with it) *and*
+# "Reference Ability Neural Network (RANN)" (has it parenthesized at the
+# end). Word-boundary matching means it won't accidentally catch an
+# unrelated cohort whose name merely contains "rann" as part of a longer
+# word (e.g. a hypothetical "Brannigan Study").
+EXCLUDED_COHORTS = [
+    "RANN",
+]
 
 # Columns in "Complete Datasets" that should never show up anywhere in the
 # dashboard (not in the Coverage Checklist table, not as a checklist-item
@@ -166,12 +195,86 @@ EXCLUDED_COLUMNS = [
     PI_LOCATION_COLUMN,
 ]
 
+# Raw-header -> standardized-header text for checklist/metadata columns
+# whose exact wording in the live sheet has inconsistencies we don't want
+# showing up in the dashboard: trailing colons ("Hot flashes item:"),
+# inconsistent capitalization ("sex of live births item"), a typo
+# ("Oopherectomy" -> "Oophorectomy"), "item" suffix missing on a few
+# outliers, and "HT" abbreviated inconsistently next to the fully-spelled-
+# out "Hormone therapy ..." columns elsewhere in the same list.
+#
+# Only columns that actually need a text change are listed here -- anything
+# not in this dict passes through unchanged. Keys are matched against the
+# raw header text after stripping whitespace (case-sensitive, since we're
+# matching the sheet's exact known current wording rather than guessing at
+# variants -- unlike _SEX_COMPOSITION_HEADER_RE/RESOLVED_LOCATION_COLUMN,
+# which have to tolerate the sheet's header text drifting over time).
+#
+# NOTE: deliberately excludes the "if yes ..." follow-up columns (e.g. "If
+# yes type item") -- those are handled by FOLLOWUP_DISTINGUISHING_OVERRIDES
+# / _build_followup_label() below instead, since their final label also
+# needs to reference the base item they follow, not just a straight
+# rename. _standardize_headers() below skips any header matching
+# FOLLOWUP_HEADER_RE for this reason.
+HEADER_STANDARDIZATION_MAP = {
+    "Oopherectomy Question Included": "Oophorectomy Question Included",
+    "Wording of Related Questions/Variables": HYSTERECTOMY_OOPHORECTOMY_RELATED_COLUMN,
+    "Age at menarche": "Age at menarche item",
+    "PCOS/PMOS Item": "PCOS/PMOS item",
+    "POI Item": "POI item",
+    "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item:": (
+        "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item"
+    ),
+    "Abnormal vaginal bleeding": "Abnormal vaginal bleeding item",
+    "Fibroids (benign growths in the uterus or womb) item:": (
+        "Fibroids (benign growths in the uterus or womb) item"
+    ),
+    "Age at pregnancies item:": "Age at pregnancies item",
+    "Type of Pregnancy item": "Type of pregnancy item",
+    "sex of live births item": "Sex of live births item",
+    "breastfeeding item": "Breastfeeding item",
+    "Time of breastfeeding": "Time of breastfeeding item",
+    "Fertility medications to help you get pregnant item:": (
+        "Fertility medications to help you get pregnant item"
+    ),
+    "Menopausal status item:": "Menopausal status item",
+    "Cycle regularity item:": "Cycle regularity item",
+    "Bleeding flow / amount item:": "Bleeding flow / amount item",
+    "Length of time without a period (amenorrhea) item:": (
+        "Length of time without a period (amenorrhea) item"
+    ),
+    "Vasomotor symptoms:": "Vasomotor symptoms",
+    "Hot flashes item:": "Hot flashes item",
+    "Night sweats item:": "Night sweats item",
+    "Knowledge of HT": "Knowledge of hormone therapy",
+    "Views or perceptions of HT": "Views or perceptions of hormone therapy",
+    "Sources of knowledge about HT": "Sources of knowledge about hormone therapy",
+}
+
 # Matches a checklist column's header text when it's a "if yes, type item"
 # -style follow-up to the item immediately before it (e.g. "if yes, type
 # item", "If Yes, Type Item:"). Matched loosely (just the leading "if yes")
 # rather than requiring an exact literal string, since the real sheet may
 # reuse this same header text for many different follow-up columns.
 FOLLOWUP_HEADER_RE = re.compile(r"^\s*if\s+yes\b", re.IGNORECASE)
+
+
+def _standardize_headers(header: "list[str]") -> "list[str]":
+    """
+    Applies HEADER_STANDARDIZATION_MAP to every header that isn't itself a
+    "if yes ..." follow-up column (those are left untouched here so
+    FOLLOWUP_HEADER_RE/_process_followup_columns() below still see the raw
+    "if yes" text they match against -- see _build_followup_label() for how
+    follow-up columns get their own standardized-ish text instead).
+    """
+    result = []
+    for h in header:
+        stripped = h.strip()
+        if FOLLOWUP_HEADER_RE.match(stripped):
+            result.append(h)
+        else:
+            result.append(HEADER_STANDARDIZATION_MAP.get(stripped, h))
+    return result
 
 # Normalized tokens treated as an affirmative ("Yes") response, used to
 # decide whether a follow-up "if yes, type item" column's value should be
@@ -212,11 +315,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2005",
             "Hysterectomy Question Included": "Yes",
-            "Oopherectomy Question Included": "No",
+            "Oophorectomy Question Included": "No",
             "Pregnancy Question Included": "Yes",
             "PCOS/PMOS Item": "To some extent",
-            "Hot flashes item:": "Yes",
-            "Night sweats item:": "To some extent",
+            "Hot flashes item": "Yes",
+            "Night sweats item": "To some extent",
             "Birth control usage item": "Yes",
             "Menopause Status Item": "Yes",
             "Endometriosis Item": "No",
@@ -236,11 +339,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 1998",
             "Hysterectomy Question Included": "No",
-            "Oopherectomy Question Included": "No",
+            "Oophorectomy Question Included": "No",
             "Pregnancy Question Included": "Yes",
             "PCOS/PMOS Item": "No",
-            "Hot flashes item:": "No",
-            "Night sweats item:": "No",
+            "Hot flashes item": "No",
+            "Night sweats item": "No",
             "Birth control usage item": "No",
             "Menopause Status Item": "No",
             "Endometriosis Item": "No",
@@ -260,11 +363,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "55%",
             "Year Started/Wave Description": "Wave 1: 2012",
             "Hysterectomy Question Included": "Yes",
-            "Oopherectomy Question Included": "Yes",
+            "Oophorectomy Question Included": "Yes",
             "Pregnancy Question Included": "Yes",
             "PCOS/PMOS Item": "Yes",
-            "Hot flashes item:": "To some extent",
-            "Night sweats item:": "No",
+            "Hot flashes item": "To some extent",
+            "Night sweats item": "No",
             "Birth control usage item": "Yes",
             "Menopause Status Item": "To some extent",
             "Endometriosis Item": "Yes",
@@ -284,11 +387,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2001",
             "Hysterectomy Question Included": "Yes",
-            "Oopherectomy Question Included": "To some extent",
+            "Oophorectomy Question Included": "To some extent",
             "Pregnancy Question Included": "No",
             "PCOS/PMOS Item": "No",
-            "Hot flashes item:": "Yes",
-            "Night sweats item:": "Yes",
+            "Hot flashes item": "Yes",
+            "Night sweats item": "Yes",
             "Birth control usage item": "No",
             "Menopause Status Item": "Yes",
             "Endometriosis Item": "To some extent",
@@ -308,11 +411,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2010",
             "Hysterectomy Question Included": "Yes",
-            "Oopherectomy Question Included": "Yes",
+            "Oophorectomy Question Included": "Yes",
             "Pregnancy Question Included": "Yes",
             "PCOS/PMOS Item": "No",
-            "Hot flashes item:": "Yes",
-            "Night sweats item:": "Yes",
+            "Hot flashes item": "Yes",
+            "Night sweats item": "Yes",
             "Birth control usage item": "Yes",
             "Menopause Status Item": "Yes",
             "Endometriosis Item": "No",
@@ -332,11 +435,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2009",
             "Hysterectomy Question Included": "No",
-            "Oopherectomy Question Included": "No",
+            "Oophorectomy Question Included": "No",
             "Pregnancy Question Included": "Yes",
             "PCOS/PMOS Item": "To some extent",
-            "Hot flashes item:": "No",
-            "Night sweats item:": "No",
+            "Hot flashes item": "No",
+            "Night sweats item": "No",
             "Birth control usage item": "No",
             "Menopause Status Item": "No",
             "Endometriosis Item": "No",
@@ -356,11 +459,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "50%",
             "Year Started/Wave Description": "Wave 1: 2015",
             "Hysterectomy Question Included": "Yes",
-            "Oopherectomy Question Included": "No",
+            "Oophorectomy Question Included": "No",
             "Pregnancy Question Included": "Yes",
             "PCOS/PMOS Item": "Yes",
-            "Hot flashes item:": "Yes",
-            "Night sweats item:": "To some extent",
+            "Hot flashes item": "Yes",
+            "Night sweats item": "To some extent",
             "Birth control usage item": "Yes",
             "Menopause Status Item": "To some extent",
             "Endometriosis Item": "Yes",
@@ -380,11 +483,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2007",
             "Hysterectomy Question Included": "No",
-            "Oopherectomy Question Included": "No",
+            "Oophorectomy Question Included": "No",
             "Pregnancy Question Included": "No",
             "PCOS/PMOS Item": "No",
-            "Hot flashes item:": "Yes",
-            "Night sweats item:": "No",
+            "Hot flashes item": "Yes",
+            "Night sweats item": "No",
             "Birth control usage item": "No",
             "Menopause Status Item": "No",
             "Endometriosis Item": "No",
@@ -507,6 +610,32 @@ def _is_yes(value) -> bool:
     return text in _YES_TOKENS
 
 
+# Exact-raw-header -> hand-written "distinguishing" phrase for follow-up
+# columns whose raw text (once the leading "if yes" is stripped) reads too
+# awkwardly to show as-is -- e.g. "when start item:" -> "Age when started
+# using birth control". The sheet reuses generic follow-up header text
+# across several different base items (two separate "type"-style
+# follow-ups under two different base items, for instance), so these are
+# keyed by the *exact* raw header text (which does differ between them,
+# e.g. "If yes type item" vs. "If yes, type") rather than by base item, and
+# checked before falling back to the generic stripping logic in
+# _build_followup_label() below for any follow-up not listed here.
+#
+# NOTE: "when start" is genuinely ambiguous between "age when started" and
+# "calendar year/date when started" -- read as age here since that matches
+# how the adjacent "duration of use" column is phrased, but worth
+# double-checking against the sheet/audit spreadsheet if that's wrong.
+FOLLOWUP_DISTINGUISHING_OVERRIDES = {
+    "If yes type item": "Type of birth control used",
+    "If yes Primary reason for taking birth control pills item:": (
+        "Primary reason for taking birth control pills"
+    ),
+    "If yes when start item:": "Age when started using birth control",
+    "If yes duration of use item": "Duration of birth control use",
+    "If yes, type": "Type of fertility medication used",
+}
+
+
 def _build_followup_label(base_name: str, raw_followup_header: str) -> str:
     """
     Turns a base checklist item's header (e.g. "Birth control usage item")
@@ -525,20 +654,25 @@ def _build_followup_label(base_name: str, raw_followup_header: str) -> str:
     base_name = base_name.strip()
     raw_followup_header = raw_followup_header.strip()
 
-    # Strip the leading "if yes[,]" prefix, keeping whatever the sheet used
-    # to distinguish this particular follow-up ("type", "primary reason for
-    # taking birth control pills", "when start", "duration of use", ...).
-    distinguishing = re.sub(
-        r"^\s*if\s+yes\s*,?\s*", "", raw_followup_header, flags=re.IGNORECASE
-    ).strip()
-    distinguishing = re.sub(r"\s*:\s*$", "", distinguishing).strip()
+    if raw_followup_header in FOLLOWUP_DISTINGUISHING_OVERRIDES:
+        distinguishing = FOLLOWUP_DISTINGUISHING_OVERRIDES[raw_followup_header]
+    else:
+        # Strip the leading "if yes[,]" prefix, keeping whatever the sheet
+        # used to distinguish this particular follow-up ("type", "primary
+        # reason for taking birth control pills", "when start", "duration
+        # of use", ...).
+        distinguishing = re.sub(
+            r"^\s*if\s+yes\s*,?\s*", "", raw_followup_header, flags=re.IGNORECASE
+        ).strip()
+        distinguishing = re.sub(r"\s*:\s*$", "", distinguishing).strip()
 
-    if not distinguishing:
-        # A bare "If yes" with nothing else to go on -- fall back to the
-        # old generic "type" wording rather than producing an empty label.
-        distinguishing = "type item"
-    elif not re.search(r"\bitem\b", distinguishing, re.IGNORECASE):
-        distinguishing = f"{distinguishing} item"
+        if not distinguishing:
+            # A bare "If yes" with nothing else to go on -- fall back to
+            # the old generic "type" wording rather than producing an
+            # empty label.
+            distinguishing = "type item"
+        elif not re.search(r"\bitem\b", distinguishing, re.IGNORECASE):
+            distinguishing = f"{distinguishing} item"
 
     return f'{distinguishing} (if yes, for "{base_name}")'
 
@@ -693,6 +827,7 @@ def get_complete_datasets(gc) -> pd.DataFrame:
     header, *data_rows = rows
     header = [h.strip() for h in header]
     header = _rename_sex_composition_column(header)
+    header = _standardize_headers(header)
 
     # get_all_values() can return short rows when a row's trailing cells are
     # blank -- pad/truncate every row to the header's width so positional
@@ -858,6 +993,43 @@ def _normalize_cohort_name(name) -> str:
     return re.sub(r"\s+", " ", str(name).strip().lower())
 
 
+def _is_excluded_cohort(name) -> bool:
+    """
+    Whether `name` matches an entry in EXCLUDED_COHORTS (see above) as a
+    whole word anywhere in the (whitespace-/case-normalized) cohort name --
+    not just a prefix -- so both "RANN (Columbia PI Stern)" and "Reference
+    Ability Neural Network (RANN)" match a listed "RANN" entry.
+    """
+    normalized = _normalize_cohort_name(name)
+    if not normalized:
+        return False
+    for excluded in EXCLUDED_COHORTS:
+        excluded_normalized = _normalize_cohort_name(excluded)
+        if excluded_normalized and re.search(
+            r"\b" + re.escape(excluded_normalized) + r"\b", normalized
+        ):
+            return True
+    return False
+
+
+def _drop_excluded_cohorts(df: pd.DataFrame, name_column: str, source_label: str) -> pd.DataFrame:
+    """
+    Drops any row whose `name_column` matches EXCLUDED_COHORTS -- applied to
+    both tabs right after fetching, before they're joined/geocoded in
+    build_cohorts(), so an excluded cohort never appears in
+    complete_datasets.json, table.json, or cohorts.json.
+    """
+    if name_column not in df.columns:
+        return df
+    mask = df[name_column].map(_is_excluded_cohort)
+    if mask.any():
+        _warn(
+            f"Excluded {int(mask.sum())} cohort row(s) from '{source_label}' "
+            f"per EXCLUDED_COHORTS: {df.loc[mask, name_column].tolist()}."
+        )
+    return df.loc[~mask].reset_index(drop=True)
+
+
 def _geocode_resolved_location(value):
     """
     Geocodes a RESOLVED_LOCATION_COLUMN value, which is either a U.S.
@@ -941,6 +1113,96 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
     return merged
 
 
+# Hardcoded header -> child-columns groupings for the Coverage Checklist
+# (Table 2) matrix table, using the final standardized column names (post
+# HEADER_STANDARDIZATION_MAP) -- so the front end can visually distinguish
+# a section-header row from its sub-items and cascade a header checkbox's
+# check/uncheck to all of its children (see renderTable2()/the checklist
+# picker in charts/dashboard.js).
+#
+# This is a fixed, hand-built list rather than something inferred at
+# runtime (e.g. from indentation or naming patterns) because the real
+# sheet's column order/wording doesn't reliably signal "this one's a
+# section header" any other way. Built from the exact column order Dan
+# shared; two judgment calls worth double-checking against the sheet if
+# this looks wrong:
+#   - "Mood symptoms item" and "Cognitive symptoms item" are treated as
+#     group headers even though they keep the "item" suffix (unlike the
+#     other 5 headers below, which don't) -- inferred from their position
+#     immediately before a run of clearly-related sub-items, same pattern
+#     as "Vasomotor symptoms"/"Sleep symptoms"/etc.
+#   - "Menopause-related symptom items" (the umbrella over all 7 groups
+#     below) and "Symptom severity item"/"Symptom time frame item" are
+#     deliberately left as standalone, ungrouped items rather than folded
+#     into this structure -- not clearly a per-symptom-group header/child
+#     relationship the same way the 7 below are.
+CHECKLIST_SECTION_GROUPS = [
+    {
+        "header": "Vasomotor symptoms",
+        "children": ["Hot flashes item", "Night sweats item"],
+    },
+    {
+        "header": "Sleep symptoms",
+        "children": [
+            "Difficulty getting to sleep item",
+            "Difficulty staying asleep item",
+            "Nighttime awakening item",
+        ],
+    },
+    {
+        "header": "Somatic symptoms",
+        "children": [
+            "Heart palpitations item",
+            "Skin itching item",
+            "Headaches item",
+            "Bloated stomach item",
+            "Breast tenderness item",
+            "Joint pains item",
+        ],
+    },
+    {
+        "header": "Mood symptoms item",
+        "children": [
+            "Tiredness item",
+            "Irritability item",
+            "Feeling anxious item",
+            "Feeling depressed item",
+            "Mood swings item",
+            "Crying spells item",
+        ],
+    },
+    {
+        "header": "Cognitive symptoms item",
+        "children": ["Difficulty concentrating item", "Poor memory item"],
+    },
+    {
+        "header": "Genitourinary symptoms item",
+        "children": [
+            "Frequent urination item",
+            "Urine leakage item",
+            "Painful urination item",
+            "Bladder infection item",
+            "Stool or gas item",
+            "Dry vagina item",
+            "Vaginal itching item",
+            "Abnormal vaginal discharge item",
+            "Vaginal infection item",
+            "Pain during intercourse item",
+            "Pain inside vagina during intercourse item",
+            "Bleeding after intercourse item",
+        ],
+    },
+    {
+        "header": "Sexual/libido symptoms item",
+        "children": [
+            "Lack of sexual desire item",
+            "Orgasm difficulty item",
+            "Limited sexual opportunity item",
+        ],
+    },
+]
+
+
 def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame, is_mock_data: bool = False) -> dict:
     """
     Describes which columns are which, so the dashboard front-end doesn't
@@ -958,10 +1220,25 @@ def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame, is_mock_data
     ]
     validity_columns = [c for c in table_df.columns if c != TABLE_COHORT_COLUMN]
 
+    # Only include a group (and only the children that are actually present)
+    # if its header column made it into this dataset -- keeps the mock
+    # dataset (which doesn't have most of these real columns) from ending
+    # up with a bunch of empty/dangling groups.
+    checklist_groups = []
+    for group in CHECKLIST_SECTION_GROUPS:
+        if group["header"] not in checklist_columns:
+            continue
+        present_children = [c for c in group["children"] if c in checklist_columns]
+        if present_children:
+            checklist_groups.append(
+                {"header": group["header"], "children": present_children}
+            )
+
     return {
         "cohort_name_column": COHORT_NAME_COLUMN,
         "metadata_columns": metadata_columns,
         "checklist_columns": checklist_columns,
+        "checklist_groups": checklist_groups,
         "validity_columns": validity_columns,
         "procedure_separation_type_column": next(
             (c for c in validity_columns if c.endswith("Procedure Separation Type")),
@@ -982,6 +1259,10 @@ def main():
 
     complete_datasets = get_complete_datasets(gc)
     table = get_table(gc)
+    complete_datasets = _drop_excluded_cohorts(
+        complete_datasets, COHORT_NAME_COLUMN, COMPLETE_DATASETS_TAB
+    )
+    table = _drop_excluded_cohorts(table, TABLE_COHORT_COLUMN, TABLE_TAB)
     cohorts = build_cohorts(complete_datasets, table)
     schema = build_schema(complete_datasets, table, is_mock_data=not have_credentials)
 

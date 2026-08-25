@@ -397,10 +397,17 @@
       state.t2SelectedCohorts,
       renderTable2Body
     );
-    renderPicker("t2-column-picker", state.schema.checklist_columns || [], state.t2SelectedColumns, renderTable2Body);
+    renderChecklistItemPicker(
+      "t2-column-picker",
+      state.schema.checklist_columns || [],
+      state.schema.checklist_groups || [],
+      state.t2SelectedColumns,
+      renderTable2Body
+    );
     renderCategoryLegend("t2-legend");
     renderTable2Hint();
     renderTable2Body();
+    syncChecklistHeight();
   }
 
   function renderTable2Hint() {
@@ -476,6 +483,203 @@
     }
 
     draw();
+  }
+
+  // A specialized picker for the Coverage Checklist's "Checklist items"
+  // sidebar (as opposed to the plain flat renderPicker() above, still used
+  // for the Cohorts sidebar). Groups a header column (e.g. "Vasomotor
+  // symptoms") together with its known sub-items (e.g. "Hot flashes item",
+  // "Night sweats item" -- see CHECKLIST_SECTION_GROUPS in fetch_data.py /
+  // schema.checklist_groups) so the header reads visually as a whole
+  // section and its checkbox cascades to/from all of its children, while
+  // each child can still be checked/unchecked individually.
+  function renderChecklistItemPicker(containerId, allValues, groups, selectedSet, onChange) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+
+    var listEl = container.querySelector(".picker-list");
+    var searchEl = container.querySelector(".picker-search");
+    var selectAllBtn = container.querySelector(".picker-select-all");
+    var selectNoneBtn = container.querySelector(".picker-select-none");
+
+    // Only trust a group if both its header and at least one of its
+    // children actually made it into this dataset's checklist_columns
+    // (e.g. the small mock dataset doesn't have most of these real
+    // columns, so schema.checklist_groups ends up empty for it -- see
+    // build_schema() in fetch_data.py).
+    var allSet = {};
+    allValues.forEach(function (v) {
+      allSet[v] = true;
+    });
+    var headerToChildren = {};
+    var childToHeader = {};
+    (groups || []).forEach(function (g) {
+      if (!allSet[g.header]) return;
+      var kids = (g.children || []).filter(function (c) {
+        return allSet[c];
+      });
+      if (!kids.length) return;
+      headerToChildren[g.header] = kids;
+      kids.forEach(function (c) {
+        childToHeader[c] = g.header;
+      });
+    });
+
+    function groupState(header) {
+      var members = [header].concat(headerToChildren[header] || []);
+      var selectedCount = members.filter(function (m) {
+        return selectedSet.has(m);
+      }).length;
+      if (selectedCount === 0) return "none";
+      if (selectedCount === members.length) return "all";
+      return "some";
+    }
+
+    function setGroupSelected(header, selected) {
+      [header].concat(headerToChildren[header] || []).forEach(function (m) {
+        if (selected) selectedSet.add(m);
+        else selectedSet.delete(m);
+      });
+    }
+
+    function matchesQuery(value, query) {
+      return String(value).toLowerCase().indexOf(query) !== -1;
+    }
+
+    function makeRow(value, opts) {
+      opts = opts || {};
+      var label = document.createElement("label");
+      label.className = "picker-row" + (opts.extraClass ? " " + opts.extraClass : "");
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+
+      if (opts.isHeader) {
+        var st = groupState(value);
+        cb.checked = st === "all";
+        cb.indeterminate = st === "some";
+        cb.addEventListener("change", function () {
+          // A native checkbox click always flips `checked` from whatever
+          // it was immediately before (true/false; indeterminate has no
+          // effect on that flip) -- so this naturally lands on "select
+          // every member" from either "none" or "some", and "deselect
+          // every member" from "all", which is exactly the tri-state
+          // cascade behavior wanted here.
+          setGroupSelected(value, cb.checked);
+          draw();
+          onChange();
+        });
+      } else {
+        cb.checked = selectedSet.has(value);
+        cb.addEventListener("change", function () {
+          if (cb.checked) selectedSet.add(value);
+          else selectedSet.delete(value);
+          // Redraw so a child toggle updates its header's checked/
+          // indeterminate state too.
+          draw();
+          onChange();
+        });
+      }
+
+      var span = document.createElement("span");
+      span.textContent = value;
+      label.appendChild(cb);
+      label.appendChild(span);
+      return label;
+    }
+
+    function draw() {
+      if (!listEl) return;
+      var query = (searchEl && searchEl.value ? searchEl.value : "").trim().toLowerCase();
+      listEl.innerHTML = "";
+      var renderedAny = false;
+
+      allValues.forEach(function (val) {
+        // Children are rendered right after their header below, not here.
+        if (childToHeader[val]) return;
+
+        if (headerToChildren[val]) {
+          var kids = headerToChildren[val];
+          var headerMatches = !query || matchesQuery(val, query);
+          var matchingKids = query
+            ? kids.filter(function (k) {
+                return matchesQuery(k, query);
+              })
+            : kids;
+          if (query && !headerMatches && !matchingKids.length) return;
+
+          listEl.appendChild(makeRow(val, { isHeader: true, extraClass: "picker-header" }));
+          (headerMatches ? kids : matchingKids).forEach(function (k) {
+            listEl.appendChild(makeRow(k, { extraClass: "picker-child" }));
+          });
+          renderedAny = true;
+          return;
+        }
+
+        if (query && !matchesQuery(val, query)) return;
+        listEl.appendChild(makeRow(val, {}));
+        renderedAny = true;
+      });
+
+      if (!renderedAny) {
+        listEl.innerHTML = '<p class="empty-state">No matches.</p>';
+      }
+    }
+
+    if (searchEl && !searchEl._wired) {
+      searchEl.addEventListener("input", draw);
+      searchEl._wired = true;
+    }
+    if (selectAllBtn && !selectAllBtn._wired) {
+      selectAllBtn.addEventListener("click", function () {
+        allValues.forEach(function (v) {
+          selectedSet.add(v);
+        });
+        draw();
+        onChange();
+      });
+      selectAllBtn._wired = true;
+    }
+    if (selectNoneBtn && !selectNoneBtn._wired) {
+      selectNoneBtn.addEventListener("click", function () {
+        selectedSet.clear();
+        draw();
+        onChange();
+      });
+      selectNoneBtn._wired = true;
+    }
+
+    draw();
+  }
+
+  // Keeps the Coverage Checklist table's rendered height in sync with the
+  // picker sidebar's rendered height, so the table shows as many rows as
+  // will fit next to the sidebar (previously capped at a generic 65vh via
+  // the shared .table-scroll rule, regardless of how tall the sidebar
+  // actually was -- see the CSS override for #t2-table-scroll) and its
+  // bottom edge lines up with the sidebar's instead of leaving empty space
+  // beneath a short table. Uses ResizeObserver (rather than a one-time
+  // measurement) since the sidebar's height itself changes -- picker
+  // search filtering, window resize, the tab becoming visible for the
+  // first time, etc.
+  var _checklistHeightObserver = null;
+  function syncChecklistHeight() {
+    var sidebar = document.getElementById("t2-sidebar");
+    var tableScroll = document.getElementById("t2-table-scroll");
+    if (!sidebar || !tableScroll) return;
+
+    function apply() {
+      var h = sidebar.getBoundingClientRect().height;
+      if (h > 0) {
+        tableScroll.style.height = h + "px";
+      }
+    }
+
+    apply();
+
+    if (!_checklistHeightObserver && window.ResizeObserver) {
+      _checklistHeightObserver = new ResizeObserver(apply);
+      _checklistHeightObserver.observe(sidebar);
+    }
   }
 
   function renderCategoryLegend(containerId) {

@@ -387,6 +387,16 @@ table.data-table tbody tr:hover td {
     linear-gradient(90deg, var(--accent) 0%, var(--accent-rose) 100%) border-box;
 }
 
+/* The Coverage Checklist's table-scroll gets its height set directly (in
+   pixels, via syncChecklistHeight() in dashboard.js) to match the picker
+   sidebar's own rendered height, so the table shows as many rows as fit
+   next to the sidebar and its bottom edge lines up with the sidebar's
+   instead of leaving empty space below a short table. The generic 65vh cap
+   above would otherwise clip that JS-computed height back down. */
+#t2-table-scroll {
+  max-height: none;
+}
+
 /* Row color-coding by Procedure Separation Type (Cohort Summary tab). The
    accent color is set per-row via a CSS custom property on the <tr> itself
    (see dashboard.js), so the whole row -- not just one cell -- can read it:
@@ -563,6 +573,31 @@ table.matrix-table td.cohort-cell:hover {
 }
 .picker label.picker-row:hover {
   background: var(--hover-bg);
+}
+
+/* Coverage Checklist item picker: distinguishes a section-header row (e.g.
+   "Vasomotor symptoms") from its indented sub-items (e.g. "Hot flashes
+   item", "Night sweats item") -- see renderChecklistItemPicker() in
+   dashboard.js. Checking/unchecking a header row cascades to all of its
+   children (the header's checkbox itself goes indeterminate when only
+   some of its children are checked); each child can still be toggled on
+   its own. */
+.picker label.picker-row.picker-header {
+  font-weight: 700;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  margin-top: 0.3rem;
+}
+.picker label.picker-row.picker-header:first-child {
+  margin-top: 0;
+}
+.picker label.picker-row.picker-header:hover {
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--hover-bg));
+}
+.picker label.picker-row.picker-child {
+  padding-left: 1.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 /* ---------------------------------------------------------------------
