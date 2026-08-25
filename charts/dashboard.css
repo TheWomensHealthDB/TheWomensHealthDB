@@ -395,12 +395,12 @@ table.data-table tbody tr:hover td {
     linear-gradient(90deg, var(--accent) 0%, var(--accent-rose) 100%) border-box;
 }
 
-/* The Coverage Checklist's table-scroll gets its height set directly (in
-   pixels, via syncChecklistHeight() in dashboard.js) to match the picker
-   sidebar's own rendered height, so the table shows as many rows as fit
-   next to the sidebar and its bottom edge lines up with the sidebar's
-   instead of leaving empty space below a short table. The generic 65vh cap
-   above would otherwise clip that JS-computed height back down. */
+/* The Coverage Checklist's table-scroll is left to its own natural height
+   (no cap) -- it's the "source of truth" that the picker sidebar and the
+   Procedure Separation Type key are matched to instead, via
+   syncChecklistHeight() in dashboard.js -- so the table's box is always
+   exactly as tall as its own rows need, never taller. The generic 65vh cap
+   above would otherwise clip that natural height back down. */
 #t2-table-scroll {
   max-height: none;
 }
@@ -564,6 +564,17 @@ table.data-table tbody tr.accent-row:hover td {
   gap: 1rem;
   justify-content: space-between;
 }
+/* Coverage Checklist tab specifically: its key box's height is now matched
+   to the table's own (data-driven, often shorter) height rather than a
+   generic tall stretch -- see syncChecklistHeight() in dashboard.js -- so
+   spreading the five entries with `justify-content: space-between` would
+   space them out awkwardly far apart. Pack them together near the top
+   instead; any leftover room just becomes a bit of blank space at the very
+   bottom of the box, which is fine here (unlike the table/sidebar, this
+   box isn't showing filterable data, just a fixed five-item legend). */
+#panel-checklist .procedure-key .procedure-key-list {
+  justify-content: flex-start;
+}
 .procedure-key .procedure-key-item {
   display: flex;
   gap: 0.6rem;
@@ -635,6 +646,15 @@ table.matrix-table thead th .th-label {
   white-space: normal;
   overflow-wrap: break-word;
   line-height: 1.25;
+  /* When a long word has to break onto a second line inside the 8em-wide
+     header (see the width cap below), show a hyphen at the break point --
+     e.g. "Endo-" / "metriosis" -- instead of silently splitting the word
+     with no visual indicator, per `overflow-wrap: break-word` alone.
+     Relies on the page's `lang="en"` (set on <html> in index.html) for the
+     browser's English hyphenation dictionary. */
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  -ms-hyphens: auto;
 }
 table.matrix-table thead th.cohort-col-header {
   height: auto;
@@ -642,13 +662,18 @@ table.matrix-table thead th.cohort-col-header {
 }
 /* Capped so long cohort names (e.g. "The Religious Orders Study and
    Memory and Aging Project (ROSMAP)") don't dominate the sticky first
-   column and push the checklist-item columns off-screen. Overflowing
-   names are ellipsis-truncated -- white-space: nowrap (needed anyway for
-   the sticky column) plus overflow: hidden + text-overflow: ellipsis is
-   the standard combination required for single-line truncation to render
-   at all; the full name is still available via the cell's title attribute
-   on hover (see renderTable2Body() in dashboard.js) and by clicking the
-   row for the full record. */
+   column and push the checklist-item columns off-screen. 22em fits most
+   cohort names in full (actual name lengths in the data range from ~10 to
+   ~74 characters, with a median around 39 and about a quarter of them 52+
+   -- 22em comfortably covers the median and then some, only truncating
+   that longer tail). Overflowing names are ellipsis-truncated -- white-
+   space: nowrap (needed anyway for the sticky column) plus overflow:
+   hidden + text-overflow: ellipsis is the standard combination required
+   for single-line truncation to render at all; the full name is still
+   available via this cell's custom tooltip (see attachTooltip() /
+   renderTable2Body() in dashboard.js -- shown instantly on hover, unlike
+   a plain `title` attribute) and by clicking the row for the full
+   record. */
 table.matrix-table td.cohort-cell, table.matrix-table th.cohort-col-header {
   position: sticky;
   left: 0;
@@ -658,8 +683,8 @@ table.matrix-table td.cohort-cell, table.matrix-table th.cohort-col-header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  width: 12em;
-  max-width: 12em;
+  width: 22em;
+  max-width: 22em;
   font-weight: 600;
   transition: background 0.1s ease, color 0.1s ease;
 }
@@ -718,14 +743,13 @@ table.matrix-table td.type-cell {
 .chip.cat-partial { background: var(--color-partial); color: #4a3300; }
 .chip.cat-empty { background: var(--color-empty); color: #7a828c; box-shadow: none; }
 .chip.cat-empty:hover { transform: none; }
+/* Solid filled square (matching .cat-yes/.cat-no/.cat-partial) with the
+   fixed white "T" glyph set in chipSymbol() in dashboard.js -- previously
+   an outlined/transparent chip showing either a bit of the actual free-
+   text value or, once that got too long, just a small dot, which read as
+   an odd, half-empty square next to the solid Y/N/~ ones beside it. */
 .chip.cat-other {
-  background: transparent;
-  color: var(--color-other);
-  font-weight: 500;
-  border: 1px dashed var(--color-other);
-  padding: 0 0.35em;
-  min-width: unset;
-  white-space: nowrap;
+  background: var(--color-other);
 }
 
 /* ---------------------------------------------------------------------
@@ -737,6 +761,19 @@ table.matrix-table td.type-cell {
   grid-template-columns: 260px 1fr;
   gap: 1rem;
   align-items: start;
+}
+
+/* #t2-sidebar (the Cohorts / Procedure Separation Type / Checklist items
+   pickers, stacked) has its height set directly, in pixels, to match the
+   table's own rendered height -- see syncChecklistHeight() in dashboard.js.
+   The three pickers stacked together often add up to more height than
+   that, so the sidebar scrolls internally as one unit rather than
+   overflowing past the table's bottom edge. Each individual `.picker`
+   below keeps its own max-height/overflow too, for when just one list
+   (e.g. Cohorts) is long enough to need its own scroll independent of the
+   other two. */
+#t2-sidebar {
+  overflow-y: auto;
 }
 
 .picker {
@@ -932,4 +969,38 @@ table.matrix-table td.type-cell {
   color: var(--text-muted);
   padding: 2rem 1rem;
   text-align: center;
+}
+
+/* ---------------------------------------------------------------------
+   Custom hover tooltips
+   --------------------------------------------------------------------- */
+
+/* One shared floating tooltip element, positioned next to the cursor and
+   shown/hidden by attachTooltip() in dashboard.js -- used in place of the
+   native `title` attribute wherever its fixed, browser-controlled show
+   delay would be too slow (see attachTooltip()'s own comment for why).
+   `pointer-events: none` keeps it from ever intercepting the hover/click
+   it's describing. */
+.custom-tooltip {
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  background: rgba(20, 24, 32, 0.94);
+  color: #fff;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  padding: 0.35rem 0.6rem;
+  border-radius: 5px;
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  max-width: 22rem;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.08s ease;
+}
+.custom-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
 }

@@ -718,26 +718,44 @@
     draw();
   }
 
-  // Keeps the Coverage Checklist table's rendered height in sync with the
-  // picker sidebar's rendered height, so the table shows as many rows as
-  // will fit next to the sidebar (previously capped at a generic 65vh via
-  // the shared .table-scroll rule, regardless of how tall the sidebar
-  // actually was -- see the CSS override for #t2-table-scroll) and its
-  // bottom edge lines up with the sidebar's instead of leaving empty space
-  // beneath a short table. Uses ResizeObserver (rather than a one-time
-  // measurement) since the sidebar's height itself changes -- picker
-  // search filtering, window resize, the tab becoming visible for the
-  // first time, etc.
+  // Keeps the picker sidebar's and the Procedure Separation Type key's
+  // rendered heights in sync with the Coverage Checklist *table's* rendered
+  // height. This used to run the other way -- table matched to sidebar --
+  // so the table would stretch to show as many rows as fit next to the
+  // (previously often-taller) sidebar. With the full picker stack (Cohorts
+  // + Procedure Separation Type + Checklist items, all three stacked in
+  // #t2-sidebar) now regularly taller than the table's own row count needs,
+  // that direction left dead space below the table's last row -- the
+  // table's box was forced tall enough to match the sidebar, but its actual
+  // rows didn't fill it. Matching the *sidebar* and *key* to the *table*
+  // instead means the table's box height is always exactly its own content
+  // (no leftover space below the last row); the sidebar scrolls internally
+  // (see "#t2-sidebar" in dashboard.css) if its pickers add up to more than
+  // that height, and the key just leaves any leftover room at the bottom of
+  // its box, which is fine since its five entries no longer stretch to fill
+  // it (see ".procedure-key-list" override in dashboard.css). Uses
+  // ResizeObserver (rather than a one-time measurement) since the table's
+  // height itself changes -- row filtering, window resize, the tab
+  // becoming visible for the first time, etc.
   var _checklistHeightObserver = null;
   function syncChecklistHeight() {
     var sidebar = document.getElementById("t2-sidebar");
     var tableScroll = document.getElementById("t2-table-scroll");
+    var key = document.getElementById("t2-procedure-key");
     if (!sidebar || !tableScroll) return;
 
     function apply() {
-      var h = sidebar.getBoundingClientRect().height;
+      // Clear any previously-applied height first so this always measures
+      // the table's own natural size, not a stale value from an earlier
+      // call (there's nothing else constraining #t2-table-scroll's height
+      // -- see the "max-height: none" override for it in dashboard.css).
+      tableScroll.style.height = "";
+      var h = tableScroll.getBoundingClientRect().height;
       if (h > 0) {
-        tableScroll.style.height = h + "px";
+        sidebar.style.height = h + "px";
+        if (key) {
+          key.style.height = h + "px";
+        }
       }
     }
 
@@ -745,7 +763,7 @@
 
     if (!_checklistHeightObserver && window.ResizeObserver) {
       _checklistHeightObserver = new ResizeObserver(apply);
-      _checklistHeightObserver.observe(sidebar);
+      _checklistHeightObserver.observe(tableScroll);
     }
   }
 
@@ -886,11 +904,19 @@
         var nameTd = document.createElement("td");
         nameTd.className = "cohort-cell" + (accentColor ? " accent-cell" : "");
         nameTd.textContent = r[nameCol];
-        // This column is now width-capped with ellipsis truncation (see
+        // This column is width-capped with ellipsis truncation (see
         // ".cohort-cell" in dashboard.css) so long names can get cut off
-        // visually -- lead the tooltip with the full name so hovering
-        // reveals it, then keep the existing click hint after it.
-        nameTd.title = (r[nameCol] || "") + " \u2014 click for full record";
+        // visually. A plain `title` attribute would work but native
+        // tooltips have a built-in browser delay (~1-1.5s) -- too slow
+        // when the whole point is reading the truncated name right away --
+        // so use the custom, instant (0ms) tooltip helper instead.
+        attachTooltip(
+          nameTd,
+          function () {
+            return (r[nameCol] || "") + " \u2014 click for full record";
+          },
+          0
+        );
         nameTd.addEventListener("click", function () {
           openCohortDetail(r);
         });
@@ -909,7 +935,12 @@
           var classified = DD.classifyValue(r[col]);
           var chip = document.createElement("span");
           chip.className = "chip cat-" + classified.category;
-          chip.title = col + ": " + (classified.label || "(no data)");
+          // A shorter (500ms), but still not-instant, custom tooltip --
+          // see attachTooltip() above -- so quickly passing the mouse
+          // across a row of chips doesn't spam a tooltip for every cell,
+          // while still being noticeably faster than the native `title`
+          // default.
+          attachTooltip(chip, col + ": " + (classified.label || "(no data)"), 500);
           chip.textContent = chipSymbol(classified.category, classified.label);
           td.appendChild(chip);
           tr.appendChild(td);
@@ -934,8 +965,12 @@
       case "empty":
         return "";
       default:
-        // "other" (free text) -- show a short version of the raw label
-        return label && label.length <= 12 ? label : "\u2022";
+        // "other" (free text) -- a fixed "T" (for "text") icon, matching
+        // the solid-square + single-white-glyph look of Y/N/~, rather than
+        // trying to cram the actual (often long) free-text value into the
+        // chip itself. The full value is still available via this chip's
+        // tooltip (see attachTooltip() call above).
+        return "T";
     }
   }
 
@@ -1503,6 +1538,69 @@
     });
   }
 
+
+  // ---------------------------------------------------------------------
+  // Custom hover tooltips
+  // ---------------------------------------------------------------------
+
+  // The native `title` attribute's tooltip has a fixed, browser-controlled
+  // show delay (roughly 1-1.5s in most browsers) that can't be shortened
+  // from CSS/JS. Some tooltips on this page need to behave differently:
+  // the Coverage Checklist's (ellipsis-truncated) cohort names should pop
+  // up the instant the mouse arrives, since the whole point is reading the
+  // full name right away, while its checklist-item chips should still
+  // wait a beat (500ms) so quickly passing the mouse across a row of chips
+  // doesn't spam a tooltip for every cell -- just faster than the sluggish
+  // native default. One floating element + helper implements both;
+  // wherever it's used it fully replaces `title` (never set both, or
+  // they'd double up).
+  var _tooltipEl = null;
+  function getTooltipEl() {
+    if (!_tooltipEl) {
+      _tooltipEl = document.createElement("div");
+      _tooltipEl.className = "custom-tooltip";
+      document.body.appendChild(_tooltipEl);
+    }
+    return _tooltipEl;
+  }
+  function positionTooltip(e) {
+    var tip = getTooltipEl();
+    tip.style.left = e.clientX + 14 + "px";
+    tip.style.top = e.clientY + 18 + "px";
+  }
+  function attachTooltip(el, getText, delayMs) {
+    var timer = null;
+    function show(e) {
+      var text = typeof getText === "function" ? getText() : getText;
+      if (!text) return;
+      var tip = getTooltipEl();
+      tip.textContent = text;
+      positionTooltip(e);
+      tip.classList.add("visible");
+    }
+    el.addEventListener("mouseenter", function (e) {
+      if (delayMs > 0) {
+        timer = window.setTimeout(function () {
+          show(e);
+        }, delayMs);
+      } else {
+        show(e);
+      }
+    });
+    el.addEventListener("mousemove", function (e) {
+      var tip = getTooltipEl();
+      if (tip.classList.contains("visible")) {
+        positionTooltip(e);
+      }
+    });
+    el.addEventListener("mouseleave", function () {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      getTooltipEl().classList.remove("visible");
+    });
+  }
 
   // ---------------------------------------------------------------------
   // Utilities
