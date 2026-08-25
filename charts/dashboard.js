@@ -24,10 +24,12 @@
     // Table 2
     t2SelectedCohorts: null, // Set, populated once data loads
     t2SelectedColumns: null, // Set
+    t2Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
     // Table 3
     t3Conditions: [], // [{id, field, operator, value}]
     t3Mode: "all",
     t3ConditionIdSeq: 1,
+    t3Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
   };
 
   // ---------------------------------------------------------------------
@@ -63,9 +65,30 @@
 
         renderDataSourceBanner();
         renderTable1();
-        renderTable2();
         renderTable3Fields();
-        renderTable3();
+
+        // Table 2 (Coverage Checklist) and Table 3 (Custom Filter) both
+        // build tables with `position: sticky` header cells (see
+        // dashboard.css). Building sticky-positioned cells while their tab
+        // panel is still `display: none` (every tab except the default
+        // "Cohort Summary" one) leaves the browser's sticky-offset
+        // calculations stale -- the header ends up rendered behind the
+        // body and only self-corrects for a flash on hover, never staying
+        // fixed. So, same as the Map tab's initMap() below, defer actually
+        // building these two tables' DOM until their tab is first shown
+        // (see wireTabs()), and only build eagerly here if that tab
+        // happens to already be the active one on load.
+        var checklistPanel = document.getElementById("panel-checklist");
+        if (checklistPanel && checklistPanel.classList.contains("active")) {
+          renderTable2();
+          state.t2Rendered = true;
+        }
+        var filterPanel = document.getElementById("panel-filter");
+        if (filterPanel && filterPanel.classList.contains("active")) {
+          renderTable3();
+          state.t3Rendered = true;
+        }
+
         // Map is initialized lazily when its tab is first shown (see wireTabs),
         // but if the Map tab happens to already be active on load, init now.
         var mapPanel = document.getElementById("panel-map");
@@ -133,6 +156,18 @@
           setTimeout(function () {
             state.map.invalidateSize();
           }, 0);
+        }
+
+        // Same deferred-build reasoning as the Map tab above -- see the
+        // comment in loadData() for why Table 2/3 can't be safely built
+        // while their panel is still display:none.
+        if (target === "checklist" && !state.t2Rendered && state.cohorts.length) {
+          renderTable2();
+          state.t2Rendered = true;
+        }
+        if (target === "filter" && !state.t3Rendered && state.cohorts.length) {
+          renderTable3();
+          state.t3Rendered = true;
         }
       });
     });
@@ -226,7 +261,12 @@
       { key: procCol, label: "Procedure Separation Type" },
       { key: "N", label: "N" },
       { key: "Age Range", label: "Age Range" },
-      { key: "%male/%female", label: "%male/%female" },
+      // The raw sheet's sex-composition column is renamed to this stable
+      // "% Female" key by fetch_data.py's _rename_sex_composition_column()
+      // regardless of how the raw header is currently spelled/punctuated
+      // (it's been "%male/%female" and "%female." at different points) --
+      // see SEX_COMPOSITION_COLUMN in fetch_data.py.
+      { key: "% Female", label: "% Female" },
     ];
     return T1_COLUMNS;
   }
@@ -892,8 +932,12 @@
         var tooltipHtml =
           '<div class="cohort-tooltip"><strong>' +
           escapeHtml(r[nameCol] || "") +
-          "</strong>" +
-          (typeVal ? escapeHtml(typeVal) + "<br/>" : "") +
+          "</strong><br/>" +
+          // Listed as its own labeled line alongside the other variables
+          // below (rather than right next to the cohort name) to match how
+          // Procedure Separation Type is presented everywhere else (see
+          // t1Columns() above and the Cohort Summary table it drives).
+          (typeVal ? "Procedure Separation Type: " + escapeHtml(typeVal) + "<br/>" : "") +
           "Mapped to: " +
           escapeHtml(DD.formatValue(r[locationCol])) +
           "<br/>" +
@@ -903,8 +947,8 @@
           "Age range: " +
           escapeHtml(DD.formatValue(r["Age Range"])) +
           "<br/>" +
-          "%male/%female: " +
-          escapeHtml(DD.formatValue(r["%male/%female"])) +
+          "% Female: " +
+          escapeHtml(DD.formatValue(r["% Female"])) +
           '<span class="tooltip-hint">Click marker for full details</span>' +
           "</div>";
         marker.bindTooltip(tooltipHtml);
@@ -959,16 +1003,37 @@
     }
   }
 
+  // Cap on how far (in real-world degrees of latitude) a marker may ever be
+  // pushed from its group's true geocoded centroid, no matter how tightly
+  // packed the group's screen-pixel "don't touch" spacing would otherwise
+  // push it. ~1.5 degrees is roughly 165km -- small relative to a country,
+  // but big enough to give real separation once zoomed in to state level.
+  // See repositionJitteredMarkers() for why this cap exists.
+  var MAX_MARKER_OFFSET_DEG = 1.5;
+
   /**
-   * Spreads apart markers that share an identical geocoded centroid (i.e.
-   * cohorts in the same country) around a small ring, computed in
-   * *screen-pixel* space at the map's current zoom level rather than as a
-   * fixed lat/lon offset. That's the key fix for markers overlapping at a
-   * zoomed-out view: a degrees-based offset looks fine at one zoom level
-   * but collapses back into an overlapping blob at any other, since
-   * degrees-per-pixel shrinks a lot as you zoom out. Re-run on every zoom
-   * change (wired up in initMap()) so the on-screen spacing stays roughly
-   * constant no matter how far in or out you are.
+   * Spreads apart markers that share an identical geocoded centroid (e.g.
+   * several cohorts resolved to the same state or country) around a small
+   * ring, computed in *screen-pixel* space at the map's current zoom level
+   * rather than as a fixed lat/lon offset -- a fixed degrees-based offset
+   * looks fine at one zoom level but collapses back into an overlapping
+   * blob at any other, since degrees-per-pixel shrinks a lot as you zoom
+   * out. Re-run on every zoom change (wired up in initMap()) so the
+   * on-screen spacing stays roughly constant no matter how far in or out
+   * you are.
+   *
+   * A pure pixel-space ring has its own problem, though: at a very zoomed
+   * out view, degrees-per-pixel is *huge*, so even a modest, comfortable
+   * pixel gap corresponds to a real-world offset of hundreds of km --
+   * enough to visibly displace a marker into the ocean or a neighboring
+   * state/country at the map's default zoom level. MAX_MARKER_OFFSET_DEG
+   * bounds the ring radius to a fixed real-world distance from the true
+   * centroid to prevent that: at low zoom this cap wins (so markers stay
+   * near their true location, overlapping some if the group is large --
+   * which is fine, and only gets more pronounced the further out you zoom),
+   * and once zoomed in enough that the cap's pixel equivalent exceeds the
+   * "don't touch" spacing, the "don't touch" spacing takes over and markers
+   * fan out cleanly with no overlap.
    *
    * Also resizes every marker to match the new zoom level (see
    * markerRadiusForZoom()) before computing ring spacing, so dots grow
@@ -1004,12 +1069,29 @@
       var angleStep = (2 * Math.PI) / k;
       var minSin = Math.max(Math.sin(angleStep / 2), 0.05);
       var desiredGapPx = 6;
-      var ringRadiusPx = Math.max(
+      var noTouchRadiusPx = Math.max(
         maxRadius + 14,
         (2 * maxRadius + desiredGapPx) / (2 * minSin)
       );
 
       var centerPoint = state.map.project(group.centroid, zoom);
+
+      // Real-world-distance cap, converted to this zoom's pixel space (via
+      // Leaflet's own projection, so it's exact regardless of latitude).
+      var capPoint = state.map.project(
+        L.latLng(group.centroid.lat + MAX_MARKER_OFFSET_DEG, group.centroid.lng),
+        zoom
+      );
+      var maxOffsetPx = Math.abs(capPoint.y - centerPoint.y);
+
+      // Aim for the "don't touch" spacing, but never exceed the real-world
+      // cap; if the cap is tighter than half a marker's radius (only
+      // possible when very zoomed out), fall back to the cap itself rather
+      // than forcing extra separation that would blow past it.
+      var ringRadiusPx = Math.max(
+        Math.min(noTouchRadiusPx, maxOffsetPx),
+        Math.min(maxRadius * 0.5, maxOffsetPx)
+      );
 
       group.entries.forEach(function (entry) {
         var offsetPoint = L.point(

@@ -96,13 +96,52 @@ PI_LOCATION_COLUMN = (
 # the raw, inconsistently-formatted source columns.
 RESOLVED_LOCATION_COLUMN = "Location of Cohort's Participants (or of PI, if Unlisted/Multiple/Nationwide)"
 
+# The raw sheet's sex-composition column has already been renamed at least
+# once (originally "%male/%female", holding a paired "0/100"-style value;
+# as of 2026 it's just "%female." holding a single percentage) and may well
+# be spelled/punctuated slightly differently again in the future. Rather
+# than hardcoding the current exact raw header text everywhere downstream
+# (METADATA_COLUMNS, dashboard.js, mock data, etc.), _rename_sex_composition
+# _column() below detects any of these variants by a loose regex and
+# renames the column to this one stable, code-defined name -- same pattern
+# as RESOLVED_LOCATION_COLUMN above.
+SEX_COMPOSITION_COLUMN = "% Female"
+
+# Matches "%male/%female", "%female", "%female.", "% Female", "female", etc.
+# (case/whitespace/trailing-period insensitive) -- but not arbitrary other
+# text that merely mentions "female" somewhere in a longer sentence, since
+# this is a *whole-header* match, not a substring search.
+_SEX_COMPOSITION_HEADER_RE = re.compile(
+    r"^%?\s*(?:male\s*/\s*)?%?\s*female\.?$", re.IGNORECASE
+)
+
+
+def _rename_sex_composition_column(header: "list[str]") -> "list[str]":
+    """
+    Renames whichever raw header spelling of the sex-composition column is
+    present (see _SEX_COMPOSITION_HEADER_RE) to the stable
+    SEX_COMPOSITION_COLUMN name, so downstream code (METADATA_COLUMNS,
+    dashboard.js, etc.) only ever has to know about one name regardless of
+    how the sheet's header text is currently spelled/punctuated.
+    """
+    return [
+        SEX_COMPOSITION_COLUMN if _SEX_COMPOSITION_HEADER_RE.match(h.strip()) else h
+        for h in header
+    ]
+
+
 METADATA_COLUMNS = [
     "Cohort Name",
-    "Location",
+    # Was "Location" -- the raw sheet's column of this kind is now named
+    # "Country" (this was silently dropping the field from the Overview
+    # section/Cohort Summary table entirely, since it never matched any
+    # real column, rather than showing blank -- unlike a genuinely blank
+    # cell, "not in complete_df.columns at all" isn't warned about).
+    "Country",
     "Public Availability",
     "N",
     "Age Range",
-    "%male/%female",
+    SEX_COMPOSITION_COLUMN,
     "Year Started/Wave Description",
     "Wording of Related Questions/Variables",
     RESOLVED_LOCATION_COLUMN,
@@ -166,11 +205,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
     rows = [
         {
             "Cohort Name": "Example Cohort A",
-            "Location": "United States",
+            "Country": "United States",
             "Public Availability": "Yes",
             "N": 1200,
             "Age Range": "40-60",
-            "%male/%female": "0/100",
+            SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2005",
             "Hysterectomy Question Included": "Yes",
             "Oopherectomy Question Included": "No",
@@ -190,11 +229,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
         },
         {
             "Cohort Name": "Example Cohort B",
-            "Location": "United Kingdom",
+            "Country": "United Kingdom",
             "Public Availability": "No",
             "N": 850,
             "Age Range": "35-55",
-            "%male/%female": "0/100",
+            SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 1998",
             "Hysterectomy Question Included": "No",
             "Oopherectomy Question Included": "No",
@@ -214,11 +253,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
         },
         {
             "Cohort Name": "Example Cohort C",
-            "Location": "United States",
+            "Country": "United States",
             "Public Availability": "Yes",
             "N": 3400,
             "Age Range": "18-45",
-            "%male/%female": "45/55",
+            SEX_COMPOSITION_COLUMN: "55%",
             "Year Started/Wave Description": "Wave 1: 2012",
             "Hysterectomy Question Included": "Yes",
             "Oopherectomy Question Included": "Yes",
@@ -238,11 +277,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
         },
         {
             "Cohort Name": "Example Cohort D",
-            "Location": "United Kingdom",
+            "Country": "United Kingdom",
             "Public Availability": "Yes",
             "N": 2100,
             "Age Range": "50-70",
-            "%male/%female": "0/100",
+            SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2001",
             "Hysterectomy Question Included": "Yes",
             "Oopherectomy Question Included": "To some extent",
@@ -262,11 +301,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
         },
         {
             "Cohort Name": "Example Cohort E",
-            "Location": "Canada",
+            "Country": "Canada",
             "Public Availability": "No",
             "N": 640,
             "Age Range": "45-65",
-            "%male/%female": "0/100",
+            SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2010",
             "Hysterectomy Question Included": "Yes",
             "Oopherectomy Question Included": "Yes",
@@ -286,11 +325,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
         },
         {
             "Cohort Name": "Example Cohort F",
-            "Location": "Australia",
+            "Country": "Australia",
             "Public Availability": "Yes",
             "N": 980,
             "Age Range": "40-55",
-            "%male/%female": "0/100",
+            SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2009",
             "Hysterectomy Question Included": "No",
             "Oopherectomy Question Included": "No",
@@ -310,11 +349,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
         },
         {
             "Cohort Name": "Example Cohort G",
-            "Location": "Netherlands",
+            "Country": "Netherlands",
             "Public Availability": "Yes",
             "N": 1750,
             "Age Range": "30-50",
-            "%male/%female": "50/50",
+            SEX_COMPOSITION_COLUMN: "50%",
             "Year Started/Wave Description": "Wave 1: 2015",
             "Hysterectomy Question Included": "Yes",
             "Oopherectomy Question Included": "No",
@@ -334,11 +373,11 @@ def _mock_complete_datasets() -> pd.DataFrame:
         },
         {
             "Cohort Name": "Example Cohort H",
-            "Location": "Japan",
+            "Country": "Japan",
             "Public Availability": "No",
             "N": 510,
             "Age Range": "42-58",
-            "%male/%female": "0/100",
+            SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2007",
             "Hysterectomy Question Included": "No",
             "Oopherectomy Question Included": "No",
@@ -468,21 +507,40 @@ def _is_yes(value) -> bool:
     return text in _YES_TOKENS
 
 
-def _build_followup_label(base_name: str) -> str:
+def _build_followup_label(base_name: str, raw_followup_header: str) -> str:
     """
     Turns a base checklist item's header (e.g. "Birth control usage item")
-    into a label for its "if yes, type item" follow-up column, e.g.
-    'Birth control usage type item (if yes, for "Birth control usage
-    item")'. Falls back to appending the same templated suffix to the base
-    name as-is when it doesn't end in "item" (so the reference back to the
-    base item is still unambiguous even if the phrasing is a little more
-    repetitive).
+    and the follow-up column's own raw header (e.g. "If yes Primary reason
+    for taking birth control pills item:") into a label that keeps the
+    follow-up's own distinguishing text while making unambiguous which base
+    item it follows, e.g. 'Primary reason for taking birth control pills
+    item (if yes, for "Birth control usage item")'.
+
+    A single base item can have *several* consecutive follow-up columns
+    (e.g. "Birth control usage item" is followed by 4: type, primary
+    reason, when start, duration of use) -- keeping each follow-up's own
+    text (rather than always inserting a generic "type") is what keeps
+    those 4 from all colliding into one identical, indistinguishable label.
     """
     base_name = base_name.strip()
-    stem = re.sub(r"\s*item\s*:?\s*$", "", base_name, flags=re.IGNORECASE).strip()
-    if not stem or stem.lower() == base_name.lower():
-        stem = base_name
-    return f'{stem} type item (if yes, for "{base_name}")'
+    raw_followup_header = raw_followup_header.strip()
+
+    # Strip the leading "if yes[,]" prefix, keeping whatever the sheet used
+    # to distinguish this particular follow-up ("type", "primary reason for
+    # taking birth control pills", "when start", "duration of use", ...).
+    distinguishing = re.sub(
+        r"^\s*if\s+yes\s*,?\s*", "", raw_followup_header, flags=re.IGNORECASE
+    ).strip()
+    distinguishing = re.sub(r"\s*:\s*$", "", distinguishing).strip()
+
+    if not distinguishing:
+        # A bare "If yes" with nothing else to go on -- fall back to the
+        # old generic "type" wording rather than producing an empty label.
+        distinguishing = "type item"
+    elif not re.search(r"\bitem\b", distinguishing, re.IGNORECASE):
+        distinguishing = f"{distinguishing} item"
+
+    return f'{distinguishing} (if yes, for "{base_name}")'
 
 
 def _process_followup_columns(header: "list[str]", data_rows: "list[list[str]]"):
@@ -507,7 +565,7 @@ def _process_followup_columns(header: "list[str]", data_rows: "list[list[str]]")
         if FOLLOWUP_HEADER_RE.match(col or ""):
             if last_base_idx is not None:
                 base_name = header[last_base_idx]
-                header[i] = _build_followup_label(base_name)
+                header[i] = _build_followup_label(base_name, col)
                 for row in data_rows:
                     if len(row) > max(i, last_base_idx) and not _is_yes(row[last_base_idx]):
                         row[i] = ""
@@ -634,6 +692,7 @@ def get_complete_datasets(gc) -> pd.DataFrame:
 
     header, *data_rows = rows
     header = [h.strip() for h in header]
+    header = _rename_sex_composition_column(header)
 
     # get_all_values() can return short rows when a row's trailing cells are
     # blank -- pad/truncate every row to the header's width so positional
