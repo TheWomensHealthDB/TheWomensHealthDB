@@ -949,19 +949,32 @@
     // conditions, but structurally it's just another entry inside
     // validity_columns (see fetch_data.py), so left alone it lands wherever
     // it happens to sort among the other validity/metadata columns --
-    // usually buried mid-list. Pull it out and pin it as the second option
-    // (right after Cohort Name, which is always metadata_columns[0]) so
-    // it's easy to find, then let the rest of validity_columns follow in
-    // their original order minus this one entry.
+    // usually buried mid-list. Pull it out and pin it as the second option,
+    // right after Cohort Name specifically -- NOT after the rest of
+    // metadata_columns (there are 8 of those: Cohort Name, Country, Public
+    // Availability, N, Age Range, ..., so appending after the *whole* array
+    // used to bury it at position 9 instead of 2, which is what this
+    // rewrite fixes) -- then let the rest of metadata, followed by the rest
+    // of validity_columns, follow in their original order minus this one
+    // entry.
+    var restMetadata = metadata.filter(function (c) {
+      return c !== procCol && c !== metadata[0];
+    });
     var restValidity = validity.filter(function (c) {
       return c !== procCol;
     });
 
-    var fields = [].concat(metadata);
-    if (procCol && metadata.indexOf(procCol) === -1) {
+    var fields = [];
+    if (metadata.length) {
+      fields.push(metadata[0]); // Cohort Name
+    }
+    if (procCol && fields.indexOf(procCol) === -1) {
       fields.push(procCol);
     }
-    return fields.concat(restValidity).concat(s.checklist_columns || []);
+    return fields
+      .concat(restMetadata)
+      .concat(restValidity)
+      .concat(s.checklist_columns || []);
   }
 
   function renderTable3Fields() {
@@ -1311,8 +1324,18 @@
           // Listed as its own labeled line alongside the other variables
           // below (rather than right next to the cohort name) to match how
           // Procedure Separation Type is presented everywhere else (see
-          // t1Columns() above and the Cohort Summary table it drives).
-          (typeVal ? "Procedure Separation Type: " + escapeHtml(typeVal) + "<br/>" : "") +
+          // t1Columns() above and the Cohort Summary table it drives). The
+          // "Type N" value itself (not the "Procedure Separation Type: "
+          // label) is colored with this cohort's own `color` (the same one
+          // used for the marker/swatch, from procedureTypeColor() above),
+          // matching how the Cohort Summary/Coverage Checklist tables color
+          // that same value.
+          (typeVal
+            ? "Procedure Separation Type: " +
+              '<span style="color:' + color + '; font-weight:700;">' +
+              escapeHtml(typeVal) +
+              "</span><br/>"
+            : "") +
           "Mapped to: " +
           escapeHtml(DD.formatValue(r[locationCol])) +
           "<br/>" +
