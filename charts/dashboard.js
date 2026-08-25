@@ -453,7 +453,6 @@
     renderCategoryLegend("t2-legend");
     renderTable2Hint();
     renderTable2Body();
-    syncChecklistHeight();
   }
 
   function renderTable2Hint() {
@@ -772,56 +771,23 @@
     draw();
   }
 
-  // Keeps the picker sidebar's rendered height in sync with the Coverage
-  // Checklist *table's* rendered height. This used to run the other way --
-  // table matched to sidebar -- so the table would stretch to show as many
-  // rows as fit next to the (previously often-taller) sidebar. With the
-  // full picker stack (Cohorts + Procedure Separation Type + Checklist
-  // items, all three stacked in #t2-sidebar) now regularly taller than the
-  // table's own row count needs, that direction left dead space below the
-  // table's last row -- the table's box was forced tall enough to match the
-  // sidebar, but its actual rows didn't fill it. Matching the *sidebar* to
-  // the *table* instead means the table's box height is always exactly its
-  // own content (no leftover space below the last row); the sidebar
-  // scrolls internally (see "#t2-sidebar" in dashboard.css) if its pickers
-  // add up to more than that height.
-  //
-  // The Procedure Separation Type key is deliberately NOT included in this
-  // sync (it used to be) -- the key's own box now just hugs its own fixed
-  // five-item content (see "#panel-checklist .panel-key" in dashboard.css
-  // overriding the grid's default `align-items: stretch`), ending right
-  // after its last line of text instead of being stretched down to match
-  // the table, which left a slab of empty space below the key's content
-  // whenever the table was taller than the key.
-  //
-  // Uses ResizeObserver (rather than a one-time measurement) since the
-  // table's height itself changes -- row filtering, window resize, the tab
-  // becoming visible for the first time, etc.
-  var _checklistHeightObserver = null;
-  function syncChecklistHeight() {
-    var sidebar = document.getElementById("t2-sidebar");
-    var tableScroll = document.getElementById("t2-table-scroll");
-    if (!sidebar || !tableScroll) return;
-
-    function apply() {
-      // Clear any previously-applied height first so this always measures
-      // the table's own natural size, not a stale value from an earlier
-      // call (there's nothing else constraining #t2-table-scroll's height
-      // -- see the "max-height: none" override for it in dashboard.css).
-      tableScroll.style.height = "";
-      var h = tableScroll.getBoundingClientRect().height;
-      if (h > 0) {
-        sidebar.style.height = h + "px";
-      }
-    }
-
-    apply();
-
-    if (!_checklistHeightObserver && window.ResizeObserver) {
-      _checklistHeightObserver = new ResizeObserver(apply);
-      _checklistHeightObserver.observe(tableScroll);
-    }
-  }
+  // NOTE: this used to be syncChecklistHeight() -- it forced the picker
+  // sidebar's rendered height (in pixels, via JS) to match the Coverage
+  // Checklist table's own rendered height, so a naturally-tall sidebar
+  // wouldn't leave dead space below the table's last row. That had an
+  // unwanted side effect: whenever filtering shrank the table down to just
+  // a row or two (or a "No cohorts selected" message), the sidebar's
+  // checkbox lists got forced down to that same tiny height too, clipping
+  // most of the pickers. `.two-col` (see dashboard.css) already uses
+  // `align-items: start`, which means the grid was never actually
+  // stretching one column to match the other in the first place -- the JS
+  // height-forcing was the only thing coupling them, in *either*
+  // direction. Removing it lets each side simply size to its own natural
+  // content: the table shows exactly its own rows (no forced tall/short
+  // box), and the sidebar always shows its own full picker stack (with its
+  // own internal scrolling -- see "#t2-sidebar" and ".picker" in
+  // dashboard.css) regardless of how many rows the table happens to be
+  // showing at the moment.
 
   // Renders the fixed Procedure Separation Type definitions (see
   // DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS), each paired with its fixed
@@ -935,7 +901,13 @@
       // the <th> -- see the ".th-label" rule in dashboard.css.
       var label = document.createElement("span");
       label.className = "th-label";
-      label.textContent = col;
+      // Soft-hyphenated version of the column name -- see
+      // softHyphenateLabel() above -- so a long word wrapping onto a
+      // second line inside this narrow column shows a visible hyphen at
+      // the break instead of silently splitting mid-word. A soft hyphen
+      // (U+00AD) is a real character, not markup, so this is still safe
+      // to set via textContent.
+      label.textContent = softHyphenateLabel(col);
       th.appendChild(label);
       th.title = col;
       headRow.appendChild(th);
@@ -1687,6 +1659,75 @@
       }
       getTooltipEl().classList.remove("visible");
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Manual word-break hints (checklist matrix column headers)
+  // ---------------------------------------------------------------------
+
+  // CSS `hyphens: auto` (dictionary-based automatic hyphenation) turned out
+  // not to reliably show a visible "-" at the break in practice -- long
+  // words (e.g. "Hysterectomy") were still wrapping mid-word with no hyphen
+  // at all, likely due to a known browser quirk where `overflow-wrap:
+  // break-word` (needed as a fallback for any word that still doesn't fit)
+  // takes over before the hyphenation dictionary gets a chance to run.
+  // Rather than depend on that, insert actual soft hyphens (U+00AD) into
+  // long words ourselves -- a soft hyphen is invisible unless the browser
+  // actually breaks the line at that exact point, in which case it renders
+  // as a normal hyphen. This is a much older and more universally-honored
+  // mechanism than the CSS `hyphens` property, so it doesn't depend on
+  // dictionary support or interact with `overflow-wrap` the same way.
+  // `.th-label` in dashboard.css uses `hyphens: manual` (the CSS default)
+  // so the browser limits itself to these explicit break points rather
+  // than trying to find additional ones on its own.
+  var SOFT_HYPHEN = "\u00AD";
+
+  // Recognizable medical/English suffixes get a break inserted right
+  // before them, e.g. "Hyster" + SOFT_HYPHEN + "ectomy" -- a more natural-
+  // looking break than an arbitrary mid-word cut. Checked longest-first so
+  // "ectomy" doesn't accidentally match inside a word before a longer,
+  // more specific suffix does.
+  var HYPHENATION_SUFFIXES = [
+    "ectomy",
+    "ology",
+    "ography",
+    "itis",
+    "osis",
+    "ation",
+    "ility",
+    "tion",
+    "ment",
+    "ness",
+    "ing",
+  ];
+
+  // Inserts SOFT_HYPHEN at reasonable break points inside a single long
+  // word. Short words are left untouched -- there's no need to hyphenate
+  // something that already fits on one line inside an 8em column.
+  function softHyphenateWord(word) {
+    if (word.length <= 8) return word;
+    var lower = word.toLowerCase();
+    for (var i = 0; i < HYPHENATION_SUFFIXES.length; i++) {
+      var suffix = HYPHENATION_SUFFIXES[i];
+      if (lower.length - suffix.length >= 3 && lower.slice(-suffix.length) === suffix) {
+        var stem = word.slice(0, word.length - suffix.length);
+        return softHyphenateWord(stem) + SOFT_HYPHEN + word.slice(word.length - suffix.length);
+      }
+    }
+    // Fallback for long words with no recognized suffix: break into ~6-
+    // character chunks so nothing is left long enough to force an
+    // unindicated overflow-wrap break.
+    if (word.length <= 10) return word;
+    return word.slice(0, 6) + SOFT_HYPHEN + softHyphenateWord(word.slice(6));
+  }
+
+  // Applies softHyphenateWord() to every word in a label, leaving spacing
+  // and punctuation between words untouched.
+  function softHyphenateLabel(label) {
+    return String(label || "")
+      .split(" ")
+      .map(softHyphenateWord)
+      .join(" ");
   }
 
   // ---------------------------------------------------------------------

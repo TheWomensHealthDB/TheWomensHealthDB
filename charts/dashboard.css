@@ -693,15 +693,19 @@ table.matrix-table thead th .th-label {
   white-space: normal;
   overflow-wrap: break-word;
   line-height: 1.25;
-  /* When a long word has to break onto a second line inside the 8em-wide
-     header (see the width cap below), show a hyphen at the break point --
-     e.g. "Endo-" / "metriosis" -- instead of silently splitting the word
-     with no visual indicator, per `overflow-wrap: break-word` alone.
-     Relies on the page's `lang="en"` (set on <html> in index.html) for the
-     browser's English hyphenation dictionary. */
-  hyphens: auto;
-  -webkit-hyphens: auto;
-  -ms-hyphens: auto;
+  /* The visible hyphen at a long word's break point (e.g. "Endo-" /
+     "metriosis") is produced by soft hyphen characters (U+00AD) inserted
+     directly into the label text -- see softHyphenateLabel() in
+     dashboard.js -- rather than by the CSS `hyphens: auto` dictionary-
+     based approach, which turned out not to reliably show a hyphen in
+     practice (likely losing out to the `overflow-wrap: break-word`
+     fallback above before the hyphenation dictionary got a chance to run).
+     `hyphens: manual` (the CSS-default value, set explicitly here for
+     clarity) tells the browser to only break at those explicit soft-hyphen
+     points rather than trying to find additional ones itself. */
+  hyphens: manual;
+  -webkit-hyphens: manual;
+  -ms-hyphens: manual;
 }
 table.matrix-table thead th.cohort-col-header {
   height: auto;

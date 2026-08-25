@@ -42,12 +42,22 @@
     "pending",
   ]);
 
+  // NOTE: these are the JS-side equivalents of the --color-yes/-no/-partial/
+  // -empty/-other CSS custom properties in dashboard.css's `:root` block --
+  // used here for the "Yes/No/To some extent/No data/Other" legend swatch
+  // (renderCategoryLegend() in dashboard.js), which is built from a plain
+  // JS-generated `style="background:...">` string rather than a CSS class,
+  // so it can't just reference the CSS variable directly. Keep these two
+  // in sync any time one changes -- `other` previously drifted out of sync
+  // (still "#1565c0" blue here after --color-other was changed to teal in
+  // CSS), leaving this legend showing the old color while every actual
+  // chip using the CSS variable had already updated.
   var CATEGORY_COLORS = {
     yes: "#2e7d32",
     no: "#9e9e9e",
     partial: "#f9a825",
     empty: "#e0e0e0",
-    other: "#1565c0",
+    other: "#00838f",
   };
 
   /**
@@ -157,15 +167,21 @@
   // another tab's subset includes.
   var PROCEDURE_SEPARATION_TYPE_COLORS = {
     "Type 1": PALETTE[0],
-    "Type 2": PALETTE[1],
+    // Custom hex (not PALETTE[1] directly) -- a slightly darker red than
+    // PALETTE[1]'s "#c62828" so it reads clearly apart from Type 5's
+    // lighter magenta below rather than the two sitting at similar
+    // lightness. Hardcoded here rather than changing PALETTE[1] itself so
+    // any other, unrelated use of PALETTE[1] elsewhere isn't affected.
+    "Type 2": "#8b1a1a",
     "Type 3": PALETTE[2],
     "Type 4": PALETTE[3],
-    // PALETTE[4] ("#6a1b9a", purple) read too close to Type 1's blue at a
-    // glance, especially in the small key swatches and thin accent-row
-    // tints. PALETTE[8] ("#ad1457", pink/magenta) isn't used by any other
-    // Type or by any of the Yes/No/Partial/Other chip colors, and sits
-    // clearly apart from blue on the color wheel.
-    "Type 5": PALETTE[8],
+    // Custom hex (not a PALETTE index) -- PALETTE[4] ("#6a1b9a", purple)
+    // originally used here read too close to Type 1's blue at a glance, so
+    // this was first swapped to PALETTE[8] ("#ad1457", pink/magenta).
+    // That in turn read too close to Type 2's red once both are shown
+    // side-by-side (e.g. in the checklist key), so it's now a lighter
+    // magenta shade, kept apart from both blue and the darker red above.
+    "Type 5": "#e63280",
   };
 
   // ---------------------------------------------------------------------
