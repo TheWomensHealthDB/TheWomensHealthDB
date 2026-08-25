@@ -217,7 +217,15 @@ EXCLUDED_COLUMNS = [
 # rename. _standardize_headers() below skips any header matching
 # FOLLOWUP_HEADER_RE for this reason.
 HEADER_STANDARDIZATION_MAP = {
-    "Oopherectomy Question Included": "Oophorectomy Question Included",
+    # Per the audit spreadsheet's decision column: drop the "Question
+    # Included" suffix on this whole cluster in favor of the majority
+    # "item" convention used everywhere else.
+    "Hysterectomy Question Included": "Hysterectomy item",
+    "Oopherectomy Question Included": "Oophorectomy item",
+    "Date of Menses Question Included": "Date of menses item",
+    "FMP Date Question Included": "FMP date item",
+    "Pregnancy Question Included": "Pregnancy item",
+    "Other Women's Health Questions": "Other women's health item",
     "Wording of Related Questions/Variables": HYSTERECTOMY_OOPHORECTOMY_RELATED_COLUMN,
     "Age at menarche": "Age at menarche item",
     "PCOS/PMOS Item": "PCOS/PMOS item",
@@ -243,12 +251,43 @@ HEADER_STANDARDIZATION_MAP = {
     "Length of time without a period (amenorrhea) item:": (
         "Length of time without a period (amenorrhea) item"
     ),
-    "Vasomotor symptoms:": "Vasomotor symptoms",
+    "Vasomotor symptoms:": "Vasomotor symptom items",
+    "Vasomotor symptoms": "Vasomotor symptom items",
     "Hot flashes item:": "Hot flashes item",
     "Night sweats item:": "Night sweats item",
-    "Knowledge of HT": "Knowledge of hormone therapy",
-    "Views or perceptions of HT": "Views or perceptions of hormone therapy",
-    "Sources of knowledge about HT": "Sources of knowledge about hormone therapy",
+    # Per the audit sheet: this one keeps its "item" suffix but gets
+    # "(general)" added, since it's distinguished from the more specific
+    # "Pain inside vagina during intercourse item" right after it.
+    "Pain during intercourse item": "Pain during intercourse (general) item",
+    # Per the audit sheet: these describe all checklist items generally
+    # (not a single item each), so they get pluralized to "items".
+    "Symptom severity item": "Symptom severity items",
+    "Symptom time frame item": "Symptom time frame items",
+    "Knowledge of menopause": "Knowledge of menopause item",
+    "Views or perceptions of menopause": "Views or perceptions of menopause item",
+    "Sources of knowledge about menopause": "Sources of knowledge about menopause item",
+    "Knowledge of HT": "Knowledge of hormone therapy item",
+    "Views or perceptions of HT": "Views or perceptions of hormone therapy item",
+    "Sources of knowledge about HT": "Sources of knowledge about hormone therapy item",
+    # Per the audit sheet: reworded to a "...?" phrasing, and "Cognitive
+    # Variables"/"Neuroimaging Variables" reworded to specify "data
+    # collected" rather than just "Variables".
+    "Sex Hormones/Biomarkers collected?": "Sex hormones/biomarkers collected?",
+    "Health Records Linked": "Health records linked?",
+    "Cognitive Variables": "Cognitive data collected?",
+    "Neuroimaging Variables": "Neuroimaging data collected?",
+    # Per the audit spreadsheet's decision column: these 6 remaining symptom
+    # sub-group headers all get "symptoms" -> singular "symptom" + "items"
+    # suffix, matching "Vasomotor symptom items" above -- and, per the same
+    # sheet, all 7 of these become nested children of the
+    # "Menopause-related symptom items" umbrella header instead of
+    # standalone top-level items (see CHECKLIST_SECTION_GROUPS below).
+    "Sleep symptoms": "Sleep symptom items",
+    "Somatic symptoms": "Somatic symptom items",
+    "Mood symptoms item": "Mood symptom items",
+    "Cognitive symptoms item": "Cognitive symptom items",
+    "Genitourinary symptoms item": "Genitourinary symptom items",
+    "Sexual/libido symptoms item": "Sexual/libido symptom items",
 }
 
 # Matches a checklist column's header text when it's a "if yes, type item"
@@ -981,6 +1020,25 @@ def _parse_two_row_header_table(rows: "list[list[str]]") -> pd.DataFrame:
 
     columns = _dedupe_columns(columns)
 
+    # A stray blank spacer column in the sheet (blank in both header rows,
+    # e.g. for visual spacing next to the "Cohort" column) flattens to an
+    # empty-string column name here -- which then survives all the way to
+    # the cohort detail modal as an unlabeled row showing just an em dash
+    # (see renderDetailSection() in dashboard.js / DD.formatValue()).
+    # Dropped here, with a warning, rather than downstream, since an empty
+    # header can never be a real "Classification Validity"/"Temporal
+    # Validity" column.
+    keep_idx = [i for i, c in enumerate(columns) if c.strip()]
+    if len(keep_idx) != len(columns):
+        _warn(
+            f"Dropped {len(columns) - len(keep_idx)} column(s) with a blank "
+            f"flattened header from '{TABLE_TAB}' (likely stray spacer "
+            f"column(s) in the sheet, between the cohort-name column and "
+            f"the merged group headers)."
+        )
+        columns = [columns[i] for i in keep_idx]
+        data_rows = [[row[i] for i in keep_idx] for row in data_rows]
+
     df = pd.DataFrame(data_rows, columns=columns)
     # Drop fully-empty trailing rows, if any
     df = df[df.apply(lambda r: any(str(v).strip() for v in r), axis=1)]
@@ -1123,81 +1181,99 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
 # This is a fixed, hand-built list rather than something inferred at
 # runtime (e.g. from indentation or naming patterns) because the real
 # sheet's column order/wording doesn't reliably signal "this one's a
-# section header" any other way. Built from the exact column order Dan
-# shared; two judgment calls worth double-checking against the sheet if
-# this looks wrong:
-#   - "Mood symptoms item" and "Cognitive symptoms item" are treated as
-#     group headers even though they keep the "item" suffix (unlike the
-#     other 5 headers below, which don't) -- inferred from their position
-#     immediately before a run of clearly-related sub-items, same pattern
-#     as "Vasomotor symptoms"/"Sleep symptoms"/etc.
-#   - "Menopause-related symptom items" (the umbrella over all 7 groups
-#     below) and "Symptom severity item"/"Symptom time frame item" are
-#     deliberately left as standalone, ungrouped items rather than folded
-#     into this structure -- not clearly a per-symptom-group header/child
-#     relationship the same way the 7 below are.
+# section header" any other way. Built from -- and double-checked against
+# -- the "Column Audit" sheet's decision column (the "Red rows" in that
+# sheet's Legend are explicitly the section/category-heading candidates).
+#
+# A group's "children" list can contain either:
+#   - a leaf column-name string (an actual per-cohort checklist item), or
+#   - another nested {"header": ..., "children": [...]} dict, for headers
+#     that are themselves a sub-section of a larger umbrella header.
+#
+# Per the audit sheet, "Menopause-related symptom items" is the umbrella
+# header over all 7 symptom sub-groups below (each renamed via
+# HEADER_STANDARDIZATION_MAP above to "<Category> symptom items"), and
+# "Menstrual cycle / bleeding pattern item" is a separate, single-level
+# section header that was missing from the previous version of this list.
 CHECKLIST_SECTION_GROUPS = [
     {
-        "header": "Vasomotor symptoms",
-        "children": ["Hot flashes item", "Night sweats item"],
-    },
-    {
-        "header": "Sleep symptoms",
+        "header": "Menstrual cycle / bleeding pattern item",
         "children": [
-            "Difficulty getting to sleep item",
-            "Difficulty staying asleep item",
-            "Nighttime awakening item",
+            "Cycle regularity item",
+            "Cycle length in days item",
+            "Change in cycle length item",
+            "Skipped cycles item",
+            "Bleeding flow / amount item",
+            "Time since last period item",
+            "Length of time without a period (amenorrhea) item",
         ],
     },
     {
-        "header": "Somatic symptoms",
+        "header": "Menopause-related symptom items",
         "children": [
-            "Heart palpitations item",
-            "Skin itching item",
-            "Headaches item",
-            "Bloated stomach item",
-            "Breast tenderness item",
-            "Joint pains item",
-        ],
-    },
-    {
-        "header": "Mood symptoms item",
-        "children": [
-            "Tiredness item",
-            "Irritability item",
-            "Feeling anxious item",
-            "Feeling depressed item",
-            "Mood swings item",
-            "Crying spells item",
-        ],
-    },
-    {
-        "header": "Cognitive symptoms item",
-        "children": ["Difficulty concentrating item", "Poor memory item"],
-    },
-    {
-        "header": "Genitourinary symptoms item",
-        "children": [
-            "Frequent urination item",
-            "Urine leakage item",
-            "Painful urination item",
-            "Bladder infection item",
-            "Stool or gas item",
-            "Dry vagina item",
-            "Vaginal itching item",
-            "Abnormal vaginal discharge item",
-            "Vaginal infection item",
-            "Pain during intercourse item",
-            "Pain inside vagina during intercourse item",
-            "Bleeding after intercourse item",
-        ],
-    },
-    {
-        "header": "Sexual/libido symptoms item",
-        "children": [
-            "Lack of sexual desire item",
-            "Orgasm difficulty item",
-            "Limited sexual opportunity item",
+            {
+                "header": "Vasomotor symptom items",
+                "children": ["Hot flashes item", "Night sweats item"],
+            },
+            {
+                "header": "Sleep symptom items",
+                "children": [
+                    "Difficulty getting to sleep item",
+                    "Difficulty staying asleep item",
+                    "Nighttime awakening item",
+                ],
+            },
+            {
+                "header": "Somatic symptom items",
+                "children": [
+                    "Heart palpitations item",
+                    "Skin itching item",
+                    "Headaches item",
+                    "Bloated stomach item",
+                    "Breast tenderness item",
+                    "Joint pains item",
+                ],
+            },
+            {
+                "header": "Mood symptom items",
+                "children": [
+                    "Tiredness item",
+                    "Irritability item",
+                    "Feeling anxious item",
+                    "Feeling depressed item",
+                    "Mood swings item",
+                    "Crying spells item",
+                ],
+            },
+            {
+                "header": "Cognitive symptom items",
+                "children": ["Difficulty concentrating item", "Poor memory item"],
+            },
+            {
+                "header": "Genitourinary symptom items",
+                "children": [
+                    "Frequent urination item",
+                    "Urine leakage item",
+                    "Painful urination item",
+                    "Bladder infection item",
+                    "Stool or gas item",
+                    "Dry vagina item",
+                    "Vaginal itching item",
+                    "Abnormal vaginal discharge item",
+                    "Vaginal infection item",
+                    "Pain during intercourse item",
+                    "Pain inside vagina during intercourse item",
+                    "Bleeding after intercourse item",
+                ],
+            },
+            {
+                "header": "Sexual/libido symptom items",
+                "children": [
+                    "Lack of sexual desire item",
+                    "Orgasm difficulty item",
+                    "Limited sexual opportunity item",
+                ],
+            },
         ],
     },
 ]
@@ -1223,16 +1299,30 @@ def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame, is_mock_data
     # Only include a group (and only the children that are actually present)
     # if its header column made it into this dataset -- keeps the mock
     # dataset (which doesn't have most of these real columns) from ending
-    # up with a bunch of empty/dangling groups.
+    # up with a bunch of empty/dangling groups. Recursive because
+    # CHECKLIST_SECTION_GROUPS can nest a group inside another group's
+    # "children" (e.g. "Vasomotor symptom items" nested inside
+    # "Menopause-related symptom items") -- see CHECKLIST_SECTION_GROUPS.
+    def _filter_checklist_group(group, present_columns):
+        if group["header"] not in present_columns:
+            return None
+        filtered_children = []
+        for child in group["children"]:
+            if isinstance(child, dict):
+                filtered_child = _filter_checklist_group(child, present_columns)
+                if filtered_child is not None:
+                    filtered_children.append(filtered_child)
+            elif child in present_columns:
+                filtered_children.append(child)
+        if not filtered_children:
+            return None
+        return {"header": group["header"], "children": filtered_children}
+
     checklist_groups = []
     for group in CHECKLIST_SECTION_GROUPS:
-        if group["header"] not in checklist_columns:
-            continue
-        present_children = [c for c in group["children"] if c in checklist_columns]
-        if present_children:
-            checklist_groups.append(
-                {"header": group["header"], "children": present_children}
-            )
+        filtered = _filter_checklist_group(group, checklist_columns)
+        if filtered is not None:
+            checklist_groups.append(filtered)
 
     return {
         "cohort_name_column": COHORT_NAME_COLUMN,

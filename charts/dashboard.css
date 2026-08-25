@@ -595,9 +595,21 @@ table.matrix-table td.cohort-cell:hover {
   background: color-mix(in srgb, var(--accent-soft) 70%, var(--hover-bg));
 }
 .picker label.picker-row.picker-child {
-  padding-left: 1.35rem;
   font-size: 0.78rem;
   color: var(--text-muted);
+}
+
+/* Indentation is keyed off nesting depth rather than baked into
+   .picker-header/.picker-child, since a header can itself be nested
+   inside another header (e.g. "Vasomotor symptom items" inside
+   "Menopause-related symptom items") -- see renderChecklistItemPicker()'s
+   renderNode()/makeRow() in dashboard.js, which assigns "picker-depth-N"
+   based on how many ancestor groups a row is nested under. */
+.picker label.picker-row.picker-depth-1 {
+  padding-left: 1.35rem;
+}
+.picker label.picker-row.picker-depth-2 {
+  padding-left: 2.4rem;
 }
 
 /* ---------------------------------------------------------------------

@@ -488,11 +488,16 @@
   // A specialized picker for the Coverage Checklist's "Checklist items"
   // sidebar (as opposed to the plain flat renderPicker() above, still used
   // for the Cohorts sidebar). Groups a header column (e.g. "Vasomotor
-  // symptoms") together with its known sub-items (e.g. "Hot flashes item",
-  // "Night sweats item" -- see CHECKLIST_SECTION_GROUPS in fetch_data.py /
-  // schema.checklist_groups) so the header reads visually as a whole
-  // section and its checkbox cascades to/from all of its children, while
-  // each child can still be checked/unchecked individually.
+  // symptom items") together with its known sub-items (e.g. "Hot flashes
+  // item", "Night sweats item" -- see CHECKLIST_SECTION_GROUPS in
+  // fetch_data.py / schema.checklist_groups) so the header reads visually
+  // as a whole section and its checkbox cascades to/from all of its
+  // children, while each child can still be checked/unchecked
+  // individually. Supports arbitrary nesting depth -- a group's "children"
+  // array can itself contain nested {header, children} group objects (e.g.
+  // "Menopause-related symptom items" nests "Vasomotor symptom items",
+  // which in turn nests "Hot flashes item"/"Night sweats item") -- not
+  // just leaf column-name strings.
   function renderChecklistItemPicker(containerId, allValues, groups, selectedSet, onChange) {
     var container = document.getElementById(containerId);
     if (!container) return;
@@ -502,31 +507,78 @@
     var selectAllBtn = container.querySelector(".picker-select-all");
     var selectNoneBtn = container.querySelector(".picker-select-none");
 
-    // Only trust a group if both its header and at least one of its
-    // children actually made it into this dataset's checklist_columns
-    // (e.g. the small mock dataset doesn't have most of these real
-    // columns, so schema.checklist_groups ends up empty for it -- see
-    // build_schema() in fetch_data.py).
+    // Only trust a group (at any depth) if its header and at least one of
+    // its (possibly nested) descendants actually made it into this
+    // dataset's checklist_columns (e.g. the small mock dataset doesn't
+    // have most of these real columns, so schema.checklist_groups ends up
+    // empty for it -- see build_schema() in fetch_data.py). Recursive
+    // since a "child" can be another group object instead of a leaf
+    // string.
     var allSet = {};
     allValues.forEach(function (v) {
       allSet[v] = true;
     });
-    var headerToChildren = {};
-    var childToHeader = {};
-    (groups || []).forEach(function (g) {
-      if (!allSet[g.header]) return;
-      var kids = (g.children || []).filter(function (c) {
-        return allSet[c];
+
+    function filterGroup(g) {
+      if (!allSet[g.header]) return null;
+      var filteredChildren = [];
+      (g.children || []).forEach(function (child) {
+        if (typeof child === "string") {
+          if (allSet[child]) filteredChildren.push(child);
+        } else {
+          var filteredChild = filterGroup(child);
+          if (filteredChild) filteredChildren.push(filteredChild);
+        }
       });
-      if (!kids.length) return;
-      headerToChildren[g.header] = kids;
-      kids.forEach(function (c) {
-        childToHeader[c] = g.header;
+      if (!filteredChildren.length) return null;
+      return { header: g.header, children: filteredChildren };
+    }
+
+    // Every header or leaf value that appears anywhere in a filtered
+    // group's subtree, gathered recursively -- used for the tri-state
+    // checked/indeterminate calculation on a header's own checkbox
+    // (`groupState`/`setGroupSelected`) and to know which top-level
+    // values are "consumed" by a group (and so shouldn't also be drawn as
+    // a standalone flat row in `draw()` below).
+    function collectMembers(node) {
+      var members = [node.header];
+      (node.children || []).forEach(function (child) {
+        if (typeof child === "string") {
+          members.push(child);
+        } else {
+          members = members.concat(collectMembers(child));
+        }
+      });
+      return members;
+    }
+
+    function matchesQuery(value, query) {
+      return String(value).toLowerCase().indexOf(query) !== -1;
+    }
+
+    // True if `node`'s own header matches the query, or any descendant
+    // (leaf or nested header, at any depth) does.
+    function nodeMatches(node, query) {
+      if (!query) return true;
+      if (matchesQuery(node.header, query)) return true;
+      return (node.children || []).some(function (child) {
+        return typeof child === "string" ? matchesQuery(child, query) : nodeMatches(child, query);
+      });
+    }
+
+    var topLevelNodeByHeader = {};
+    var consumedSet = {};
+    (groups || []).forEach(function (g) {
+      var filtered = filterGroup(g);
+      if (!filtered) return;
+      topLevelNodeByHeader[filtered.header] = filtered;
+      collectMembers(filtered).forEach(function (m) {
+        if (m !== filtered.header) consumedSet[m] = true;
       });
     });
 
-    function groupState(header) {
-      var members = [header].concat(headerToChildren[header] || []);
+    function groupState(node) {
+      var members = collectMembers(node);
       var selectedCount = members.filter(function (m) {
         return selectedSet.has(m);
       }).length;
@@ -535,26 +587,28 @@
       return "some";
     }
 
-    function setGroupSelected(header, selected) {
-      [header].concat(headerToChildren[header] || []).forEach(function (m) {
+    function setGroupSelected(node, selected) {
+      collectMembers(node).forEach(function (m) {
         if (selected) selectedSet.add(m);
         else selectedSet.delete(m);
       });
     }
 
-    function matchesQuery(value, query) {
-      return String(value).toLowerCase().indexOf(query) !== -1;
-    }
-
-    function makeRow(value, opts) {
+    // `valueOrNode` is a leaf column-name string, unless opts.isHeader is
+    // true, in which case it's a (possibly nested) group node object.
+    function makeRow(valueOrNode, opts) {
       opts = opts || {};
       var label = document.createElement("label");
-      label.className = "picker-row" + (opts.extraClass ? " " + opts.extraClass : "");
+      var depthClass = opts.depth ? " picker-depth-" + opts.depth : "";
+      label.className = "picker-row" + (opts.extraClass ? " " + opts.extraClass : "") + depthClass;
       var cb = document.createElement("input");
       cb.type = "checkbox";
+      var displayText;
 
       if (opts.isHeader) {
-        var st = groupState(value);
+        var node = valueOrNode;
+        displayText = node.header;
+        var st = groupState(node);
         cb.checked = st === "all";
         cb.indeterminate = st === "some";
         cb.addEventListener("change", function () {
@@ -563,28 +617,58 @@
           // effect on that flip) -- so this naturally lands on "select
           // every member" from either "none" or "some", and "deselect
           // every member" from "all", which is exactly the tri-state
-          // cascade behavior wanted here.
-          setGroupSelected(value, cb.checked);
+          // cascade behavior wanted here (cascading through every level
+          // of nesting, via collectMembers()).
+          setGroupSelected(node, cb.checked);
           draw();
           onChange();
         });
       } else {
-        cb.checked = selectedSet.has(value);
+        displayText = valueOrNode;
+        cb.checked = selectedSet.has(valueOrNode);
         cb.addEventListener("change", function () {
-          if (cb.checked) selectedSet.add(value);
-          else selectedSet.delete(value);
-          // Redraw so a child toggle updates its header's checked/
-          // indeterminate state too.
+          if (cb.checked) selectedSet.add(valueOrNode);
+          else selectedSet.delete(valueOrNode);
+          // Redraw so a child toggle updates its ancestor header(s)'
+          // checked/indeterminate state too.
           draw();
           onChange();
         });
       }
 
       var span = document.createElement("span");
-      span.textContent = value;
+      span.textContent = displayText;
       label.appendChild(cb);
       label.appendChild(span);
       return label;
+    }
+
+    // Recursively renders `node` (a header row) at the given indentation
+    // `depth`, followed by its children (leaf rows at depth + 1, or
+    // further-nested header rows rendered via a recursive call at
+    // depth + 1). Respects the search `query`: if the node's own header
+    // matches, every descendant renders unfiltered; otherwise only
+    // descendants that themselves match (leaf text match, or a nested
+    // node with any matching descendant) are shown. Returns false (and
+    // renders nothing) if neither the header nor any descendant matches
+    // a non-empty query.
+    function renderNode(node, depth, query) {
+      var headerMatches = !query || matchesQuery(node.header, query);
+      var childrenToRender = (node.children || []).filter(function (child) {
+        if (headerMatches) return true;
+        return typeof child === "string" ? matchesQuery(child, query) : nodeMatches(child, query);
+      });
+      if (query && !headerMatches && !childrenToRender.length) return false;
+
+      listEl.appendChild(makeRow(node, { isHeader: true, extraClass: "picker-header", depth: depth }));
+      childrenToRender.forEach(function (child) {
+        if (typeof child === "string") {
+          listEl.appendChild(makeRow(child, { extraClass: "picker-child", depth: depth + 1 }));
+        } else {
+          renderNode(child, depth + 1, headerMatches ? "" : query);
+        }
+      });
+      return true;
     }
 
     function draw() {
@@ -594,29 +678,19 @@
       var renderedAny = false;
 
       allValues.forEach(function (val) {
-        // Children are rendered right after their header below, not here.
-        if (childToHeader[val]) return;
-
-        if (headerToChildren[val]) {
-          var kids = headerToChildren[val];
-          var headerMatches = !query || matchesQuery(val, query);
-          var matchingKids = query
-            ? kids.filter(function (k) {
-                return matchesQuery(k, query);
-              })
-            : kids;
-          if (query && !headerMatches && !matchingKids.length) return;
-
-          listEl.appendChild(makeRow(val, { isHeader: true, extraClass: "picker-header" }));
-          (headerMatches ? kids : matchingKids).forEach(function (k) {
-            listEl.appendChild(makeRow(k, { extraClass: "picker-child" }));
-          });
-          renderedAny = true;
+        // Top-level group headers are rendered (together with their full,
+        // possibly multi-level subtree) via renderNode() below.
+        if (topLevelNodeByHeader[val]) {
+          if (renderNode(topLevelNodeByHeader[val], 0, query)) renderedAny = true;
           return;
         }
+        // Anything else that's a member of some group's subtree (a leaf
+        // item or a nested sub-header) was already rendered alongside its
+        // top-level ancestor above, so skip it here.
+        if (consumedSet[val]) return;
 
         if (query && !matchesQuery(val, query)) return;
-        listEl.appendChild(makeRow(val, {}));
+        listEl.appendChild(makeRow(val, { depth: 0 }));
         renderedAny = true;
       });
 
