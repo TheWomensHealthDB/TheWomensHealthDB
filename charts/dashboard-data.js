@@ -351,6 +351,16 @@
         });
       });
       if (allMatch) return true;
+      // Both sides carry the same count of embedded numbers, but they
+      // don't line up -- e.g. "Type 1" vs "Type 2", "Visit 3" vs
+      // "Visit 4". These are meaningfully different values even though
+      // they're often just one character apart, so skip the fuzzy/typo
+      // fallback below for this case. Without this, a Levenshtein
+      // distance of 1 (well within the "close enough" threshold for
+      // short strings) made every "Type N" match every other "Type N",
+      // silently breaking the Procedure Separation Type filter (and any
+      // other numbered-category field) in the Custom Filter tab.
+      return false;
     }
 
     return _closeEnoughStrict(normText, normTarget);
