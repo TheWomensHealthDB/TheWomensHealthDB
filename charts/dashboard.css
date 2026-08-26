@@ -453,14 +453,24 @@ th.sorted-desc .sort-icon .arrow-up { opacity: 0.3; }
    stretching the icon between them). ":not(.matrix-table)" keeps this
    variant scoped to Table 1/Table 3's plain data-tables specifically;
    the Coverage Checklist's Cohort column is opted back in by name via
-   its own ".cohort-col-header" selector alongside it. */
+   its own ".cohort-col-header" selector alongside it.
+   The reserved padding-right is generous (well beyond the icon's own
+   ~1.4em rendered width) rather than a tight fit: these headers use
+   `white-space: nowrap` with the default (non-fixed) table-layout, so a
+   column's width auto-sizes to exactly fit its widest cell -- and for
+   the longest label here ("Procedure Separation Type"), that widest
+   cell IS the header itself, leaving zero natural slack. A tight
+   padding-right would size the column just barely around the text,
+   right up against the icon with no room for font-metric variance;
+   the wider padding-right here reserves real breathing room so the
+   text and icon never crowd each other regardless of font rendering. */
 table.data-table:not(.matrix-table) thead th.sortable,
 table.matrix-table thead th.cohort-col-header.sortable {
-  padding-right: 2em;
+  padding-right: 2.75em;
 }
 table.data-table:not(.matrix-table) thead th.sortable .sort-icon,
 table.matrix-table thead th.cohort-col-header.sortable .sort-icon {
-  right: 0.6em;
+  right: 0.75em;
   top: 50%;
   transform: translateY(-50%);
 }
