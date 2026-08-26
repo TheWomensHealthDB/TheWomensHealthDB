@@ -797,52 +797,23 @@ table.data-table tbody tr.accent-row:hover td {
    naturally runs shorter than the table beside it, leaving its column
    trailing off above the table's actual bottom edge instead of lining up
    with it top-to-bottom.
-   This intentionally does NOT touch ".two-col" at desktop widths (>900px,
-   where it's unbounded above by this rule) or reuse the JS height-forcing
-   this file used to have (see the "syncChecklistHeight()" comment further
-   below): that approach was removed because forcing the sidebar down to a
-   *short, filtered* table's height clipped the picker lists. Stretching
-   via CSS Grid's `align-items` instead only ever pulls the *shorter* side
-   up to match the *taller* one -- it can't force either side shorter than
-   its own natural content -- so a short filtered table just leaves a bit
-   of empty space under a full-height sidebar rather than the sidebar ever
-   getting clipped. */
+   An earlier version of this block tried to fix that with CSS alone --
+   `align-items: stretch` on ".two-col" plus `flex: 1 1 0; min-height: 0`
+   on the Cohorts/Checklist-items pickers -- but that combination turned
+   out to be unreliable across browsers: a grid item that's *itself* a
+   flex container, stretched only via the grid's `align-items`, doesn't
+   always get a definite height that its own flex-grow children can
+   actually grow into, so instead of growing to fill the space, those two
+   pickers collapsed toward zero. This just removes that CSS entirely and
+   lets `syncLandscapeChecklistHeight()` in dashboard.js do the same job
+   directly in pixels instead, which sidesteps the browser inconsistency.
+   `.picker`'s desktop `max-height: 60vh` cap (see ".picker" further
+   below) is lifted here so that JS-assigned height can actually take
+   effect without being re-clamped back down. */
 @media (min-width: 641px) and (max-width: 900px) {
-  .two-col {
-    align-items: stretch;
-  }
-  #t2-sidebar {
-    display: flex;
-    flex-direction: column;
-    max-height: none;
-  }
-  /* Only the Cohorts and Checklist items pickers grow to soak up the
-     leftover height (matching the user-facing framing of "make those two
-     windows longer") -- the Procedure Separation Type picker in between
-     them always has exactly five fixed entries, so stretching it too
-     would just spread those five items further apart for no reason. Each
-     grower is itself a column flex box with its own list as the flexible
-     part, so it's specifically the checkbox *list* that extends downward
-     (with its own scrollbar if it's still taller than the space it's
-     given), while the heading/search/actions above it stay put at a
-     normal, fixed size. `min-height: 0` overrides flexbox's default
-     "never shrink below content size" floor, which would otherwise stop
-     these from settling at a *shorter* stretched height than their
-     natural content on the rare screen where the table is the shorter
-     side. */
   #t2-cohort-picker,
   #t2-column-picker {
-    flex: 1 1 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
     max-height: none;
-  }
-  #t2-cohort-picker .picker-list,
-  #t2-column-picker .picker-list {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
   }
 }
 

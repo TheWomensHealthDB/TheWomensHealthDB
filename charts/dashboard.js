@@ -182,8 +182,105 @@
           renderTable3();
           state.t3Rendered = true;
         }
+
+        // Landscape-phone/small-tablet sidebar height sync (see
+        // syncLandscapeChecklistHeight() below) needs to (re)run every time
+        // the Coverage Checklist tab becomes visible, not just the first
+        // time it's rendered -- its measurements are all 0 while the panel
+        // is display:none, so switching *back* to an already-rendered
+        // checklist tab needs its own fresh measurement too. Deferred with
+        // the same 0ms setTimeout as the Map's invalidateSize() above, so
+        // the panel's just-applied "active" class has actually taken
+        // effect (and the panel is laid out/visible) before measuring it.
+        if (target === "checklist") {
+          setTimeout(syncLandscapeChecklistHeight, 0);
+        }
       });
     });
+
+    // Re-run on resize/orientationchange too -- rotating a phone or
+    // resizing a browser window can cross in or out of the 641-900px
+    // range this applies to, or change the table's rendered height while
+    // already inside it. Debounced so a drag-resize doesn't thrash layout
+    // on every intermediate pixel.
+    var landscapeSyncTimer = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(landscapeSyncTimer);
+      landscapeSyncTimer = setTimeout(syncLandscapeChecklistHeight, 120);
+    });
+    window.addEventListener("orientationchange", function () {
+      setTimeout(syncLandscapeChecklistHeight, 150);
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Landscape-phone / small-tablet width (641px-900px): Coverage Checklist
+  // sidebar height sync
+  // ---------------------------------------------------------------------
+  // At these widths ".two-col" still shows the Cohorts / Procedure
+  // Separation Type / Checklist items picker sidebar beside the matrix
+  // table (see dashboard.css) rather than stacked above it. The sidebar's
+  // own natural stacked height often runs shorter than the table beside
+  // it, leaving its column trailing off above the table's actual bottom
+  // edge. A pure-CSS attempt at this (`align-items: stretch` on ".two-col"
+  // plus `flex: 1 1 0` on the two taller pickers) turned out not to be
+  // reliable across browsers -- see the comment above the
+  // "min-width: 641px) and (max-width: 900px)" media block in
+  // dashboard.css -- so this does the same "grow the two non-fixed
+  // pickers to line up with the table's bottom edge" job directly in
+  // pixels instead.
+  //
+  // Like the removed syncChecklistHeight() (see the NOTE further below,
+  // near renderTable2Body()), this must NEVER shrink the sidebar/pickers
+  // below their own natural content height -- only ever grow the Cohorts
+  // and Checklist items pickers to match a *taller* table, never shrink
+  // them to match a *shorter* one (e.g. one that's been filtered down to
+  // just a couple of rows). The Procedure Separation Type picker in the
+  // middle always has exactly five fixed entries, so it's deliberately
+  // left out of this -- growing it too would just spread those five
+  // entries further apart for no reason.
+  function syncLandscapeChecklistHeight() {
+    var cohortPicker = document.getElementById("t2-cohort-picker");
+    var columnPicker = document.getElementById("t2-column-picker");
+    var tableScroll = document.getElementById("t2-table-scroll");
+    var sidebar = document.getElementById("t2-sidebar");
+    var panel = document.getElementById("panel-checklist");
+    if (!cohortPicker || !columnPicker || !tableScroll || !sidebar || !panel) {
+      return;
+    }
+
+    var inRange = window.innerWidth > 640 && window.innerWidth <= 900;
+    if (!panel.classList.contains("active") || !inRange) {
+      // Outside this breakpoint (or the tab isn't visible), always fall
+      // back to natural, unassigned heights -- e.g. resizing/rotating out
+      // of this range after a previous sync assigned explicit pixel
+      // heights, or the mobile (<=640px) stacked layout, or desktop.
+      cohortPicker.style.height = "";
+      columnPicker.style.height = "";
+      return;
+    }
+
+    // Clear any previously-assigned heights first so the "natural" sizes
+    // measured below reflect the pickers' actual current content (e.g.
+    // after a filter changes how many cohorts/items are listed), not a
+    // stale height left over from an earlier sync.
+    cohortPicker.style.height = "";
+    columnPicker.style.height = "";
+
+    var naturalSidebarHeight = sidebar.offsetHeight;
+    var tableHeight = tableScroll.offsetHeight;
+    var extra = tableHeight - naturalSidebarHeight;
+    if (extra <= 0) {
+      // The table is the shorter (or equal) side -- leave the pickers at
+      // their natural height rather than shrinking them to match it.
+      return;
+    }
+
+    var cohortNatural = cohortPicker.offsetHeight;
+    var columnNatural = columnPicker.offsetHeight;
+    var addEach = extra / 2;
+    cohortPicker.style.height = cohortNatural + addEach + "px";
+    columnPicker.style.height = columnNatural + addEach + "px";
   }
 
   // ---------------------------------------------------------------------
@@ -1117,6 +1214,13 @@
     if (countEl) {
       countEl.textContent = rows.length + " cohort(s) \u00d7 " + columns.length + " item(s)";
     }
+
+    // A filter/search change can shrink or grow the table's own rendered
+    // height (fewer/more matching rows), so the landscape-breakpoint
+    // sidebar height sync (see syncLandscapeChecklistHeight() above) needs
+    // to re-run here too, not just on tab-switch/resize. No-ops instantly
+    // outside the 641-900px range or while this tab isn't visible.
+    syncLandscapeChecklistHeight();
   }
 
   function chipSymbol(category, label) {
