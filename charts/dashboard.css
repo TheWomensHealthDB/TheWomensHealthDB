@@ -377,49 +377,110 @@ table.data-table thead th:hover { background: var(--hover-bg); }
 /* Sortable column headers -- Cohort Summary, Coverage Checklist, and
    Custom Filter all wire every header up via wireSortableHeader() in
    dashboard.js, which adds this ".sortable" class, a click handler, and
-   the stacked-triangle ".sort-icon" (built just below) to each one.
-   table.matrix-table thead th (the Coverage Checklist) otherwise sets its
-   own `cursor: default` further down, so that's overridden back to
-   pointer here specifically for its sortable headers; its hover tint
-   already comes from the plain `table.data-table thead th:hover` rule
-   above, since every table.matrix-table is also a table.data-table. */
+   the ".sort-icon" (built just below) to each one. table.matrix-table
+   thead th (the Coverage Checklist) otherwise sets its own
+   `cursor: default` further down, so that's overridden back to pointer
+   here specifically for its sortable headers; its hover tint already
+   comes from the plain `table.data-table thead th:hover` rule above,
+   since every table.matrix-table is also a table.data-table. Every
+   sortable `<th>` here is already `position: sticky` (see the base
+   `table.data-table thead th` rule above), which -- like `relative` --
+   establishes a containing block for the icon's `position: absolute`
+   below, so no extra positioning context needs to be added. */
 table.data-table thead th.sortable,
 table.matrix-table thead th.sortable {
   cursor: pointer;
 }
-/* The "this column is sortable" affordance: two small triangles stacked
-   directly on top of one another (not the usual side-by-side "up arrow /
-   down arrow" pair), sitting dim/idle at the header's right edge until
-   this column becomes the active sort -- at which point the triangle
-   matching the current direction lights up and the other one dims
-   further, rather than disappearing outright, so the icon's presence
-   stays consistent whether or not a column is the active sort. */
-.sort-icon {
-  display: inline-flex;
-  flex-direction: column;
-  justify-content: center;
-  vertical-align: middle;
-  margin-left: 0.35em;
-  line-height: 0.55;
-  font-size: 0.62em;
-  color: var(--text-muted);
-  opacity: 0.55;
+
+/* Wrapper for a sortable header's own label text (Cohort Summary, Custom
+   Filter, and the Coverage Checklist's Cohort column -- its narrower
+   columns use ".th-label" instead, styled further down). Doesn't need
+   any layout properties of its own: it's a plain inline span that just
+   gives the header text a stable boundary separate from the absolutely-
+   positioned ".sort-icon" appended after it, so the two never overlap
+   or get visually tangled up regardless of how long the label is. */
+.th-text {
+  display: inline;
 }
-.sort-icon .tri-up,
-.sort-icon .tri-down {
-  display: block;
+
+/* The "this column is sortable" affordance: two arrows side by side (one
+   up, one down), sitting dim/idle until this column becomes the active
+   sort -- at which point the arrow matching the current direction lights
+   up in the accent color and the other one dims further, rather than
+   disappearing outright, so the icon's presence stays consistent whether
+   or not a column is the active sort. Sized to be clearly readable at a
+   glance without competing with the header text for attention. */
+.sort-icon {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18em;
+  font-size: 1em;
+  line-height: 1;
+  color: var(--text-muted);
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+.sort-icon .arrow-up,
+.sort-icon .arrow-down {
+  display: inline-block;
 }
 th.sortable:hover .sort-icon {
-  opacity: 0.85;
+  opacity: 0.7;
 }
 th.sorted-asc .sort-icon,
 th.sorted-desc .sort-icon {
   opacity: 1;
 }
-th.sorted-asc .sort-icon .tri-up { color: var(--accent); }
-th.sorted-asc .sort-icon .tri-down { opacity: 0.35; }
-th.sorted-desc .sort-icon .tri-down { color: var(--accent); }
-th.sorted-desc .sort-icon .tri-up { opacity: 0.35; }
+th.sorted-asc .sort-icon .arrow-up { color: var(--accent); opacity: 1; }
+th.sorted-asc .sort-icon .arrow-down { opacity: 0.3; }
+th.sorted-desc .sort-icon .arrow-down { color: var(--accent); opacity: 1; }
+th.sorted-desc .sort-icon .arrow-up { opacity: 0.3; }
+
+/* Placement, variant 1 -- "right side of the cell, label on the left":
+   every Cohort Summary/Custom Filter header, plus the Coverage
+   Checklist's own Cohort column specifically (it's wide/horizontal like
+   the others here, unlike the narrow checklist-item columns below). The
+   extra right padding reserves room so the label's text never renders
+   underneath the icon.
+   Note: the Coverage Checklist's <table> carries *both* "data-table" and
+   "matrix-table" classes (see index.html), so the plain
+   "table.data-table thead th.sortable" selector on its own would also
+   match that table's narrow checklist-item columns -- not just Table 1/
+   Table 3's headers -- fighting with variant 2's bottom-of-cell rules
+   below (both sets of top/right/bottom/left would apply at once,
+   stretching the icon between them). ":not(.matrix-table)" keeps this
+   variant scoped to Table 1/Table 3's plain data-tables specifically;
+   the Coverage Checklist's Cohort column is opted back in by name via
+   its own ".cohort-col-header" selector alongside it. */
+table.data-table:not(.matrix-table) thead th.sortable,
+table.matrix-table thead th.cohort-col-header.sortable {
+  padding-right: 2em;
+}
+table.data-table:not(.matrix-table) thead th.sortable .sort-icon,
+table.matrix-table thead th.cohort-col-header.sortable .sort-icon {
+  right: 0.6em;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Placement, variant 2 -- "bottom of the cell, centered": the Coverage
+   Checklist's narrower columns (Procedure separation type and every
+   checklist item). These headers are taller than they are wide and often
+   wrap onto multiple lines, so the icon consistently sits centered below
+   the label rather than sometimes sharing its line and sometimes not.
+   The larger bottom padding (vs. the generic matrix header's own
+   padding-bottom above) opens up clear breathing room between the label
+   text and the icon underneath it. */
+table.matrix-table thead th.sortable:not(.cohort-col-header) {
+  padding-bottom: 1.9rem;
+}
+table.matrix-table thead th.sortable:not(.cohort-col-header) .sort-icon {
+  left: 50%;
+  bottom: 0.5rem;
+  transform: translateX(-50%);
+}
 
 table.data-table tbody tr {
   transition: background 0.1s ease;

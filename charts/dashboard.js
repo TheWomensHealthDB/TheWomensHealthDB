@@ -282,23 +282,27 @@
 
   // Every sortable <th> in the Cohort Summary, Coverage Checklist, and
   // Custom Filter tables gets the same click-to-sort behavior, the same
-  // ".sortable" hover affordance, and the same "stacked triangles" sort
-  // icon at its right edge (dim/idle when its column isn't the active
-  // sort; whichever triangle matches the active direction lights up once
-  // it is -- see ".sort-icon"/".sorted-asc"/".sorted-desc" in
-  // dashboard.css). The first click on a column always sorts ascending;
-  // clicking that same column again flips to descending; clicking a
-  // different column starts over at ascending on the new column.
+  // ".sortable" hover affordance, and the same sort icon -- two arrows
+  // side by side, one pointing up and one pointing down (dim/idle when
+  // its column isn't the active sort; whichever arrow matches the active
+  // direction lights up once it is -- see
+  // ".sort-icon"/".sorted-asc"/".sorted-desc" in dashboard.css). Where
+  // that icon sits within the header cell (right-of-label vs.
+  // below-label) is decided entirely by CSS based on which column this
+  // is, not by anything here. The first click on a column always sorts
+  // ascending; clicking that same column again flips to descending;
+  // clicking a different column starts over at ascending on the new
+  // column.
   function buildSortIcon() {
     var icon = document.createElement("span");
     icon.className = "sort-icon";
     icon.setAttribute("aria-hidden", "true");
     var up = document.createElement("span");
-    up.className = "tri-up";
-    up.textContent = "\u25B4"; // small upward-pointing triangle
+    up.className = "arrow-up";
+    up.textContent = "\u2191"; // upward arrow
     var down = document.createElement("span");
-    down.className = "tri-down";
-    down.textContent = "\u25BE"; // small downward-pointing triangle
+    down.className = "arrow-down";
+    down.textContent = "\u2193"; // downward arrow
     icon.appendChild(up);
     icon.appendChild(down);
     return icon;
@@ -418,7 +422,14 @@
     thead.innerHTML = "";
     t1Columns().forEach(function (col) {
       var th = document.createElement("th");
-      th.textContent = col.label;
+      // Label text lives in its own span (rather than directly as the
+      // <th>'s text) so the sort icon -- absolutely positioned at the
+      // header's right edge, see ".sort-icon" in dashboard.css -- never
+      // overlaps or gets visually tangled up with it.
+      var label = document.createElement("span");
+      label.className = "th-text";
+      label.textContent = col.label;
+      th.appendChild(label);
       th.title = "Click to sort by " + col.label;
       wireSortableHeader(th, col.key, state.t1Sort, renderTable1Body);
       thead.appendChild(th);
@@ -963,7 +974,15 @@
     var headRow = document.createElement("tr");
     var cornerTh = document.createElement("th");
     cornerTh.className = "cohort-col-header";
-    cornerTh.textContent = "Cohort";
+    // Wrapped in a span, same as every other sortable header -- see the
+    // comment in renderTable1Head() -- so the right-edge sort icon (this
+    // column is wide/horizontal like the other data-tables, not narrow
+    // like the checklist columns below, so it gets that same right-side
+    // placement rather than the bottom-of-cell one) never overlaps it.
+    var cornerLabel = document.createElement("span");
+    cornerLabel.className = "th-text";
+    cornerLabel.textContent = "Cohort";
+    cornerTh.appendChild(cornerLabel);
     cornerTh.title = "Click to sort by Cohort";
     wireSortableHeader(cornerTh, nameCol, state.t2Sort, renderTable2Body);
     headRow.appendChild(cornerTh);
@@ -971,9 +990,16 @@
     // Procedure Separation Type gets its own dedicated column (showing
     // "Type N" text, not a Yes/No/Partial-classified chip like the
     // checklist items below), since it isn't a per-cohort yes/no item.
+    // Uses the same ".th-label" wrapper as the checklist item headers
+    // (rather than ".th-text" like the wider Cohort column above) so it
+    // gets that same narrow-column treatment: label on top, sort icon
+    // centered underneath it, consistent with every column beside it.
     var typeTh = document.createElement("th");
     typeTh.className = "type-col-header";
-    typeTh.textContent = "Procedure separation type";
+    var typeLabel = document.createElement("span");
+    typeLabel.className = "th-label";
+    typeLabel.textContent = "Procedure separation type";
+    typeTh.appendChild(typeLabel);
     typeTh.title = "Click to sort by Procedure separation type";
     wireSortableHeader(typeTh, procCol, state.t2Sort, renderTable2Body);
     headRow.appendChild(typeTh);
@@ -1357,7 +1383,12 @@
 
     t1Columns().forEach(function (col) {
       var th = document.createElement("th");
-      th.textContent = col.label;
+      // See the matching comment in renderTable1Head() -- same reasoning
+      // for keeping the label text in its own span here.
+      var label = document.createElement("span");
+      label.className = "th-text";
+      label.textContent = col.label;
+      th.appendChild(label);
       th.title = "Click to sort by " + col.label;
       wireSortableHeader(th, col.key, state.t3Sort, renderTable3);
       thead.appendChild(th);
