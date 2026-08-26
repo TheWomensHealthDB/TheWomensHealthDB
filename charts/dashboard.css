@@ -678,6 +678,113 @@ table.data-table tbody tr.accent-row:hover td {
   }
 }
 
+/* ---------------------------------------------------------------------
+   Phone-width layout (<=640px)
+   --------------------------------------------------------------------- */
+/* Everything in this block only takes effect at roughly phone-portrait
+   widths (most phones report a ~360-430px layout viewport) -- well
+   inside the 900px breakpoint above, which already stacks each tab's
+   Procedure Separation Type key underneath its main content regardless
+   of screen size. Every rule here only overrides properties *within*
+   this max-width guard, so nothing above ~640px -- tablets, laptops, the
+   site's normal desktop layout -- is touched by any of it. */
+@media (max-width: 640px) {
+  header.app-header {
+    padding: 1.1rem 1rem 0;
+  }
+  header.app-header h1 {
+    font-size: 1.2rem;
+  }
+
+  nav.tabs button {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.82rem;
+  }
+
+  main {
+    /* The desktop `96vw` cap (see "main" above) exists to stop the page
+       from stretching edge-to-edge on very wide monitors -- moot at
+       phone width, and `vw` units can also trigger a horizontal
+       scrollbar of their own on some mobile browsers since they're
+       measured including the scrollbar gutter. `100%` plus a smaller
+       side padding gives the same "don't run flush to the screen edge"
+       effect without that risk. */
+    max-width: 100%;
+    padding: 1rem 0.85rem 2rem;
+  }
+
+  /* Toolbar fields, search boxes, and Custom Filter's per-condition
+     selects/inputs: the desktop `min-width: 18em` baseline (see the
+     plain `input[type=...]` rule near the top of this file) is sized for
+     roomy rows sitting side-by-side on a wide screen -- at phone widths
+     it instead forces each field wider than the viewport itself. Letting
+     every field shrink and fill its actual row width keeps each one
+     fully visible and lets `.panel-toolbar`/`.filter-row`'s existing
+     `flex-wrap` stack them cleanly instead of overflowing sideways. */
+  input[type="text"], input[type="search"], input[type="number"], select {
+    min-width: 0;
+    width: 100%;
+  }
+  .panel-toolbar .field {
+    width: 100%;
+  }
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-row .remove-condition {
+    align-self: flex-end;
+  }
+
+  /* Coverage Checklist: the Cohorts / Procedure Separation Type /
+     Checklist items picker sidebar sits in a fixed 260px-wide column
+     next to the matrix table at every other screen size (see ".two-col"
+     above), which was never given its own responsive treatment. At
+     phone widths that fixed column alone eats most of the viewport,
+     squeezing the actual data table into an unusably thin sliver.
+     Stacking the sidebar above the table instead -- each then using the
+     phone's full width -- is the single biggest fix in this block; the
+     sidebar's own existing internal scrolling (see "#t2-sidebar"/
+     ".picker" above) keeps its three stacked pickers from taking over
+     the whole page underneath it. */
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+  /* Caps the *combined* stacked-pickers region to a single scrollable
+     block, rather than leaving each individual `.picker` with its own
+     nested 60vh scroll region (still fine at desktop, where the sidebar
+     sits beside the table rather than above it). Nested scroll areas are
+     a common touch-scrolling pitfall: a swipe started inside an inner
+     picker's own scrollbar doesn't bubble out to scroll the page/sidebar
+     around it, which reads as "stuck" on a phone. */
+  #t2-sidebar {
+    max-height: 46vh;
+  }
+  .picker {
+    max-height: none;
+  }
+
+  /* Detail modal: the 40%/60% label-value split (see ".modal dl" above)
+     is comfortable at desktop widths but cramped once the label column
+     drops well under half of a phone's much narrower total width --
+     stack each label above its value instead. */
+  .modal dl {
+    grid-template-columns: 1fr;
+    gap: 0.15rem 0;
+  }
+  .modal dt {
+    margin-top: 0.5rem;
+  }
+
+  /* Smoother momentum scrolling for the scrollable tables and picker
+     lists on iOS Safari specifically -- has no effect on non-touch
+     input, so it's safe to apply here unconditionally rather than
+     needing a touch-specific guard of its own. */
+  .table-scroll, .picker, #t2-sidebar {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* Procedure Separation Type key -- the *only* legend for the "Type 1" ..
    "Type 5" color-coding used everywhere it shows up (Cohort Summary and
    Custom Filter row color, Coverage Checklist matrix row/column color, Map
