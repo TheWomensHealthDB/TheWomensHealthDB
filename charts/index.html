@@ -64,6 +64,22 @@
 
     <!-- Table 2: Coverage Checklist -->
     <section id="panel-checklist" class="tab-panel">
+      <!-- Hidden by default (and on every other tab); shown -- in place of
+           everything else in this section -- only on narrow, portrait-
+           oriented phones. See ".portrait-notice" in dashboard.css: this
+           table's dozens of narrow checklist-item columns don't fit a
+           phone-portrait width at any font size without heavy horizontal
+           scrolling, so this steers portrait phone users toward landscape
+           or a larger screen instead of presenting a barely-usable sliver
+           of the table. The other three tabs have no such column-count
+           problem and stay fully usable in portrait, so this notice is
+           deliberately scoped to this one tab only. -->
+      <div class="hint-banner portrait-notice" id="t2-portrait-notice">
+        <span class="hint-label">Heads up</span>
+        <p>The Coverage Checklist has a lot of columns to show at once &mdash;
+        turn your phone sideways, or view the site on a larger screen, for
+        the clearest view.</p>
+      </div>
       <div class="hint-banner">
         <span class="hint-label">Tip</span>
         <p id="t2-hint-text"></p>

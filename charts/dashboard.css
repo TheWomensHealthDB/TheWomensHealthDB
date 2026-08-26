@@ -785,6 +785,108 @@ table.data-table tbody tr.accent-row:hover td {
   }
 }
 
+/* ---------------------------------------------------------------------
+   Landscape-phone / small-tablet width (641px-900px)
+   --------------------------------------------------------------------- */
+/* This range sits strictly between the two breakpoints above: wide enough
+   that ".two-col" (the Coverage Checklist's picker sidebar next to its
+   table -- see ".two-col" further below) is still showing side by side
+   rather than stacked (that only happens at <=640px, in the block above),
+   but still well short of a real desktop window. At these widths the
+   Cohorts / Procedure Separation Type / Checklist items picker stack
+   naturally runs shorter than the table beside it, leaving its column
+   trailing off above the table's actual bottom edge instead of lining up
+   with it top-to-bottom.
+   This intentionally does NOT touch ".two-col" at desktop widths (>900px,
+   where it's unbounded above by this rule) or reuse the JS height-forcing
+   this file used to have (see the "syncChecklistHeight()" comment further
+   below): that approach was removed because forcing the sidebar down to a
+   *short, filtered* table's height clipped the picker lists. Stretching
+   via CSS Grid's `align-items` instead only ever pulls the *shorter* side
+   up to match the *taller* one -- it can't force either side shorter than
+   its own natural content -- so a short filtered table just leaves a bit
+   of empty space under a full-height sidebar rather than the sidebar ever
+   getting clipped. */
+@media (min-width: 641px) and (max-width: 900px) {
+  .two-col {
+    align-items: stretch;
+  }
+  #t2-sidebar {
+    display: flex;
+    flex-direction: column;
+    max-height: none;
+  }
+  /* Only the Cohorts and Checklist items pickers grow to soak up the
+     leftover height (matching the user-facing framing of "make those two
+     windows longer") -- the Procedure Separation Type picker in between
+     them always has exactly five fixed entries, so stretching it too
+     would just spread those five items further apart for no reason. Each
+     grower is itself a column flex box with its own list as the flexible
+     part, so it's specifically the checkbox *list* that extends downward
+     (with its own scrollbar if it's still taller than the space it's
+     given), while the heading/search/actions above it stay put at a
+     normal, fixed size. `min-height: 0` overrides flexbox's default
+     "never shrink below content size" floor, which would otherwise stop
+     these from settling at a *shorter* stretched height than their
+     natural content on the rare screen where the table is the shorter
+     side. */
+  #t2-cohort-picker,
+  #t2-column-picker {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: none;
+  }
+  #t2-cohort-picker .picker-list,
+  #t2-column-picker .picker-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Coverage Checklist: portrait-phone notice
+   --------------------------------------------------------------------- */
+/* ".portrait-notice" (see index.html) reuses ".hint-banner"'s own styling
+   (gradient background, left accent border, etc. -- see ".hint-banner"
+   above) so it visually matches every other banner on the site, but stays
+   hidden everywhere by default; the media query below is the only thing
+   that ever makes it visible. Unlike the rest of this stylesheet's mobile
+   handling (which makes every tab genuinely usable on a phone), the
+   Coverage Checklist's dozens of narrow checklist-item columns don't fit
+   a phone-portrait width at any font size without heavy horizontal
+   scrolling no matter what CSS does here -- so rather than present a
+   barely-usable sliver of that table, portrait phone users see this
+   notice instead and are steered toward landscape or a larger screen.
+   The other three tabs (Cohort Summary, Custom Filter, Map) have no such
+   column-count problem and stay fully usable in portrait, so this is
+   deliberately scoped to the Coverage Checklist tab specifically -- see
+   "#panel-checklist" in every selector below -- rather than applied
+   site-wide.
+   `orientation: portrait` (alongside the same `max-width: 640px` used by
+   the phone-width block above) specifically targets narrow *and* tall
+   screens, rather than every screen <=640px -- a handful of small phones
+   are still close to 640px wide even in landscape, and this notice should
+   never show for those, only for phones held upright. Being pure CSS
+   (no JS), this also re-evaluates live the instant a phone is rotated,
+   without needing to listen for a resize/orientation event at all. */
+#panel-checklist .portrait-notice {
+  display: none;
+}
+@media (max-width: 640px) and (orientation: portrait) {
+  #panel-checklist > .hint-banner:not(.portrait-notice),
+  #panel-checklist > .result-count,
+  #panel-checklist > .legend,
+  #panel-checklist > .panel-body-with-key {
+    display: none;
+  }
+  #panel-checklist .portrait-notice {
+    display: flex;
+  }
+}
+
 /* Procedure Separation Type key -- the *only* legend for the "Type 1" ..
    "Type 5" color-coding used everywhere it shows up (Cohort Summary and
    Custom Filter row color, Coverage Checklist matrix row/column color, Map
