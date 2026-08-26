@@ -20,17 +20,25 @@
     mapLayer: null,
     mapMarkerGroups: null, // [{centroid, entries:[{marker, radius, angle}]}]
     // Table 1
+    // `column: null` here just means "not yet decided" -- each table
+    // defaults its own sort to alphabetical-by-cohort-name the first time
+    // it renders (see the "Sortable table headers" section below), rather
+    // than being initialized to the cohort name column directly here,
+    // since the column's actual field key isn't known until the schema
+    // has loaded.
     t1Sort: { column: null, direction: "asc" },
     // Table 2
     t2SelectedCohorts: null, // Set, populated once data loads
     t2SelectedColumns: null, // Set
     t2SelectedTypes: null, // Set of selected "Type N" values (Procedure Separation Type filter)
     t2Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
+    t2Sort: { column: null, direction: "asc" },
     // Table 3
     t3Conditions: [], // [{id, field, operator, value}]
     t3Mode: "all",
     t3ConditionIdSeq: 1,
     t3Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
+    t3Sort: { column: null, direction: "asc" },
   };
 
   // ---------------------------------------------------------------------
@@ -269,6 +277,62 @@
   }
 
   // ---------------------------------------------------------------------
+  // Sortable table headers (shared by Table 1, Table 2, and Table 3)
+  // ---------------------------------------------------------------------
+
+  // Every sortable <th> in the Cohort Summary, Coverage Checklist, and
+  // Custom Filter tables gets the same click-to-sort behavior, the same
+  // ".sortable" hover affordance, and the same "stacked triangles" sort
+  // icon at its right edge (dim/idle when its column isn't the active
+  // sort; whichever triangle matches the active direction lights up once
+  // it is -- see ".sort-icon"/".sorted-asc"/".sorted-desc" in
+  // dashboard.css). The first click on a column always sorts ascending;
+  // clicking that same column again flips to descending; clicking a
+  // different column starts over at ascending on the new column.
+  function buildSortIcon() {
+    var icon = document.createElement("span");
+    icon.className = "sort-icon";
+    icon.setAttribute("aria-hidden", "true");
+    var up = document.createElement("span");
+    up.className = "tri-up";
+    up.textContent = "\u25B4"; // small upward-pointing triangle
+    var down = document.createElement("span");
+    down.className = "tri-down";
+    down.textContent = "\u25BE"; // small downward-pointing triangle
+    icon.appendChild(up);
+    icon.appendChild(down);
+    return icon;
+  }
+
+  /**
+   * Wires up a <th> as a sortable column header. `sortState` is one of
+   * state.t1Sort/t2Sort/t3Sort ({column, direction}); `columnKey` is the
+   * record field this particular header should sort by; `onSortChange` is
+   * called (with no arguments) to re-render whichever table this header
+   * belongs to once the click has updated `sortState`. Doesn't touch
+   * `th.title` -- callers set that themselves, since some headers (e.g.
+   * the Coverage Checklist's already-truncated item names) need to keep
+   * their own tooltip text alongside the "click to sort" hint rather than
+   * having it replaced outright.
+   */
+  function wireSortableHeader(th, columnKey, sortState, onSortChange) {
+    th.classList.add("sortable");
+    th.appendChild(buildSortIcon());
+    th.addEventListener("click", function () {
+      if (sortState.column === columnKey) {
+        sortState.direction = sortState.direction === "asc" ? "desc" : "asc";
+      } else {
+        sortState.column = columnKey;
+        sortState.direction = "asc";
+      }
+      onSortChange();
+    });
+    if (sortState.column === columnKey) {
+      th.classList.add(sortState.direction === "asc" ? "sorted-asc" : "sorted-desc");
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // Table 1: Cohort summary
   // ---------------------------------------------------------------------
 
@@ -345,23 +409,18 @@
   function renderTable1Head() {
     var thead = document.querySelector("#t1-table thead tr");
     if (!thead) return;
+    // Default to alphabetical-by-cohort-name the first time this table
+    // renders, until the user picks a different sort column themselves
+    // (see the "Sortable table headers" section above).
+    if (!state.t1Sort.column) {
+      state.t1Sort.column = state.schema.cohort_name_column;
+    }
     thead.innerHTML = "";
     t1Columns().forEach(function (col) {
       var th = document.createElement("th");
       th.textContent = col.label;
       th.title = "Click to sort by " + col.label;
-      th.addEventListener("click", function () {
-        if (state.t1Sort.column === col.key) {
-          state.t1Sort.direction = state.t1Sort.direction === "asc" ? "desc" : "asc";
-        } else {
-          state.t1Sort.column = col.key;
-          state.t1Sort.direction = "asc";
-        }
-        renderTable1Body();
-      });
-      if (state.t1Sort.column === col.key) {
-        th.classList.add(state.t1Sort.direction === "asc" ? "sorted-asc" : "sorted-desc");
-      }
+      wireSortableHeader(th, col.key, state.t1Sort, renderTable1Body);
       thead.appendChild(th);
     });
   }
@@ -874,6 +933,12 @@
 
     var nameCol = state.schema.cohort_name_column;
     var procCol = state.schema.procedure_separation_type_column;
+    // Default to alphabetical-by-cohort-name the first time this table
+    // renders, until the user picks a different sort column themselves
+    // (see the "Sortable table headers" section above t1Columns()).
+    if (!state.t2Sort.column) {
+      state.t2Sort.column = nameCol;
+    }
     var columns = (state.schema.checklist_columns || []).filter(function (c) {
       return state.t2SelectedColumns.has(c);
     });
@@ -888,6 +953,7 @@
       var procVal = procCol ? String(r[procCol] || "").trim() : "";
       return procVal === "" || state.t2SelectedTypes.has(procVal);
     });
+    rows = DD.sortRecords(rows, state.t2Sort.column, state.t2Sort.direction);
 
     var thead = table.querySelector("thead");
     var tbody = table.querySelector("tbody");
@@ -898,6 +964,8 @@
     var cornerTh = document.createElement("th");
     cornerTh.className = "cohort-col-header";
     cornerTh.textContent = "Cohort";
+    cornerTh.title = "Click to sort by Cohort";
+    wireSortableHeader(cornerTh, nameCol, state.t2Sort, renderTable2Body);
     headRow.appendChild(cornerTh);
 
     // Procedure Separation Type gets its own dedicated column (showing
@@ -906,6 +974,8 @@
     var typeTh = document.createElement("th");
     typeTh.className = "type-col-header";
     typeTh.textContent = "Procedure separation type";
+    typeTh.title = "Click to sort by Procedure separation type";
+    wireSortableHeader(typeTh, procCol, state.t2Sort, renderTable2Body);
     headRow.appendChild(typeTh);
 
     columns.forEach(function (col) {
@@ -922,7 +992,12 @@
       // to set via textContent.
       label.textContent = softHyphenateLabel(col);
       th.appendChild(label);
-      th.title = col;
+      // Keep the full (non-hyphenated) column name as the native tooltip
+      // -- it's still useful on its own for a hyphenated/wrapped label --
+      // and add the "click to sort" hint alongside it rather than
+      // replacing it outright.
+      th.title = col + " \u2014 click to sort";
+      wireSortableHeader(th, col, state.t2Sort, renderTable2Body);
       headRow.appendChild(th);
     });
     thead.appendChild(headRow);
@@ -1267,6 +1342,13 @@
     var rows = state.cohorts.filter(function (r) {
       return DD.evaluateGroup(r, activeConditions, state.t3Mode);
     });
+    // Default to alphabetical-by-cohort-name the first time this table
+    // renders, until the user picks a different sort column themselves
+    // (see the "Sortable table headers" section above t1Columns()).
+    if (!state.t3Sort.column) {
+      state.t3Sort.column = state.schema.cohort_name_column;
+    }
+    rows = DD.sortRecords(rows, state.t3Sort.column, state.t3Sort.direction);
 
     var thead = table.querySelector("thead tr");
     var tbody = table.querySelector("tbody");
@@ -1276,6 +1358,8 @@
     t1Columns().forEach(function (col) {
       var th = document.createElement("th");
       th.textContent = col.label;
+      th.title = "Click to sort by " + col.label;
+      wireSortableHeader(th, col.key, state.t3Sort, renderTable3);
       thead.appendChild(th);
     });
 

@@ -374,8 +374,52 @@ table.data-table thead th {
 
 table.data-table thead th:hover { background: var(--hover-bg); }
 
-table.data-table thead th.sorted-asc::after { content: " \25B2"; color: var(--accent); }
-table.data-table thead th.sorted-desc::after { content: " \25BC"; color: var(--accent); }
+/* Sortable column headers -- Cohort Summary, Coverage Checklist, and
+   Custom Filter all wire every header up via wireSortableHeader() in
+   dashboard.js, which adds this ".sortable" class, a click handler, and
+   the stacked-triangle ".sort-icon" (built just below) to each one.
+   table.matrix-table thead th (the Coverage Checklist) otherwise sets its
+   own `cursor: default` further down, so that's overridden back to
+   pointer here specifically for its sortable headers; its hover tint
+   already comes from the plain `table.data-table thead th:hover` rule
+   above, since every table.matrix-table is also a table.data-table. */
+table.data-table thead th.sortable,
+table.matrix-table thead th.sortable {
+  cursor: pointer;
+}
+/* The "this column is sortable" affordance: two small triangles stacked
+   directly on top of one another (not the usual side-by-side "up arrow /
+   down arrow" pair), sitting dim/idle at the header's right edge until
+   this column becomes the active sort -- at which point the triangle
+   matching the current direction lights up and the other one dims
+   further, rather than disappearing outright, so the icon's presence
+   stays consistent whether or not a column is the active sort. */
+.sort-icon {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 0.35em;
+  line-height: 0.55;
+  font-size: 0.62em;
+  color: var(--text-muted);
+  opacity: 0.55;
+}
+.sort-icon .tri-up,
+.sort-icon .tri-down {
+  display: block;
+}
+th.sortable:hover .sort-icon {
+  opacity: 0.85;
+}
+th.sorted-asc .sort-icon,
+th.sorted-desc .sort-icon {
+  opacity: 1;
+}
+th.sorted-asc .sort-icon .tri-up { color: var(--accent); }
+th.sorted-asc .sort-icon .tri-down { opacity: 0.35; }
+th.sorted-desc .sort-icon .tri-down { color: var(--accent); }
+th.sorted-desc .sort-icon .tri-up { opacity: 0.35; }
 
 table.data-table tbody tr {
   transition: background 0.1s ease;
