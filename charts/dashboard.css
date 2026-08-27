@@ -1200,8 +1200,21 @@ table.matrix-table td.type-cell:hover .type-text {
 }
 .picker .picker-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   margin-bottom: 0.5rem;
+}
+/* Buttons in this row (Select all / Select none / Hide column, for pickers
+   that have one) must never shrink below their natural, single-line width
+   -- the 260px sidebar (see ".two-col" grid-template-columns) is just
+   narrow enough that a 3-button row like the Procedure Separation Type
+   picker's would otherwise get squeezed by flex-shrink and wrap its *text*
+   onto two lines, making those buttons visibly taller/bulkier than the
+   plain 2-button rows elsewhere (e.g. Checklist items). flex-wrap above
+   lets a button that doesn't fit drop to its own new line instead, so
+   every button keeps the same skinny size everywhere. */
+.picker .picker-actions button {
+  flex-shrink: 0;
 }
 .picker label.picker-row {
   display: flex;
