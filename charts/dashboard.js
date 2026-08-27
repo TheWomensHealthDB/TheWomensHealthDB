@@ -31,6 +31,7 @@
     t2SelectedCohorts: null, // Set, populated once data loads
     t2SelectedColumns: null, // Set
     t2SelectedTypes: null, // Set of selected "Type N" values (Procedure Separation Type filter)
+    t2ShowTypeColumn: true, // "Hide the 'Procedure separation type' column" checkbox in the Procedure Separation Type picker
     t2Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
     t2Sort: { column: null, direction: "asc" },
     // Table 3
@@ -630,9 +631,29 @@
       state.t2SelectedTypes,
       renderTable2Body
     );
+    wireTypeColumnToggle();
     renderCategoryLegend("t2-legend");
     renderTable2Hint();
     renderTable2Body();
+  }
+
+  // Wires the Procedure Separation Type picker's "Hide the 'Procedure
+  // separation type' column" checkbox to state.t2ShowTypeColumn --
+  // independent of (and not affected by) that same picker's Select
+  // all/Select none row-filtering checkboxes just below it. Only toggles
+  // whether renderTable2Body() draws the dedicated Procedure Separation
+  // Type column; it never changes which cohort rows are shown.
+  function wireTypeColumnToggle() {
+    var checkbox = document.getElementById("t2-type-hide-column");
+    if (!checkbox) return;
+    checkbox.checked = !state.t2ShowTypeColumn;
+    if (!checkbox._wired) {
+      checkbox.addEventListener("change", function () {
+        state.t2ShowTypeColumn = !checkbox.checked;
+        renderTable2Body();
+      });
+      checkbox._wired = true;
+    }
   }
 
   function renderTable2Hint() {
@@ -1111,15 +1132,23 @@
     // (rather than ".th-text" like the wider Cohort column above) so it
     // gets that same narrow-column treatment: label on top, sort icon
     // centered underneath it, consistent with every column beside it.
-    var typeTh = document.createElement("th");
-    typeTh.className = "type-col-header";
-    var typeLabel = document.createElement("span");
-    typeLabel.className = "th-label";
-    typeLabel.textContent = "Procedure separation type";
-    typeTh.appendChild(typeLabel);
-    typeTh.title = "Click to sort by Procedure separation type";
-    wireSortableHeader(typeTh, procCol, state.t2Sort, renderTable2Body);
-    headRow.appendChild(typeTh);
+    //
+    // The "Hide the 'Procedure separation type' column" checkbox in the
+    // Procedure Separation Type picker (see wireTypeColumnToggle()) skips
+    // this column entirely -- independent of state.t2SelectedTypes above,
+    // which only ever filters which cohort *rows* are shown, never the
+    // column itself.
+    if (state.t2ShowTypeColumn) {
+      var typeTh = document.createElement("th");
+      typeTh.className = "type-col-header";
+      var typeLabel = document.createElement("span");
+      typeLabel.className = "th-label";
+      typeLabel.textContent = "Procedure separation type";
+      typeTh.appendChild(typeLabel);
+      typeTh.title = "Click to sort by Procedure separation type";
+      wireSortableHeader(typeTh, procCol, state.t2Sort, renderTable2Body);
+      headRow.appendChild(typeTh);
+    }
 
     columns.forEach(function (col) {
       var th = document.createElement("th");
@@ -1183,34 +1212,36 @@
         });
         tr.appendChild(nameTd);
 
-        var typeTd = document.createElement("td");
-        typeTd.className = "type-cell";
-        // The text lives in its own inner span (like the checklist item
-        // chips' own element) rather than directly on the <td>, so the
-        // hover "enlarge" transform below can be scoped to just the text
-        // -- see ".type-cell .type-text:hover" in dashboard.css -- instead
-        // of transforming (and potentially overlapping neighboring cells
-        // with) the whole table cell.
-        var typeText = document.createElement("span");
-        typeText.className = "type-text";
-        typeText.textContent = procVal || "\u2014";
-        typeTd.appendChild(typeText);
-        if (accentColor) {
-          typeTd.style.color = accentColor;
+        if (state.t2ShowTypeColumn) {
+          var typeTd = document.createElement("td");
+          typeTd.className = "type-cell";
+          // The text lives in its own inner span (like the checklist item
+          // chips' own element) rather than directly on the <td>, so the
+          // hover "enlarge" transform below can be scoped to just the text
+          // -- see ".type-cell .type-text:hover" in dashboard.css --
+          // instead of transforming (and potentially overlapping
+          // neighboring cells with) the whole table cell.
+          var typeText = document.createElement("span");
+          typeText.className = "type-text";
+          typeText.textContent = procVal || "\u2014";
+          typeTd.appendChild(typeText);
+          if (accentColor) {
+            typeTd.style.color = accentColor;
+          }
+          // Custom tooltip (see attachTooltip() above) showing this type's
+          // full definition -- the same text shown in the key/legend off to
+          // the side (renderProcedureSeparationKey()) -- so hovering "Type
+          // 3" here explains what that means without having to look it up
+          // elsewhere. A short (500ms) delay, same as the value chips
+          // below, rather than instant like the cohort name -- only the
+          // cohort name (which is truncated and needs immediate
+          // confirmation of what it says) gets the 0ms treatment.
+          var typeDef = procedureTypeDefinition(procVal);
+          if (typeDef) {
+            attachTooltip(typeTd, typeDef, 500);
+          }
+          tr.appendChild(typeTd);
         }
-        // Custom tooltip (see attachTooltip() above) showing this type's
-        // full definition -- the same text shown in the key/legend off to
-        // the side (renderProcedureSeparationKey()) -- so hovering "Type 3"
-        // here explains what that means without having to look it up
-        // elsewhere. A short (500ms) delay, same as the value chips below,
-        // rather than instant like the cohort name -- only the cohort name
-        // (which is truncated and needs immediate confirmation of what it
-        // says) gets the 0ms treatment.
-        var typeDef = procedureTypeDefinition(procVal);
-        if (typeDef) {
-          attachTooltip(typeTd, typeDef, 500);
-        }
-        tr.appendChild(typeTd);
 
         columns.forEach(function (col) {
           var td = document.createElement("td");
@@ -1666,12 +1697,13 @@
       rowsInGroup.forEach(function (r, i) {
         var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
         var color = procedureTypeColor(typeVal) || "#666";
-        // Radius at the map's current zoom, derived from the cohort's N --
-        // baseRadius itself never changes, but the on-screen size does as
-        // the user zooms (see markerRadiusForZoom()/DD.zoomRadiusScale()),
-        // so it's recomputed from this on every zoomend via
-        // repositionJitteredMarkers() rather than baked into a fixed style.
-        var baseRadius = DD.markerRadius(r.N);
+        // Radius at the map's current zoom, derived from the cohort's
+        // Sample Size (N) -- baseRadius itself never changes, but the
+        // on-screen size does as the user zooms (see
+        // markerRadiusForZoom()/DD.zoomRadiusScale()), so it's recomputed
+        // from this on every zoomend via repositionJitteredMarkers()
+        // rather than baked into a fixed style.
+        var baseRadius = DD.markerRadius(r["Sample Size (N)"]);
         var marker = L.circleMarker(centroid, {
           radius: markerRadiusForZoom(baseRadius),
           color: color,
@@ -1702,8 +1734,8 @@
           "Mapped to: " +
           escapeHtml(DD.formatValue(r[locationCol])) +
           "<br/>" +
-          "N: " +
-          escapeHtml(DD.formatValue(r.N)) +
+          "Sample Size (N): " +
+          escapeHtml(DD.formatValue(r["Sample Size (N)"])) +
           "<br/>" +
           "Age range: " +
           escapeHtml(DD.formatValue(r["Age Range"])) +
