@@ -837,18 +837,28 @@ table.data-table tbody tr.accent-row:hover td {
   }
 
   /* Paired with syncLandscapeProcedureKeyPlacement() in dashboard.js: at
-     this same breakpoint that function moves "#t2-procedure-key" out of
-     its normal spot (a sibling of ".panel-main" inside ".panel-body-
-     with-key", see further below) and into ".two-col" itself, right
-     after "#t2-table-scroll", adding this class as it does. "grid-column:
-     2" places it in the table's own column -- the picker sidebar stays
-     in column 1, untouched -- so it lands in the empty space below the
-     table instead of trailing the entire sidebar+table block at the very
-     bottom of the page. Scoped to this same breakpoint as the JS that
-     moves it, so nothing here applies once the element's been moved back
-     for any other screen size. */
-  .two-col > .procedure-key-in-table-col {
-    grid-column: 2;
+     this same breakpoint that function wraps "#t2-table-scroll" in a new
+     "#t2-table-col" div (right there in ".two-col", taking the table's
+     old spot as the column-2 grid item) and moves "#t2-procedure-key"
+     into that wrapper too, right after the table.
+     This wrapper -- not a bare "grid-column: 2" on the key -- is what
+     actually makes the key land directly under the table: ".two-col"'s
+     two original children (the picker sidebar and the table) share row 1
+     of the same grid, so with the sidebar's long picker stack usually
+     much taller than the table, row 1's own track height gets stretched
+     to match the *sidebar*, not the table -- a plain second grid row
+     placed under the table would then only start after that whole
+     inflated row 1, i.e. after the tall sidebar's bottom edge, leaving a
+     big gap above it instead of sitting flush under the table. Wrapping
+     the table (and now the key) in their own flex column sidesteps that
+     entirely: that wrapper becomes column 2's *only* row-1 grid item, and
+     its own height is just the table's height plus the key's height,
+     completely independent of column 1's (the sidebar's) height. */
+  .t2-table-col {
+    display: flex;
+    flex-direction: column;
+  }
+  .t2-table-col > .procedure-key-in-table-col {
     margin-top: 1rem;
   }
 }

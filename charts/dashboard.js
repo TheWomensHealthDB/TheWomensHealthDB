@@ -313,15 +313,27 @@
   // the table on the right, above where the key would otherwise land,
   // that's just sitting unused.
   //
-  // This moves the key element itself into ".two-col", right after the
-  // table, and grid-places it in the table's own column (see
-  // ".two-col > .procedure-key-in-table-col" in dashboard.css) so it
-  // fills exactly that space instead. Outside this range it's moved back
-  // to its original spot at the end of ".panel-body-with-key" so every
-  // other breakpoint's already-established layout (desktop's side key,
-  // the <=640px stacked phone layout, the <=640px-portrait notice) keeps
-  // working completely unchanged -- this only ever touches the DOM
-  // position within the 641-900px range, and only for this one tab.
+  // A first attempt just moved the key into ".two-col" as a bare third
+  // grid item (grid-column: 2, auto row). That still landed in the wrong
+  // place: ".two-col"'s sidebar and table share row 1 of the same grid,
+  // so row 1's track height gets stretched to match whichever of the two
+  // is taller -- usually the sidebar, not the table -- and a second row
+  // placed under the table then only starts after that *whole* inflated
+  // row 1, i.e. after the sidebar's bottom edge, not the table's.
+  //
+  // This instead wraps "#t2-table-scroll" in a new "#t2-table-col" div
+  // right there in ".two-col" (taking the table's old spot as the
+  // column-2 grid item), then moves the key inside that wrapper, after
+  // the table (see ".t2-table-col" in dashboard.css, a plain flex
+  // column). That wrapper is column 2's *only* row-1 grid item, so its
+  // height is just the table's height plus the key's height -- completely
+  // independent of column 1's (the sidebar's) height. Outside the
+  // 641-900px range the wrapper is removed again (table-scroll goes back
+  // to being ".two-col"'s direct child) and the key is moved back to its
+  // original spot at the end of ".panel-body-with-key", so every other
+  // breakpoint's already-established layout (desktop's side key, the
+  // <=640px stacked phone layout, the <=640px-portrait notice) keeps
+  // working completely unchanged.
   function syncLandscapeProcedureKeyPlacement() {
     var key = document.getElementById("t2-procedure-key");
     var twoCol = document.querySelector("#panel-checklist .two-col");
@@ -330,15 +342,30 @@
     if (!key || !twoCol || !tableScroll || !bodyWithKey) return;
 
     var inRange = window.innerWidth > 640 && window.innerWidth <= 900;
+    var wrapper = document.getElementById("t2-table-col");
+
     if (inRange) {
-      if (key.parentNode !== twoCol || key.previousElementSibling !== tableScroll) {
-        tableScroll.insertAdjacentElement("afterend", key);
+      if (!wrapper) {
+        wrapper = document.createElement("div");
+        wrapper.id = "t2-table-col";
+        wrapper.className = "t2-table-col";
+        twoCol.insertBefore(wrapper, tableScroll);
+        wrapper.appendChild(tableScroll);
+      }
+      if (key.parentNode !== wrapper || key.previousElementSibling !== tableScroll) {
+        wrapper.appendChild(key); // lands right after tableScroll, wrapper's other child
       }
       key.classList.add("procedure-key-in-table-col");
     } else {
       key.classList.remove("procedure-key-in-table-col");
       if (key.parentNode !== bodyWithKey) {
         bodyWithKey.appendChild(key);
+      }
+      if (wrapper) {
+        // Un-wrap: put table-scroll back as ".two-col"'s direct child in
+        // its original spot, then discard the now-empty wrapper.
+        twoCol.insertBefore(tableScroll, wrapper);
+        twoCol.removeChild(wrapper);
       }
     }
   }
