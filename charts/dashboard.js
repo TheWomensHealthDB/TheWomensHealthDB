@@ -485,7 +485,7 @@
     T1_COLUMNS = [
       { key: state.schema.cohort_name_column, label: "Cohort Name" },
       { key: procCol, label: "Procedure Separation Type" },
-      { key: "N", label: "N" },
+      { key: "Sample Size (N)", label: "Sample Size (N)" },
       { key: "Age Range", label: "Age Range" },
       // The raw sheet's sex-composition column is renamed to this stable
       // "% Female" key by fetch_data.py's _rename_sex_composition_column()
@@ -733,20 +733,21 @@
     var selectAllBtn = container.querySelector(".picker-select-all");
     var selectNoneBtn = container.querySelector(".picker-select-none");
 
-    // Only trust a group (at any depth) if its header and at least one of
-    // its (possibly nested) descendants actually made it into this
-    // dataset's checklist_columns (e.g. the small mock dataset doesn't
-    // have most of these real columns, so schema.checklist_groups ends up
-    // empty for it -- see build_schema() in fetch_data.py). Recursive
-    // since a "child" can be another group object instead of a leaf
-    // string.
+    // A group's header does NOT have to be a real checklist_columns entry
+    // -- purely organizational/umbrella headers (e.g. "Menopause", which
+    // has no per-cohort Yes/No data of its own, just three real subgroups
+    // nested under it) are supported too. A group is only dropped if NONE
+    // of its (possibly nested) descendants made it into this dataset's
+    // checklist_columns (e.g. the small mock dataset doesn't have most of
+    // these real columns, so schema.checklist_groups ends up empty for it
+    // -- see build_schema() in fetch_data.py). Recursive since a "child"
+    // can be another group object instead of a leaf string.
     var allSet = {};
     allValues.forEach(function (v) {
       allSet[v] = true;
     });
 
     function filterGroup(g) {
-      if (!allSet[g.header]) return null;
       var filteredChildren = [];
       (g.children || []).forEach(function (child) {
         if (typeof child === "string") {
@@ -760,14 +761,19 @@
       return { header: g.header, children: filteredChildren };
     }
 
-    // Every header or leaf value that appears anywhere in a filtered
-    // group's subtree, gathered recursively -- used for the tri-state
-    // checked/indeterminate calculation on a header's own checkbox
-    // (`groupState`/`setGroupSelected`) and to know which top-level
-    // values are "consumed" by a group (and so shouldn't also be drawn as
-    // a standalone flat row in `draw()` below).
+    // Every REAL (checklist_columns-backed) header or leaf value that
+    // appears anywhere in a filtered group's subtree, gathered
+    // recursively -- used for the tri-state checked/indeterminate
+    // calculation on a header's own checkbox (`groupState`/
+    // `setGroupSelected`) and to know which top-level values are
+    // "consumed" by a group (and so shouldn't also be drawn as a
+    // standalone flat row in `draw()` below). A purely organizational
+    // header (not itself a real column -- see filterGroup() above) is
+    // deliberately NOT included here: it has no per-cohort data of its
+    // own to select/deselect or count toward "all"/"some"/"none", it's
+    // just a collapsible label wrapping its real descendants.
     function collectMembers(node) {
-      var members = [node.header];
+      var members = allSet[node.header] ? [node.header] : [];
       (node.children || []).forEach(function (child) {
         if (typeof child === "string") {
           members.push(child);
@@ -792,12 +798,17 @@
       });
     }
 
-    var topLevelNodeByHeader = {};
+    // Kept as an array (not just a header-keyed map) so top-level groups
+    // -- including purely organizational headers with no real column of
+    // their own, which would never be visited by an allValues.forEach()
+    // pass -- render in the order schema.checklist_groups defines, not in
+    // dataset-column order. See draw() below.
+    var topLevelOrder = [];
     var consumedSet = {};
     (groups || []).forEach(function (g) {
       var filtered = filterGroup(g);
       if (!filtered) return;
-      topLevelNodeByHeader[filtered.header] = filtered;
+      topLevelOrder.push(filtered);
       collectMembers(filtered).forEach(function (m) {
         if (m !== filtered.header) consumedSet[m] = true;
       });
@@ -903,13 +914,22 @@
       listEl.innerHTML = "";
       var renderedAny = false;
 
+      // Top-level groups render first, in the order schema.checklist_groups
+      // defines (together with each one's full, possibly multi-level
+      // subtree) via renderNode() below. This has to happen before the
+      // allValues pass -- not driven by it -- because a purely
+      // organizational header (e.g. "Menopause") isn't itself a real
+      // checklist_columns entry and so would never be visited by an
+      // allValues.forEach() pass at all.
+      var renderedTopHeaders = {};
+      topLevelOrder.forEach(function (node) {
+        if (renderNode(node, 0, query)) renderedAny = true;
+        renderedTopHeaders[node.header] = true;
+      });
+
       allValues.forEach(function (val) {
-        // Top-level group headers are rendered (together with their full,
-        // possibly multi-level subtree) via renderNode() below.
-        if (topLevelNodeByHeader[val]) {
-          if (renderNode(topLevelNodeByHeader[val], 0, query)) renderedAny = true;
-          return;
-        }
+        // Already rendered above, as a top-level group header.
+        if (renderedTopHeaders[val]) return;
         // Anything else that's a member of some group's subtree (a leaf
         // item or a nested sub-header) was already rendered alongside its
         // top-level ancestor above, so skip it here.

@@ -162,7 +162,7 @@ METADATA_COLUMNS = [
     # cell, "not in complete_df.columns at all" isn't warned about).
     "Country",
     "Public Availability",
-    "N",
+    "Sample Size (N)",
     "Age Range",
     SEX_COMPOSITION_COLUMN,
     "Year Started/Wave Description",
@@ -235,13 +235,20 @@ HEADER_STANDARDIZATION_MAP = {
     "Hysterectomy Question Included": "Hysterectomy item",
     "Oopherectomy Question Included": "Oophorectomy item",
     "Date of Menses Question Included": "Date of menses item",
-    "FMP Date Question Included": "FMP date item",
+    "FMP Date Question Included": "Final Menstrual Period (FMP) date item",
     "Pregnancy Question Included": "Pregnancy item",
     "Other Women's Health Questions": "Other women's health item",
     "Wording of Related Questions/Variables": HYSTERECTOMY_OOPHORECTOMY_RELATED_COLUMN,
     "Age at menarche": "Age at menarche item",
-    "PCOS/PMOS Item": "PCOS/PMOS item",
-    "POI Item": "POI item",
+    "PCOS/PMOS Item": (
+        "Polycystic Ovary Syndrome (PCOS) / "
+        "Polyendocrine Metabolic Ovarian Syndrome (PMOS) item"
+    ),
+    "POI Item": "Premature Ovarian Insufficiency (POI) item",
+    # The raw sheet's sample-size column header is the bare letter "N" --
+    # spelled out here per the site-wide abbreviation-expansion pass so it
+    # reads the same way as FMP/PCOS/PMOS/POI above.
+    "N": "Sample Size (N)",
     "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item:": (
         "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item"
     ),
@@ -361,7 +368,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort A",
             "Country": "United States",
             "Public Availability": "Yes",
-            "N": 1200,
+            "Sample Size (N)": 1200,
             "Age Range": "40-60",
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2005",
@@ -385,7 +392,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort B",
             "Country": "United Kingdom",
             "Public Availability": "No",
-            "N": 850,
+            "Sample Size (N)": 850,
             "Age Range": "35-55",
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 1998",
@@ -409,7 +416,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort C",
             "Country": "United States",
             "Public Availability": "Yes",
-            "N": 3400,
+            "Sample Size (N)": 3400,
             "Age Range": "18-45",
             SEX_COMPOSITION_COLUMN: "55%",
             "Year Started/Wave Description": "Wave 1: 2012",
@@ -433,7 +440,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort D",
             "Country": "United Kingdom",
             "Public Availability": "Yes",
-            "N": 2100,
+            "Sample Size (N)": 2100,
             "Age Range": "50-70",
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2001",
@@ -457,7 +464,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort E",
             "Country": "Canada",
             "Public Availability": "No",
-            "N": 640,
+            "Sample Size (N)": 640,
             "Age Range": "45-65",
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2010",
@@ -481,7 +488,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort F",
             "Country": "Australia",
             "Public Availability": "Yes",
-            "N": 980,
+            "Sample Size (N)": 980,
             "Age Range": "40-55",
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2009",
@@ -505,7 +512,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort G",
             "Country": "Netherlands",
             "Public Availability": "Yes",
-            "N": 1750,
+            "Sample Size (N)": 1750,
             "Age Range": "30-50",
             SEX_COMPOSITION_COLUMN: "50%",
             "Year Started/Wave Description": "Wave 1: 2015",
@@ -529,7 +536,7 @@ def _mock_complete_datasets() -> pd.DataFrame:
             "Cohort Name": "Example Cohort H",
             "Country": "Japan",
             "Public Availability": "No",
-            "N": 510,
+            "Sample Size (N)": 510,
             "Age Range": "42-58",
             SEX_COMPOSITION_COLUMN: "100%",
             "Year Started/Wave Description": "Wave 1: 2007",
@@ -1224,90 +1231,215 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
 #   - another nested {"header": ..., "children": [...]} dict, for headers
 #     that are themselves a sub-section of a larger umbrella header.
 #
-# Per the audit sheet, "Menopause-related symptom items" is the umbrella
-# header over all 7 symptom sub-groups below (each renamed via
-# HEADER_STANDARDIZATION_MAP above to "<Category> symptom items"), and
-# "Menstrual cycle / bleeding pattern item" is a separate, single-level
-# section header that was missing from the previous version of this list.
+# Top-level umbrella categories for the Coverage Checklist's "Checklist
+# items" picker, covering all 99 checklist_columns. Per the audit sheet
+# (and a follow-up request to fold the three menopause-related categories
+# into one), there are 7 top-level headers:
+#   1. Reproductive & Gynecologic History
+#   2. Menstrual Cycle & Menarche
+#   3. Birth Control
+#   4. Pregnancy & Fertility
+#   5. Menopause (with 3 nested subcategories -- see below)
+#   6. Hormone Therapy
+#   7. Linked/Ancillary Data Collected
+#
+# A group's "header" does NOT have to be a real checklist column -- most of
+# the 7 headers above (and 2 of the 3 "Menopause" subcategory headers) are
+# purely organizational labels with no per-cohort Yes/No data of their own,
+# just real columns (or further-nested real-column headers, like
+# "Menopause-related symptom items" and its own 7 symptom sub-groups)
+# underneath them. _filter_checklist_group() below (and the mirrored
+# filterGroup() in dashboard.js) only require that at least one descendant
+# leaf survive -- they don't require the header itself to be a column.
+#
+# A group's "children" list can contain either:
+#   - a leaf column-name string (an actual per-cohort checklist item), or
+#   - another nested {"header": ..., "children": [...]} dict, for headers
+#     that are themselves a sub-section of a larger umbrella header.
 CHECKLIST_SECTION_GROUPS = [
     {
-        "header": "Menstrual cycle / bleeding pattern item",
+        "header": "Reproductive & Gynecologic History",
         "children": [
-            "Cycle regularity item",
-            "Cycle length in days item",
-            "Change in cycle length item",
-            "Skipped cycles item",
-            "Bleeding flow / amount item",
-            "Time since last period item",
-            "Length of time without a period (amenorrhea) item",
+            "Hysterectomy item",
+            "Oophorectomy item",
+            "Other women's health item",
+            "Polycystic Ovary Syndrome (PCOS) / "
+            "Polyendocrine Metabolic Ovarian Syndrome (PMOS) item",
+            "Premature Ovarian Insufficiency (POI) item",
+            "Endometriosis item",
+            "Pelvic prolapse or relaxation item",
+            "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item",
+            "Abnormal vaginal bleeding item",
+            "Fibroids (benign growths in the uterus or womb) item",
         ],
     },
     {
-        "header": "Menopause-related symptom items",
+        "header": "Menstrual Cycle & Menarche",
+        "children": [
+            "Date of menses item",
+            "Age at menarche item",
+            {
+                "header": "Menstrual cycle / bleeding pattern item",
+                "children": [
+                    "Cycle regularity item",
+                    "Cycle length in days item",
+                    "Change in cycle length item",
+                    "Skipped cycles item",
+                    "Bleeding flow / amount item",
+                    "Time since last period item",
+                    "Length of time without a period (amenorrhea) item",
+                ],
+            },
+        ],
+    },
+    {
+        "header": "Birth Control",
+        "children": [
+            "Birth control usage item",
+            'Type of birth control used (if yes, for "Birth control usage item")',
+            'Primary reason for taking birth control pills (if yes, for "Birth control usage item")',
+            'Age when started using birth control (if yes, for "Birth control usage item")',
+            'Duration of birth control use (if yes, for "Birth control usage item")',
+        ],
+    },
+    {
+        "header": "Pregnancy & Fertility",
+        "children": [
+            "Pregnancy item",
+            "Ever pregnant item",
+            "Number pregnancies item",
+            "Age at pregnancies item",
+            "Type of pregnancy item",
+            "Complications of pregnancy item",
+            "Number of live births item",
+            "Sex of live births item",
+            "Breastfeeding item",
+            "Time of breastfeeding item",
+            "Fertility medications to help you get pregnant item",
+            'Type of fertility medication used (if yes, for "Fertility medications to help you get pregnant item")',
+        ],
+    },
+    {
+        "header": "Menopause",
         "children": [
             {
-                "header": "Vasomotor symptom items",
-                "children": ["Hot flashes item", "Night sweats item"],
-            },
-            {
-                "header": "Sleep symptom items",
+                "header": "Menopause Status & Timing",
                 "children": [
-                    "Difficulty getting to sleep item",
-                    "Difficulty staying asleep item",
-                    "Nighttime awakening item",
+                    "Final Menstrual Period (FMP) date item",
+                    "Menopausal status item",
+                    "Age at menopause item",
+                    "Age at final menstrual period item",
                 ],
             },
             {
-                "header": "Somatic symptom items",
+                "header": "Menopause-related symptom items",
                 "children": [
-                    "Heart palpitations item",
-                    "Skin itching item",
-                    "Headaches item",
-                    "Bloated stomach item",
-                    "Breast tenderness item",
-                    "Joint pains item",
+                    {
+                        "header": "Vasomotor symptom items",
+                        "children": ["Hot flashes item", "Night sweats item"],
+                    },
+                    {
+                        "header": "Sleep symptom items",
+                        "children": [
+                            "Difficulty getting to sleep item",
+                            "Difficulty staying asleep item",
+                            "Nighttime awakening item",
+                        ],
+                    },
+                    {
+                        "header": "Somatic symptom items",
+                        "children": [
+                            "Heart palpitations item",
+                            "Skin itching item",
+                            "Headaches item",
+                            "Bloated stomach item",
+                            "Breast tenderness item",
+                            "Joint pains item",
+                        ],
+                    },
+                    {
+                        "header": "Mood symptom items",
+                        "children": [
+                            "Tiredness item",
+                            "Irritability item",
+                            "Feeling anxious item",
+                            "Feeling depressed item",
+                            "Mood swings item",
+                            "Crying spells item",
+                        ],
+                    },
+                    {
+                        "header": "Cognitive symptom items",
+                        "children": ["Difficulty concentrating item", "Poor memory item"],
+                    },
+                    {
+                        "header": "Genitourinary symptom items",
+                        "children": [
+                            "Frequent urination item",
+                            "Urine leakage item",
+                            "Painful urination item",
+                            "Bladder infection item",
+                            "Stool or gas item",
+                            "Dry vagina item",
+                            "Vaginal itching item",
+                            "Abnormal vaginal discharge item",
+                            "Vaginal infection item",
+                            "Pain inside vagina during intercourse item",
+                            "Bleeding after intercourse item",
+                        ],
+                    },
+                    {
+                        # Per the user's decision: item #77 ("Pain during
+                        # intercourse (general) item") joins this subgroup.
+                        # (It used to be listed in Genitourinary above under
+                        # its pre-standardization name, "Pain during
+                        # intercourse item" -- but HEADER_STANDARDIZATION_MAP
+                        # renames the raw header to "...(general) item", so
+                        # that stale, no-longer-matching name silently
+                        # dropped this item from every group. Fixed here by
+                        # using the correct, current standardized name and
+                        # placing it in Sexual/libido instead.)
+                        "header": "Sexual/libido symptom items",
+                        "children": [
+                            "Lack of sexual desire item",
+                            "Orgasm difficulty item",
+                            "Limited sexual opportunity item",
+                            "Pain during intercourse (general) item",
+                        ],
+                    },
+                    "Symptom severity items",
+                    "Symptom time frame items",
                 ],
             },
             {
-                "header": "Mood symptom items",
+                "header": "Menopause Knowledge & Perceptions",
                 "children": [
-                    "Tiredness item",
-                    "Irritability item",
-                    "Feeling anxious item",
-                    "Feeling depressed item",
-                    "Mood swings item",
-                    "Crying spells item",
+                    "Knowledge of menopause item",
+                    "Views or perceptions of menopause item",
+                    "Sources of knowledge about menopause item",
                 ],
             },
-            {
-                "header": "Cognitive symptom items",
-                "children": ["Difficulty concentrating item", "Poor memory item"],
-            },
-            {
-                "header": "Genitourinary symptom items",
-                "children": [
-                    "Frequent urination item",
-                    "Urine leakage item",
-                    "Painful urination item",
-                    "Bladder infection item",
-                    "Stool or gas item",
-                    "Dry vagina item",
-                    "Vaginal itching item",
-                    "Abnormal vaginal discharge item",
-                    "Vaginal infection item",
-                    "Pain during intercourse item",
-                    "Pain inside vagina during intercourse item",
-                    "Bleeding after intercourse item",
-                ],
-            },
-            {
-                "header": "Sexual/libido symptom items",
-                "children": [
-                    "Lack of sexual desire item",
-                    "Orgasm difficulty item",
-                    "Limited sexual opportunity item",
-                ],
-            },
+        ],
+    },
+    {
+        "header": "Hormone Therapy",
+        "children": [
+            "Hormone therapy use item",
+            "Hormone therapy frequency/duration item",
+            "Hormone therapy start/stop age item",
+            "Hormone therapy type item",
+            "Knowledge of hormone therapy item",
+            "Views or perceptions of hormone therapy item",
+            "Sources of knowledge about hormone therapy item",
+        ],
+    },
+    {
+        "header": "Linked/Ancillary Data Collected",
+        "children": [
+            "Sex hormones/biomarkers collected?",
+            "Health records linked?",
+            "Cognitive data collected?",
+            "Neuroimaging data collected?",
         ],
     },
 ]
@@ -1331,15 +1463,18 @@ def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame, is_mock_data
     validity_columns = [c for c in table_df.columns if c != TABLE_COHORT_COLUMN]
 
     # Only include a group (and only the children that are actually present)
-    # if its header column made it into this dataset -- keeps the mock
-    # dataset (which doesn't have most of these real columns) from ending
-    # up with a bunch of empty/dangling groups. Recursive because
+    # if at least one of its descendants made it into this dataset -- keeps
+    # the mock dataset (which doesn't have most of these real columns) from
+    # ending up with a bunch of empty/dangling groups. Recursive because
     # CHECKLIST_SECTION_GROUPS can nest a group inside another group's
     # "children" (e.g. "Vasomotor symptom items" nested inside
     # "Menopause-related symptom items") -- see CHECKLIST_SECTION_GROUPS.
+    #
+    # NOTE: a group's own header does NOT have to be a real column itself
+    # (see CHECKLIST_SECTION_GROUPS's docstring-comment) -- e.g. "Menopause"
+    # is a purely organizational label with no per-cohort data of its own,
+    # just three real subcategories nested underneath it.
     def _filter_checklist_group(group, present_columns):
-        if group["header"] not in present_columns:
-            return None
         filtered_children = []
         for child in group["children"]:
             if isinstance(child, dict):

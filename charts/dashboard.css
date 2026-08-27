@@ -1253,6 +1253,9 @@ table.matrix-table td.type-cell:hover .type-text {
 .picker label.picker-row.picker-depth-2 {
   padding-left: 2.4rem;
 }
+.picker label.picker-row.picker-depth-3 {
+  padding-left: 3.45rem;
+}
 
 /* ---------------------------------------------------------------------
    Custom Filter builder
