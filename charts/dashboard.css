@@ -1217,17 +1217,21 @@ table.matrix-table td.type-cell:hover .type-text {
   background: var(--hover-bg);
 }
 
-/* The Procedure Separation Type picker's "Hide the 'Procedure separation
-   type' column" toggle (see t2-type-hide-column in dashboard.js) sits
-   above that picker's own Select all/Select none row -- it controls
-   whether the matrix table shows a Procedure Separation Type column at
-   all, which is independent of (and not overridden by) that picker's
-   row-filtering checkboxes below it, so it gets its own dashed rule to
-   read as visually separate from them. */
-.picker label.picker-row.picker-column-toggle {
-  margin-bottom: 0.5rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px dashed var(--border);
+/* The Procedure Separation Type picker's "Hide column" toggle (see
+   t2-type-hide-column-btn in dashboard.js) sits in the .picker-actions row
+   alongside Select all/Select none rather than as its own checkbox row --
+   it controls whether the matrix table shows a Procedure Separation Type
+   column at all, which is independent of (and not overridden by) that same
+   picker's row-filtering Select all/Select none buttons. When the column is
+   currently hidden, the button gets a deeper fill than the plain :hover
+   state below so it reads as "engaged" rather than just moused-over. */
+.picker .picker-actions button.toggle-active {
+  background: color-mix(in srgb, var(--accent) 30%, var(--accent-soft) 70%);
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+.picker .picker-actions button.toggle-active:hover {
+  background: color-mix(in srgb, var(--accent) 40%, var(--accent-soft) 60%);
 }
 
 /* Coverage Checklist item picker: distinguishes a section-header row (e.g.

@@ -31,7 +31,7 @@
     t2SelectedCohorts: null, // Set, populated once data loads
     t2SelectedColumns: null, // Set
     t2SelectedTypes: null, // Set of selected "Type N" values (Procedure Separation Type filter)
-    t2ShowTypeColumn: true, // "Hide the 'Procedure separation type' column" checkbox in the Procedure Separation Type picker
+    t2ShowTypeColumn: true, // "Hide column" toggle button in the Procedure Separation Type picker's actions row
     t2Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
     t2Sort: { column: null, direction: "asc" },
     // Table 3
@@ -637,22 +637,31 @@
     renderTable2Body();
   }
 
-  // Wires the Procedure Separation Type picker's "Hide the 'Procedure
-  // separation type' column" checkbox to state.t2ShowTypeColumn --
-  // independent of (and not affected by) that same picker's Select
-  // all/Select none row-filtering checkboxes just below it. Only toggles
-  // whether renderTable2Body() draws the dedicated Procedure Separation
-  // Type column; it never changes which cohort rows are shown.
+  // Wires the Procedure Separation Type picker's "Hide column" button (sits
+  // in that picker's .picker-actions row next to Select all/Select none) to
+  // state.t2ShowTypeColumn -- independent of (and not affected by) that
+  // same picker's Select all/Select none row-filtering buttons beside it.
+  // Only toggles whether renderTable2Body() draws the dedicated Procedure
+  // Separation Type column; it never changes which cohort rows are shown.
+  // The button gets a "toggle-active" class (deeper fill than :hover, see
+  // dashboard.css) whenever the column is currently hidden, so its state
+  // reads clearly at a glance rather than just on hover/click flash.
   function wireTypeColumnToggle() {
-    var checkbox = document.getElementById("t2-type-hide-column");
-    if (!checkbox) return;
-    checkbox.checked = !state.t2ShowTypeColumn;
-    if (!checkbox._wired) {
-      checkbox.addEventListener("change", function () {
-        state.t2ShowTypeColumn = !checkbox.checked;
+    var btn = document.getElementById("t2-type-hide-column-btn");
+    if (!btn) return;
+    function refreshButtonState() {
+      var hidden = !state.t2ShowTypeColumn;
+      btn.classList.toggle("toggle-active", hidden);
+      btn.setAttribute("aria-pressed", hidden ? "true" : "false");
+    }
+    refreshButtonState();
+    if (!btn._wired) {
+      btn.addEventListener("click", function () {
+        state.t2ShowTypeColumn = !state.t2ShowTypeColumn;
+        refreshButtonState();
         renderTable2Body();
       });
-      checkbox._wired = true;
+      btn._wired = true;
     }
   }
 
@@ -1133,11 +1142,10 @@
     // gets that same narrow-column treatment: label on top, sort icon
     // centered underneath it, consistent with every column beside it.
     //
-    // The "Hide the 'Procedure separation type' column" checkbox in the
-    // Procedure Separation Type picker (see wireTypeColumnToggle()) skips
-    // this column entirely -- independent of state.t2SelectedTypes above,
-    // which only ever filters which cohort *rows* are shown, never the
-    // column itself.
+    // The "Hide column" button in the Procedure Separation Type picker's
+    // actions row (see wireTypeColumnToggle()) skips this column entirely
+    // -- independent of state.t2SelectedTypes above, which only ever
+    // filters which cohort *rows* are shown, never the column itself.
     if (state.t2ShowTypeColumn) {
       var typeTh = document.createElement("th");
       typeTh.className = "type-col-header";
