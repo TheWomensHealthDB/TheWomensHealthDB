@@ -184,17 +184,22 @@
           state.t3Rendered = true;
         }
 
-        // Landscape-phone/small-tablet sidebar height sync (see
-        // syncLandscapeChecklistHeight() below) needs to (re)run every time
-        // the Coverage Checklist tab becomes visible, not just the first
-        // time it's rendered -- its measurements are all 0 while the panel
-        // is display:none, so switching *back* to an already-rendered
-        // checklist tab needs its own fresh measurement too. Deferred with
-        // the same 0ms setTimeout as the Map's invalidateSize() above, so
-        // the panel's just-applied "active" class has actually taken
-        // effect (and the panel is laid out/visible) before measuring it.
+        // Landscape-phone/small-tablet sidebar height sync and Procedure
+        // Separation Type key placement (see syncLandscapeChecklistHeight()
+        // and syncLandscapeProcedureKeyPlacement() below) need to (re)run
+        // every time the Coverage Checklist tab becomes visible, not just
+        // the first time it's rendered -- their measurements are all 0
+        // while the panel is display:none, so switching *back* to an
+        // already-rendered checklist tab needs its own fresh run too.
+        // Deferred with the same 0ms setTimeout as the Map's
+        // invalidateSize() above, so the panel's just-applied "active"
+        // class has actually taken effect (and the panel is laid
+        // out/visible) before measuring it.
         if (target === "checklist") {
-          setTimeout(syncLandscapeChecklistHeight, 0);
+          setTimeout(function () {
+            syncLandscapeChecklistHeight();
+            syncLandscapeProcedureKeyPlacement();
+          }, 0);
         }
       });
     });
@@ -207,10 +212,16 @@
     var landscapeSyncTimer = null;
     window.addEventListener("resize", function () {
       clearTimeout(landscapeSyncTimer);
-      landscapeSyncTimer = setTimeout(syncLandscapeChecklistHeight, 120);
+      landscapeSyncTimer = setTimeout(function () {
+        syncLandscapeChecklistHeight();
+        syncLandscapeProcedureKeyPlacement();
+      }, 120);
     });
     window.addEventListener("orientationchange", function () {
-      setTimeout(syncLandscapeChecklistHeight, 150);
+      setTimeout(function () {
+        syncLandscapeChecklistHeight();
+        syncLandscapeProcedureKeyPlacement();
+      }, 150);
     });
   }
 
@@ -282,6 +293,54 @@
     var addEach = extra / 2;
     cohortPicker.style.height = cohortNatural + addEach + "px";
     columnPicker.style.height = columnNatural + addEach + "px";
+  }
+
+  // ---------------------------------------------------------------------
+  // Landscape-phone / small-tablet width (641px-900px): move the
+  // Procedure Separation Type key into the empty space below the table
+  // ---------------------------------------------------------------------
+  // At every other breakpoint "#t2-procedure-key" lives in its normal
+  // spot -- the last child of "#panel-checklist .panel-body-with-key",
+  // alongside ".panel-main" (see dashboard.css). Once that grid collapses
+  // to a single column at <=900px, the key simply stacks below whichever
+  // of ".panel-main"'s contents is taller. At 641-900px specifically,
+  // ".two-col" is still showing the picker sidebar beside the table (only
+  // the <=640px block stacks that too, see dashboard.css), and the
+  // Checklist items picker's long list often makes the sidebar column run
+  // well past the table's own, usually much shorter, bottom edge -- so
+  // the key ends up scrolled far down the page, beneath that whole tall
+  // sidebar+table block, even though there's empty space directly under
+  // the table on the right, above where the key would otherwise land,
+  // that's just sitting unused.
+  //
+  // This moves the key element itself into ".two-col", right after the
+  // table, and grid-places it in the table's own column (see
+  // ".two-col > .procedure-key-in-table-col" in dashboard.css) so it
+  // fills exactly that space instead. Outside this range it's moved back
+  // to its original spot at the end of ".panel-body-with-key" so every
+  // other breakpoint's already-established layout (desktop's side key,
+  // the <=640px stacked phone layout, the <=640px-portrait notice) keeps
+  // working completely unchanged -- this only ever touches the DOM
+  // position within the 641-900px range, and only for this one tab.
+  function syncLandscapeProcedureKeyPlacement() {
+    var key = document.getElementById("t2-procedure-key");
+    var twoCol = document.querySelector("#panel-checklist .two-col");
+    var tableScroll = document.getElementById("t2-table-scroll");
+    var bodyWithKey = document.querySelector("#panel-checklist .panel-body-with-key");
+    if (!key || !twoCol || !tableScroll || !bodyWithKey) return;
+
+    var inRange = window.innerWidth > 640 && window.innerWidth <= 900;
+    if (inRange) {
+      if (key.parentNode !== twoCol || key.previousElementSibling !== tableScroll) {
+        tableScroll.insertAdjacentElement("afterend", key);
+      }
+      key.classList.add("procedure-key-in-table-col");
+    } else {
+      key.classList.remove("procedure-key-in-table-col");
+      if (key.parentNode !== bodyWithKey) {
+        bodyWithKey.appendChild(key);
+      }
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -1278,8 +1337,14 @@
     // height (fewer/more matching rows), so the landscape-breakpoint
     // sidebar height sync (see syncLandscapeChecklistHeight() above) needs
     // to re-run here too, not just on tab-switch/resize. No-ops instantly
-    // outside the 641-900px range or while this tab isn't visible.
+    // outside the 641-900px range or while this tab isn't visible. Also
+    // re-runs syncLandscapeProcedureKeyPlacement() here (rather than only
+    // on tab-switch/resize/orientationchange) so the one edge case where
+    // this table is built eagerly because the Coverage Checklist tab is
+    // already active on page load (see loadData() above) still gets the
+    // key moved into place, not just left in its default DOM position.
     syncLandscapeChecklistHeight();
+    syncLandscapeProcedureKeyPlacement();
   }
 
   function chipSymbol(category, label) {

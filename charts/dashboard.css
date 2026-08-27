@@ -835,6 +835,22 @@ table.data-table tbody tr.accent-row:hover td {
   #t2-column-picker {
     max-height: none;
   }
+
+  /* Paired with syncLandscapeProcedureKeyPlacement() in dashboard.js: at
+     this same breakpoint that function moves "#t2-procedure-key" out of
+     its normal spot (a sibling of ".panel-main" inside ".panel-body-
+     with-key", see further below) and into ".two-col" itself, right
+     after "#t2-table-scroll", adding this class as it does. "grid-column:
+     2" places it in the table's own column -- the picker sidebar stays
+     in column 1, untouched -- so it lands in the empty space below the
+     table instead of trailing the entire sidebar+table block at the very
+     bottom of the page. Scoped to this same breakpoint as the JS that
+     moves it, so nothing here applies once the element's been moved back
+     for any other screen size. */
+  .two-col > .procedure-key-in-table-col {
+    grid-column: 2;
+    margin-top: 1rem;
+  }
 }
 
 /* ---------------------------------------------------------------------
