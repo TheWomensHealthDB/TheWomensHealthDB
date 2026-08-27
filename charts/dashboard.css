@@ -359,8 +359,21 @@ table.data-table th, table.data-table td {
   vertical-align: top;
 }
 
+/* Background is split into an opaque `background-color` plus a separate
+   `background-image` gradient (rather than one `background: linear-
+   gradient(...)` shorthand) specifically so the hover transition below
+   only ever animates between two fully-opaque colors. Animating the
+   shorthand directly used to interpolate an *implicit* `background-color:
+   transparent` (since the base rule never set one of its own) up to the
+   solid `:hover` color, and CSS animates "transparent" as a color with
+   0 alpha -- so partway through that 0.12s transition the header's
+   background was itself partly see-through, letting the rows scrolled
+   underneath a sticky header flash briefly visible. Both states now have
+   a real, opaque `background-color` at every point in the transition, so
+   there's nothing left to show through. */
 table.data-table thead th {
-  background: linear-gradient(180deg, #fdfefe 0%, var(--bg-subtle) 100%);
+  background-color: var(--bg-subtle);
+  background-image: linear-gradient(180deg, #fdfefe 0%, var(--bg-subtle) 100%);
   cursor: pointer;
   white-space: nowrap;
   position: sticky;
@@ -369,10 +382,17 @@ table.data-table thead th {
   font-weight: 700;
   color: var(--text-main);
   user-select: none;
-  transition: background 0.12s ease;
+  transition: background-color 0.12s ease;
 }
 
-table.data-table thead th:hover { background: var(--hover-bg); }
+table.data-table thead th:hover {
+  background-color: var(--hover-bg);
+  /* Swapped instantly (not part of the transition above) rather than
+     animated, since a gradient can't be smoothly interpolated toward a
+     flat color anyway -- it would otherwise still flip abruptly to `none`
+     partway through the transition regardless. */
+  background-image: none;
+}
 
 /* Sortable column headers -- Cohort Summary, Coverage Checklist, and
    Custom Filter all wire every header up via wireSortableHeader() in
