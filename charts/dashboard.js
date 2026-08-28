@@ -334,40 +334,68 @@
   // breakpoint's already-established layout (desktop's side key, the
   // <=640px stacked phone layout, the <=640px-portrait notice) keeps
   // working completely unchanged.
+  // TEMPORARY diagnostic logging (window.__keyDebug) -- see the
+  // "[key-debug]" console messages this prints. Safe to remove once the
+  // landscape-breakpoint key-placement bug is confirmed fixed; it only
+  // logs, it doesn't change behavior.
   function syncLandscapeProcedureKeyPlacement() {
     var key = document.getElementById("t2-procedure-key");
     var twoCol = document.querySelector("#panel-checklist .two-col");
     var tableScroll = document.getElementById("t2-table-scroll");
     var bodyWithKey = document.querySelector("#panel-checklist .panel-body-with-key");
-    if (!key || !twoCol || !tableScroll || !bodyWithKey) return;
+    console.log("[key-debug] syncLandscapeProcedureKeyPlacement() called", {
+      innerWidth: window.innerWidth,
+      foundKey: !!key,
+      foundTwoCol: !!twoCol,
+      foundTableScroll: !!tableScroll,
+      foundBodyWithKey: !!bodyWithKey,
+    });
+    if (!key || !twoCol || !tableScroll || !bodyWithKey) {
+      console.log("[key-debug] bailing out early -- one or more elements not found");
+      return;
+    }
 
     var inRange = window.innerWidth > 640 && window.innerWidth <= 900;
     var wrapper = document.getElementById("t2-table-col");
+    console.log(
+      "[key-debug] inRange=" + inRange + " wrapperAlreadyExists=" + !!wrapper
+    );
 
-    if (inRange) {
-      if (!wrapper) {
-        wrapper = document.createElement("div");
-        wrapper.id = "t2-table-col";
-        wrapper.className = "t2-table-col";
-        twoCol.insertBefore(wrapper, tableScroll);
-        wrapper.appendChild(tableScroll);
+    try {
+      if (inRange) {
+        if (!wrapper) {
+          wrapper = document.createElement("div");
+          wrapper.id = "t2-table-col";
+          wrapper.className = "t2-table-col";
+          twoCol.insertBefore(wrapper, tableScroll);
+          wrapper.appendChild(tableScroll);
+          console.log("[key-debug] created #t2-table-col and moved table-scroll into it");
+        }
+        if (key.parentNode !== wrapper || key.previousElementSibling !== tableScroll) {
+          wrapper.appendChild(key); // lands right after tableScroll, wrapper's other child
+          console.log("[key-debug] moved key into wrapper, after the table");
+        }
+        key.classList.add("procedure-key-in-table-col");
+      } else {
+        key.classList.remove("procedure-key-in-table-col");
+        if (key.parentNode !== bodyWithKey) {
+          bodyWithKey.appendChild(key);
+        }
+        if (wrapper) {
+          // Un-wrap: put table-scroll back as ".two-col"'s direct child in
+          // its original spot, then discard the now-empty wrapper.
+          twoCol.insertBefore(tableScroll, wrapper);
+          twoCol.removeChild(wrapper);
+        }
       }
-      if (key.parentNode !== wrapper || key.previousElementSibling !== tableScroll) {
-        wrapper.appendChild(key); // lands right after tableScroll, wrapper's other child
-      }
-      key.classList.add("procedure-key-in-table-col");
-    } else {
-      key.classList.remove("procedure-key-in-table-col");
-      if (key.parentNode !== bodyWithKey) {
-        bodyWithKey.appendChild(key);
-      }
-      if (wrapper) {
-        // Un-wrap: put table-scroll back as ".two-col"'s direct child in
-        // its original spot, then discard the now-empty wrapper.
-        twoCol.insertBefore(tableScroll, wrapper);
-        twoCol.removeChild(wrapper);
-      }
+    } catch (err) {
+      console.error("[key-debug] threw an error", err);
     }
+
+    console.log("[key-debug] done -- key.parentNode is now", {
+      id: key.parentNode && key.parentNode.id,
+      className: key.parentNode && key.parentNode.className,
+    });
   }
 
   // ---------------------------------------------------------------------
