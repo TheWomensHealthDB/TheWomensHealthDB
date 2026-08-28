@@ -979,6 +979,20 @@ table.data-table tbody tr.accent-row:hover td {
   margin: 0.15rem 0 0;
   line-height: 1.4;
 }
+/* Mobile Safari (and some other mobile browsers) apply their own "text
+   autosizing"/font-boosting heuristics to blocks of text, adjusting the
+   rendered font size per-paragraph based on things like its perceived
+   column width -- since every entry here shares the exact same markup and
+   CSS, there's nothing in this stylesheet that explains one type's text
+   (typically whichever entry's wording happens to be shortest) rendering
+   smaller than the rest, but that per-browser autosizing behavior does.
+   Explicitly opting out with `text-size-adjust: 100%` keeps every entry at
+   the same, explicitly-set font-size regardless of that heuristic. */
+.procedure-key .procedure-key-type,
+.procedure-key .procedure-key-text {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 /* Checklist / matrix table specifics */
 /* `table-layout: fixed` (instead of the default `auto`) is required for

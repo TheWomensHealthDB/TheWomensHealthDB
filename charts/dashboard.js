@@ -226,15 +226,33 @@
     // problem (they only fire for genuine browser-driven size changes, not
     // ones caused by this code's own DOM writes).
     var landscapeSyncTimer = null;
+    // Mobile browsers (notably iOS Safari) also fire "resize" whenever
+    // their own UI chrome -- the URL bar -- collapses or expands during
+    // scrolling, which changes window.innerHEIGHT but not innerWIDTH. This
+    // code only ever cares about width (the 641-900px breakpoint), so that
+    // kind of resize is just noise -- but every one of those otherwise
+    // still re-ran the full picker-height recalculation below, which
+    // visibly "flashed" the sidebar as it cleared and reapplied its
+    // heights. That was especially noticeable on the Coverage Checklist
+    // tab specifically, since its table can be wider *and* taller than the
+    // screen (every other tab's content fits without needing to scroll),
+    // making it the one tab where zooming out and scrolling around keeps
+    // tripping the URL-bar chrome toggle repeatedly. Tracking the last
+    // width this actually synced against and skipping the work entirely
+    // when the width hasn't changed avoids all of that redundant churn.
+    var lastLandscapeSyncWidth = null;
     window.addEventListener("resize", function () {
       clearTimeout(landscapeSyncTimer);
       landscapeSyncTimer = setTimeout(function () {
+        if (window.innerWidth === lastLandscapeSyncWidth) return;
+        lastLandscapeSyncWidth = window.innerWidth;
         syncLandscapeChecklistHeight();
         syncLandscapeProcedureKeyPlacement();
       }, 120);
     });
     window.addEventListener("orientationchange", function () {
       setTimeout(function () {
+        lastLandscapeSyncWidth = window.innerWidth;
         syncLandscapeChecklistHeight();
         syncLandscapeProcedureKeyPlacement();
       }, 150);
