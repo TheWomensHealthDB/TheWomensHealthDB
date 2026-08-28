@@ -210,19 +210,39 @@
     // already inside it. Debounced so a drag-resize doesn't thrash layout
     // on every intermediate pixel.
     var landscapeSyncTimer = null;
-    window.addEventListener("resize", function () {
+    function scheduleLandscapeSync(delay) {
       clearTimeout(landscapeSyncTimer);
       landscapeSyncTimer = setTimeout(function () {
         syncLandscapeChecklistHeight();
         syncLandscapeProcedureKeyPlacement();
-      }, 120);
+      }, delay);
+    }
+    window.addEventListener("resize", function () {
+      scheduleLandscapeSync(120);
     });
     window.addEventListener("orientationchange", function () {
-      setTimeout(function () {
-        syncLandscapeChecklistHeight();
-        syncLandscapeProcedureKeyPlacement();
-      }, 150);
+      scheduleLandscapeSync(150);
     });
+
+    // Belt-and-suspenders for the above: a plain `resize` listener turns
+    // out not to be reliable for every way a page's effective width can
+    // change -- e.g. switching between named device presets in Chrome
+    // DevTools' device toolbar (as opposed to dragging a free-form
+    // "Responsive" size) doesn't consistently dispatch a `resize` event at
+    // all, which left this stuck showing whatever state it was in from the
+    // previous width/preset. `ResizeObserver`, watching the actual
+    // rendered box size of the page root, sidesteps that: it reacts to any
+    // real layout-size change regardless of whether the browser bothers to
+    // fire `resize` for it, and -- unlike `resize` -- it also fires once
+    // immediately as soon as it starts observing, which covers the page
+    // loading straight into an in-range width with no resize event ever
+    // needed to trigger the very first sync.
+    if (window.ResizeObserver) {
+      var landscapeResizeObserver = new ResizeObserver(function () {
+        scheduleLandscapeSync(120);
+      });
+      landscapeResizeObserver.observe(document.documentElement);
+    }
   }
 
   // ---------------------------------------------------------------------
