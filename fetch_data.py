@@ -1222,9 +1222,7 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
 # This is a fixed, hand-built list rather than something inferred at
 # runtime (e.g. from indentation or naming patterns) because the real
 # sheet's column order/wording doesn't reliably signal "this one's a
-# section header" any other way. Built from -- and double-checked against
-# -- the "Column Audit" sheet's decision column (the "Red rows" in that
-# sheet's Legend are explicitly the section/category-heading candidates).
+# section header" any other way.
 #
 # A group's "children" list can contain either:
 #   - a leaf column-name string (an actual per-cohort checklist item), or
@@ -1232,52 +1230,28 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
 #     that are themselves a sub-section of a larger umbrella header.
 #
 # Top-level umbrella categories for the Coverage Checklist's "Checklist
-# items" picker, covering all 99 checklist_columns. Per the audit sheet
-# (and a follow-up request to fold the three menopause-related categories
-# into one), there are 7 top-level headers:
-#   1. Reproductive & Gynecologic History
-#   2. Menstrual Cycle & Menarche
-#   3. Birth Control
-#   4. Pregnancy & Fertility
-#   5. Menopause (with 3 nested subcategories -- see below)
-#   6. Hormone Therapy
-#   7. Linked/Ancillary Data Collected
-#
-# A group's "header" does NOT have to be a real checklist column -- most of
-# the 7 headers above (and 2 of the 3 "Menopause" subcategory headers) are
-# purely organizational labels with no per-cohort Yes/No data of their own,
-# just real columns (or further-nested real-column headers, like
-# "Menopause-related symptom items" and its own 7 symptom sub-groups)
-# underneath them. _filter_checklist_group() below (and the mirrored
-# filterGroup() in dashboard.js) only require that at least one descendant
-# leaf survive -- they don't require the header itself to be a column.
-#
-# A group's "children" list can contain either:
-#   - a leaf column-name string (an actual per-cohort checklist item), or
-#   - another nested {"header": ..., "children": [...]} dict, for headers
-#     that are themselves a sub-section of a larger umbrella header.
+# items" picker (now "Women's Health Data Inventory" in charts/index.html),
+# covering all 99 checklist_columns. These 11 categories/subcategories --
+# and which leaf columns belong under each -- come directly from a project
+# taxonomy the categories were redefined against, replacing the previous
+# 7-category grouping below this comment used to have.
+#   1. Menstrual History
+#   2. Reproductive Surgical History
+#   3. Gynecologic Conditions
+#   4. Contraception
+#   5. Pregnancy & Obstetric History
+#   6. Fertility Treatment
+#   7. Menopause Status & Timing
+#   8. Menopause Symptoms
+#   9. Perceptions of Menopause
+#   10. Hormone Therapy (HT) Use
+#   11. Cognitive / Imaging / Biological / Health Record Linked Data
 CHECKLIST_SECTION_GROUPS = [
     {
-        "header": "Reproductive & Gynecologic History",
+        "header": "Menstrual History",
         "children": [
-            "Hysterectomy item",
-            "Oophorectomy item",
-            "Other women's health item",
-            "Polycystic Ovary Syndrome (PCOS) / "
-            "Polyendocrine Metabolic Ovarian Syndrome (PMOS) item",
-            "Premature Ovarian Insufficiency (POI) item",
-            "Endometriosis item",
-            "Pelvic prolapse or relaxation item",
-            "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item",
-            "Abnormal vaginal bleeding item",
-            "Fibroids (benign growths in the uterus or womb) item",
-        ],
-    },
-    {
-        "header": "Menstrual Cycle & Menarche",
-        "children": [
-            "Date of menses item",
             "Age at menarche item",
+            "Date of menses item",
             {
                 "header": "Menstrual cycle / bleeding pattern item",
                 "children": [
@@ -1285,15 +1259,38 @@ CHECKLIST_SECTION_GROUPS = [
                     "Cycle length in days item",
                     "Change in cycle length item",
                     "Skipped cycles item",
-                    "Bleeding flow / amount item",
                     "Time since last period item",
                     "Length of time without a period (amenorrhea) item",
+                    "Bleeding flow / amount item",
+                    # Moved here from "Gynecologic Conditions" -- the new
+                    # taxonomy groups it as a menstrual-cycle item.
+                    "Abnormal vaginal bleeding item",
                 ],
             },
         ],
     },
     {
-        "header": "Birth Control",
+        "header": "Reproductive Surgical History",
+        "children": [
+            "Hysterectomy item",
+            "Oophorectomy item",
+        ],
+    },
+    {
+        "header": "Gynecologic Conditions",
+        "children": [
+            "Polycystic Ovary Syndrome (PCOS) / "
+            "Polyendocrine Metabolic Ovarian Syndrome (PMOS) item",
+            "Premature Ovarian Insufficiency (POI) item",
+            "Endometriosis item",
+            "Pelvic prolapse or relaxation item",
+            "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item",
+            "Fibroids (benign growths in the uterus or womb) item",
+            "Other women's health item",
+        ],
+    },
+    {
+        "header": "Contraception",
         "children": [
             "Birth control usage item",
             'Type of birth control used (if yes, for "Birth control usage item")',
@@ -1303,7 +1300,7 @@ CHECKLIST_SECTION_GROUPS = [
         ],
     },
     {
-        "header": "Pregnancy & Fertility",
+        "header": "Pregnancy & Obstetric History",
         "children": [
             "Pregnancy item",
             "Ever pregnant item",
@@ -1315,114 +1312,109 @@ CHECKLIST_SECTION_GROUPS = [
             "Sex of live births item",
             "Breastfeeding item",
             "Time of breastfeeding item",
+        ],
+    },
+    {
+        "header": "Fertility Treatment",
+        "children": [
             "Fertility medications to help you get pregnant item",
             'Type of fertility medication used (if yes, for "Fertility medications to help you get pregnant item")',
         ],
     },
     {
-        "header": "Menopause",
+        "header": "Menopause Status & Timing",
         "children": [
-            {
-                "header": "Menopause Status & Timing",
-                "children": [
-                    "Final Menstrual Period (FMP) date item",
-                    "Menopausal status item",
-                    "Age at menopause item",
-                    "Age at final menstrual period item",
-                ],
-            },
-            {
-                "header": "Menopause-related symptom items",
-                "children": [
-                    {
-                        "header": "Vasomotor symptom items",
-                        "children": ["Hot flashes item", "Night sweats item"],
-                    },
-                    {
-                        "header": "Sleep symptom items",
-                        "children": [
-                            "Difficulty getting to sleep item",
-                            "Difficulty staying asleep item",
-                            "Nighttime awakening item",
-                        ],
-                    },
-                    {
-                        "header": "Somatic symptom items",
-                        "children": [
-                            "Heart palpitations item",
-                            "Skin itching item",
-                            "Headaches item",
-                            "Bloated stomach item",
-                            "Breast tenderness item",
-                            "Joint pains item",
-                        ],
-                    },
-                    {
-                        "header": "Mood symptom items",
-                        "children": [
-                            "Tiredness item",
-                            "Irritability item",
-                            "Feeling anxious item",
-                            "Feeling depressed item",
-                            "Mood swings item",
-                            "Crying spells item",
-                        ],
-                    },
-                    {
-                        "header": "Cognitive symptom items",
-                        "children": ["Difficulty concentrating item", "Poor memory item"],
-                    },
-                    {
-                        "header": "Genitourinary symptom items",
-                        "children": [
-                            "Frequent urination item",
-                            "Urine leakage item",
-                            "Painful urination item",
-                            "Bladder infection item",
-                            "Stool or gas item",
-                            "Dry vagina item",
-                            "Vaginal itching item",
-                            "Abnormal vaginal discharge item",
-                            "Vaginal infection item",
-                            "Pain inside vagina during intercourse item",
-                            "Bleeding after intercourse item",
-                        ],
-                    },
-                    {
-                        # Per the user's decision: item #77 ("Pain during
-                        # intercourse (general) item") joins this subgroup.
-                        # (It used to be listed in Genitourinary above under
-                        # its pre-standardization name, "Pain during
-                        # intercourse item" -- but HEADER_STANDARDIZATION_MAP
-                        # renames the raw header to "...(general) item", so
-                        # that stale, no-longer-matching name silently
-                        # dropped this item from every group. Fixed here by
-                        # using the correct, current standardized name and
-                        # placing it in Sexual/libido instead.)
-                        "header": "Sexual/libido symptom items",
-                        "children": [
-                            "Lack of sexual desire item",
-                            "Orgasm difficulty item",
-                            "Limited sexual opportunity item",
-                            "Pain during intercourse (general) item",
-                        ],
-                    },
-                    "Symptom severity items",
-                    "Symptom time frame items",
-                ],
-            },
-            {
-                "header": "Menopause Knowledge & Perceptions",
-                "children": [
-                    "Knowledge of menopause item",
-                    "Views or perceptions of menopause item",
-                    "Sources of knowledge about menopause item",
-                ],
-            },
+            "Final Menstrual Period (FMP) date item",
+            "Menopausal status item",
+            "Age at menopause item",
+            "Age at final menstrual period item",
         ],
     },
     {
-        "header": "Hormone Therapy",
+        "header": "Menopause Symptoms",
+        "children": [
+            "Menopause-related symptom items",
+            {
+                "header": "Vasomotor symptom items",
+                "children": ["Hot flashes item", "Night sweats item"],
+            },
+            {
+                "header": "Sleep symptom items",
+                "children": [
+                    "Difficulty getting to sleep item",
+                    "Difficulty staying asleep item",
+                    "Nighttime awakening item",
+                ],
+            },
+            {
+                "header": "Somatic symptom items",
+                "children": [
+                    "Heart palpitations item",
+                    "Skin itching item",
+                    "Headaches item",
+                    "Bloated stomach item",
+                    "Breast tenderness item",
+                    "Joint pains item",
+                ],
+            },
+            {
+                "header": "Mood symptom items",
+                "children": [
+                    "Tiredness item",
+                    "Irritability item",
+                    "Feeling anxious item",
+                    "Feeling depressed item",
+                    "Mood swings item",
+                    "Crying spells item",
+                ],
+            },
+            {
+                "header": "Cognitive symptom items",
+                "children": ["Difficulty concentrating item", "Poor memory item"],
+            },
+            {
+                # Per the new taxonomy, "Pain during intercourse (general)
+                # item" (item #77, standardized name -- see
+                # HEADER_STANDARDIZATION_MAP) sits here under Genitourinary,
+                # not under Sexual/libido below.
+                "header": "Genitourinary symptom items",
+                "children": [
+                    "Frequent urination item",
+                    "Urine leakage item",
+                    "Painful urination item",
+                    "Bladder infection item",
+                    "Stool or gas item",
+                    "Dry vagina item",
+                    "Vaginal itching item",
+                    "Abnormal vaginal discharge item",
+                    "Vaginal infection item",
+                    "Pain during intercourse (general) item",
+                    "Pain inside vagina during intercourse item",
+                    "Bleeding after intercourse item",
+                ],
+            },
+            {
+                "header": "Sexual/libido symptom items",
+                "children": [
+                    "Lack of sexual desire item",
+                    "Orgasm difficulty item",
+                    "Limited sexual opportunity item",
+                ],
+            },
+            "Symptom severity items",
+            "Symptom time frame items",
+        ],
+    },
+    {
+        "header": "Perceptions of Menopause",
+        "children": [
+            "Knowledge of menopause item",
+            "Views or perceptions of menopause item",
+            "Sources of knowledge about menopause item",
+        ],
+    },
+    {
+        "header": "Hormone Therapy (HT) Use",
         "children": [
             "Hormone therapy use item",
             "Hormone therapy frequency/duration item",
@@ -1434,7 +1426,7 @@ CHECKLIST_SECTION_GROUPS = [
         ],
     },
     {
-        "header": "Linked/Ancillary Data Collected",
+        "header": "Cognitive / Imaging / Biological / Health Record Linked Data",
         "children": [
             "Sex hormones/biomarkers collected?",
             "Health records linked?",
@@ -1443,6 +1435,7 @@ CHECKLIST_SECTION_GROUPS = [
         ],
     },
 ]
+
 
 
 def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame, is_mock_data: bool = False) -> dict:

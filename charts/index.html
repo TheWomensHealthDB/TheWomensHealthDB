@@ -14,8 +14,31 @@
 <body>
   <header class="app-header">
     <div class="header-top">
-      <span class="brand-mark" aria-hidden="true">TWHDB</span>
-      <h1>The Women's Health Database</h1>
+      <!-- Logo + title double as a "go home" link, like most sites' header
+           branding -- clicking either jumps back to the Information tab
+           (see wireInPageTabLinks() in dashboard.js, the same mechanism
+           the in-page tab links on the Information tab itself use). -->
+      <a href="#" class="brand-home-link" data-goto-tab="information">
+        <!-- Logo: a single self-contained badge carrying the full "The WHD"
+             wordmark on the site's own header-gradient fill, plus a small
+             integrated heartbeat/data-line flourish underneath the text --
+             one unified mark, not an icon paired with separate text. The
+             badge is decorative/redundant with the <h1> right after it for
+             accessibility purposes, hence aria-hidden. -->
+        <span class="brand-mark" aria-hidden="true">
+          <span class="brand-wordmark">The <strong>WHD</strong></span>
+          <svg class="brand-flourish" viewBox="0 0 44 6" width="44" height="6" fill="none" preserveAspectRatio="none">
+            <polyline
+              points="1,4.5 10.5,1.5 19,4.5 25,1.8 33.5,4.5 43,2"
+              stroke="rgba(255,255,255,0.65)"
+              stroke-width="1.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <h1>The Women's Health Database</h1>
+      </a>
     </div>
     <p>
       A searchable, filterable overview of women's-health cohort studies:
@@ -24,23 +47,211 @@
       and where in the world it is based.
     </p>
     <nav class="tabs">
-      <button type="button" class="active" data-tab="summary">Cohort Summary</button>
-      <button type="button" data-tab="checklist">Coverage Checklist</button>
+      <button type="button" class="active" data-tab="information">
+        <svg class="tab-icon" viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2.5 9.25 10 2.5l7.5 6.75" />
+          <path d="M4.5 7.75V17a.75.75 0 0 0 .75.75H8.5v-4.5a1.5 1.5 0 0 1 1.5-1.5h0a1.5 1.5 0 0 1 1.5 1.5v4.5h3.25a.75.75 0 0 0 .75-.75V7.75" />
+        </svg>
+        Information
+      </button>
+      <button type="button" data-tab="summary">Hysterectomy Inference Classification</button>
+      <button type="button" data-tab="checklist">Women's Health Data Inventory</button>
+      <button type="button" data-tab="items-reference">WHD Inv. - Items Reference</button>
       <button type="button" data-tab="filter">Custom Filter</button>
-      <button type="button" data-tab="map">Map</button>
+      <button type="button" data-tab="map">Cohort Map</button>
     </nav>
   </header>
 
   <div class="mock-data-banner" id="data-source-banner"></div>
 
   <main>
-    <!-- Table 1: Cohort Summary -->
-    <section id="panel-summary" class="tab-panel active">
+    <!-- Information: home / intro panel. Unlike the data-driven tabs below,
+         this one is entirely static markup -- no table, no schema/cohort
+         data dependency -- so it renders correctly with zero JS involvement
+         beyond the generic wireTabs() show/hide handled in dashboard.js. -->
+    <section id="panel-information" class="tab-panel active">
+      <div class="info-hero">
+        <!-- Purely decorative background flourish (a scaled-up echo of the
+             logo's own heartbeat/data-line motif -- see ".brand-flourish")
+             so the hero reads as a real landing-page banner rather than
+             another ".hint-banner"-style tip box, without adding any new
+             copy. aria-hidden since it carries no information of its own.
+             z-index:0 (see dashboard.css) keeps it behind the real content
+             columns below despite being position:absolute. -->
+        <svg class="info-hero-deco" viewBox="0 0 100 40" aria-hidden="true" preserveAspectRatio="none">
+          <polyline points="0,32 15,10 28,32 40,14 55,32 68,10 82,32 100,16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <!-- Text beside a couple of stat call-outs pulled straight from the
+             copy itself (29 cohorts / 11 domains) -- fills what was empty
+             space beside the (fairly short) paragraphs with something
+             purposeful instead of just stretching the text wider. -->
+        <div class="info-hero-body">
+          <h2>About The WHD</h2>
+          <p class="info-hero-lead">
+            A curated, searchable catalog of women's health variables across
+            major cohort studies worldwide.
+          </p>
+          <p>
+            Women's health variables are critical to understanding health and
+            aging, yet what is measured &mdash; and how it is measured &mdash;
+            varies substantially across cohorts. The Women's Health Database
+            catalogs variables collected in 29 major cohorts across 11
+            domains of women's health, spanning menstrual and reproductive
+            history, gynecologic conditions and surgeries, pregnancy and
+            fertility, menopause, hormone therapy, and linked cognitive,
+            imaging, biological, and health-record data.
+          </p>
+          <p>
+            Our goal is to make it easier to find the right data, understand
+            what those data can tell us, and improve how women's health is
+            measured in future research.
+          </p>
+        </div>
+
+        <div class="info-hero-stats">
+          <div class="info-hero-stat">
+            <span class="info-hero-stat-num">29</span>
+            <span class="info-hero-stat-label">Cohorts</span>
+          </div>
+          <div class="info-hero-stat">
+            <span class="info-hero-stat-num">11</span>
+            <span class="info-hero-stat-label">Domains</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main content beside a shorter aside -- rather than stacking every
+           section full-width, pairing these two lets the page read as a
+           laid-out home page (main content + aside) instead of a plain
+           vertical list of cards. Collapses to a single stacked column at
+           narrower widths (see dashboard.css). -->
+      <div class="info-row">
+        <div class="info-card info-card-main">
+          <h3>
+            <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+              <polyline points="2 17 12 22 22 17" />
+              <polyline points="2 12 12 17 22 12" />
+            </svg>
+            Hysterectomy Inference Framework
+          </h3>
+          <p>
+            Our first application of the Women's Health Database focuses on
+            <strong class="term-highlight">hysterectomy</strong> and
+            <strong class="term-highlight">oophorectomy</strong>. We
+            developed a five-type framework that characterizes the
+            inferences about hysterectomy and ovarian status that can be
+            supported by the information available in each cohort.
+          </p>
+          <!-- Populated by renderProcedureSeparationKey() (dashboard.js), the
+               same function that fills the identical key on every data tab --
+               so this list is always the one canonical copy of each type's
+               definition, never a second hand-typed copy that could drift out
+               of sync. Its usual "(row / marker color)" title is suppressed
+               here specifically -- see renderProcedureSeparationKey(). -->
+          <div class="procedure-key" id="info-procedure-key"></div>
+        </div>
+
+        <div class="info-card info-card-aside">
+          <h3>
+            <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            Explore the Database
+          </h3>
+          <p>
+            Use the database to identify cohorts with the measures needed
+            for your research, compare ascertainment across studies, and
+            evaluate the strength and limitations of the inferences that
+            the data can support.
+          </p>
+        </div>
+      </div>
+
+      <!-- Second main+aside row, with the wider/narrower roles swapped
+           from the row above -- the citation list is the longer of this
+           pair, so it takes the wide slot this time -- so the page's
+           rhythm doesn't repeat the exact same shape twice in a row. -->
+      <div class="info-row">
+        <div class="info-card info-card-main">
+          <h3>
+            <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+            </svg>
+            Citing This Database
+          </h3>
+          <dl class="citation-list">
+            <dt>APA</dt>
+            <dd>Eich, T., Yoon, D., Hulscher, M., Capaldi, J. M., Belkind, D., &amp; Naveen, R. (2026, September 4). <em>The Women's Health Database</em>. https://doi.org/10.17605/OSF.IO/4KZUE</dd>
+
+            <dt>MLA</dt>
+            <dd>Eich, Teal, et al. &ldquo;The Women's Health Database.&rdquo; <em>OSF</em>, 4 Sept. 2026. Web.</dd>
+
+            <dt>Chicago</dt>
+            <dd>Eich, Teal, Dokyung Yoon, Margaret Hulscher, Jessica M. Capaldi, Daniel Belkind, and Rahul Naveen. 2026. &ldquo;The Women's Health Database.&rdquo; <em>OSF</em>. September 4. doi:10.17605/OSF.IO/4KZUE.</dd>
+          </dl>
+        </div>
+
+        <div class="info-card info-card-aside">
+          <h3>
+            <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+              <circle cx="7" cy="7" r="1.3" fill="currentColor" stroke="none" />
+            </svg>
+            Current Release
+          </h3>
+          <p class="release-badge">Release 1.0 &mdash; September 2026</p>
+          <p>
+            The Women's Health Database is a living, curated resource. New
+            cohorts, variables, and corrections are incorporated into
+            periodic releases.
+          </p>
+        </div>
+      </div>
+
+      <div class="info-card info-cta">
+        <h3>
+          <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 20v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
+          Contribute
+        </h3>
+        <p>
+          The Women's Health Database is a living, curated resource that
+          will grow through contributions from the research community. To
+          add a cohort to the Women's Health Database (or submit updates),
+          please
+          <a
+            class="inline-link"
+            href="https://redcapsurveys.med.usc.edu/surveys/?s=AAYYLE78E988Y83C"
+            target="_blank"
+            rel="noopener noreferrer"
+          >click here</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- Table 1: Hysterectomy Inference Classification (formerly "Cohort
+         Summary" -- absorbed the standalone "Hysterectomy Procedure
+         Separation Info" placeholder tab's purpose instead of keeping both,
+         since this tab now covers that ground directly with real columns.
+         Internal ids/keys below stay "summary"/"t1-*" -- purely internal,
+         not user-visible, so renaming them would just churn every
+         reference to Table 1 in dashboard.js for no visible benefit. -->
+    <section id="panel-summary" class="tab-panel">
       <div class="hint-banner">
         <span class="hint-label">Tip</span>
-        <p>Click any row to see more information on that cohort. Rows are color-coded by
-        Procedure Separation Type &mdash; see the key on the right. Click a
-        column header to sort.</p>
+        <p>Cohort info alongside a breakdown of each cohort's Reproductive
+        Surgical History questions -- the same distinctions behind each
+        cohort's Hysterectomy Inference Types classification. Columns with
+        no data collected yet are left blank rather than marked "No". Click
+        any row to see more information on that cohort; click a column
+        header to sort.</p>
       </div>
       <div class="panel-toolbar">
         <div class="field">
@@ -48,7 +259,15 @@
           <input type="search" id="t1-search" placeholder="e.g. Example Cohort A" />
         </div>
       </div>
-      <p class="result-count" id="t1-result-count"></p>
+      <div class="result-row">
+        <p class="result-count" id="t1-result-count"></p>
+        <div class="table-zoom" data-table="t1-table">
+          <span class="table-zoom-label">Table size</span>
+          <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
+          <span class="table-zoom-pct">100%</span>
+          <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
+        </div>
+      </div>
       <div class="panel-body-with-key">
         <div class="panel-main">
           <div class="table-scroll">
@@ -62,7 +281,8 @@
       </div>
     </section>
 
-    <!-- Table 2: Coverage Checklist -->
+    <!-- Table 2: Women's Health Data Inventory (formerly "Coverage
+         Checklist") -->
     <section id="panel-checklist" class="tab-panel">
       <!-- Hidden by default (and on every other tab); shown -- in place of
            everything else in this section -- only on narrow, portrait-
@@ -76,62 +296,308 @@
            deliberately scoped to this one tab only. -->
       <div class="hint-banner portrait-notice" id="t2-portrait-notice">
         <span class="hint-label">Rotate phone to view:</span>
-        <p>The Coverage Checklist cannot be viewed vertically on mobile
-        devices. Please turn your phone horizontally, or switch to a device
-        with a larger screen, to view this tab.</p>
+        <p>Women's Health Data Inventory cannot be viewed vertically on
+        mobile devices. Please turn your phone horizontally, or switch to a
+        device with a larger screen, to view this tab.</p>
       </div>
       <div class="hint-banner">
         <span class="hint-label">Tip</span>
         <p id="t2-hint-text"></p>
       </div>
-      <p class="result-count" id="t2-result-count"></p>
+      <div class="result-row">
+        <p class="result-count" id="t2-result-count"></p>
+        <div class="table-zoom" data-table="t2-table">
+          <span class="table-zoom-label">Table size</span>
+          <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
+          <span class="table-zoom-pct">100%</span>
+          <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
+        </div>
+      </div>
       <div class="legend" id="t2-legend"></div>
-      <div class="panel-body-with-key">
-        <div class="panel-main">
-          <div class="two-col">
-            <div id="t2-sidebar">
-              <div class="picker" id="t2-cohort-picker">
-                <h3>Cohorts</h3>
-                <div class="field">
-                  <input type="search" class="picker-search" placeholder="Search cohorts&hellip;" />
-                </div>
-                <div class="picker-actions">
-                  <button type="button" class="btn small secondary picker-select-all">Select all</button>
-                  <button type="button" class="btn small secondary picker-select-none">Select none</button>
-                </div>
-                <div class="picker-list"></div>
-              </div>
-              <div class="picker" id="t2-type-picker" style="margin-top: 0.75rem;">
-                <h3>Procedure Separation Type</h3>
-                <div class="picker-actions">
-                  <button type="button" class="btn small secondary picker-select-all">Select all</button>
-                  <button type="button" class="btn small secondary picker-select-none">Select none</button>
-                  <button type="button" class="btn small secondary" id="t2-type-hide-column-btn" aria-pressed="false">Hide column</button>
-                </div>
-                <div class="picker-list"></div>
-              </div>
-              <div class="picker" id="t2-column-picker" style="margin-top: 0.75rem;">
-                <h3>Checklist items</h3>
-                <div class="field">
-                  <input type="search" class="picker-search" placeholder="Search items&hellip;" />
-                </div>
-                <div class="picker-actions">
-                  <button type="button" class="btn small secondary picker-select-all">Select all</button>
-                  <button type="button" class="btn small secondary picker-select-none">Select none</button>
-                </div>
-                <div class="picker-list"></div>
-              </div>
+      <div class="two-col">
+        <div id="t2-sidebar">
+          <div class="picker" id="t2-cohort-picker">
+            <h3>Cohorts</h3>
+            <div class="field">
+              <input type="search" class="picker-search" placeholder="Search cohorts&hellip;" />
             </div>
-            <div class="table-scroll" id="t2-table-scroll">
-              <table class="data-table matrix-table" id="t2-table">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
+            <div class="picker-actions">
+              <button type="button" class="btn small secondary picker-select-all">Select all</button>
+              <button type="button" class="btn small secondary picker-select-none">Select none</button>
             </div>
+            <div class="picker-list"></div>
+          </div>
+          <div class="picker" id="t2-domain-picker" style="margin-top: 0.75rem;">
+            <h3>Domains</h3>
+            <div class="picker-actions">
+              <button type="button" class="btn small secondary picker-select-all">Select all</button>
+              <button type="button" class="btn small secondary picker-select-none">Select none</button>
+            </div>
+            <div class="picker-list"></div>
+          </div>
+          <div class="picker" id="t2-column-picker" style="margin-top: 0.75rem;">
+            <h3>Checklist items</h3>
+            <div class="field">
+              <input type="search" class="picker-search" placeholder="Search items&hellip;" />
+            </div>
+            <div class="picker-actions">
+              <button type="button" class="btn small secondary picker-select-all">Select all</button>
+              <button type="button" class="btn small secondary picker-select-none">Select none</button>
+            </div>
+            <div class="picker-list"></div>
           </div>
         </div>
-        <aside class="panel-key procedure-key" id="t2-procedure-key"></aside>
+        <div class="table-scroll" id="t2-table-scroll">
+          <table class="data-table matrix-table" id="t2-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
+    </section>
+
+    <!-- Items Reference: a static glossary of every variable this database
+         tracks, grouped by the same 11 domains used as the umbrella
+         categories on Women's Health Data Inventory -- explains what each
+         variable means without displaying any actual per-cohort data.
+         Each domain is a native <details>/<summary> (collapsed by default,
+         no JS needed) rather than a data table. -->
+    <section id="panel-items-reference" class="tab-panel">
+      <div class="info-hero">
+        <div class="info-hero-body">
+          <h2>WHD Inv. - Items Reference</h2>
+          <p>
+            Every variable The WHD tracks, grouped into the same 11 domains
+            used throughout the site. This page doesn't show any cohort
+            data itself &mdash; it's a glossary of what each variable
+            means. Click a domain to expand it.
+          </p>
+        </div>
+      </div>
+
+      <details class="reference-category">
+        <summary>1. Menstrual History</summary>
+        <ul class="reference-list">
+          <li>Age at menarche</li>
+          <li>Menstrual cycle / bleeding pattern
+            <ul>
+              <li>Cycle regularity</li>
+              <li>Cycle length in days</li>
+              <li>Change in cycle length</li>
+              <li>Skipped cycles</li>
+              <li>Time since last period</li>
+              <li>Length of time without a period (amenorrhea)</li>
+              <li>Bleeding flow / amount</li>
+              <li>Abnormal vaginal bleeding &mdash; bleeding from the vagina that is different enough from a normal pattern to be a concern: irregular, heavy, or long in duration</li>
+            </ul>
+          </li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>2. Reproductive Surgical History</summary>
+        <ul class="reference-list">
+          <li>Is there a question directly asking about hysterectomy?</li>
+          <li>Is there a question directly asking about oophorectomy?
+            <ul>
+              <li>If oophorectomy is asked about: does it distinguish unilateral vs. bilateral (laterality)?</li>
+            </ul>
+          </li>
+          <li>Does it distinguish hysterectomy type (supracervical / total / radical)?</li>
+          <li>Is age at surgery recorded?</li>
+          <li>Is indication of surgery recorded (e.g., cancer, benign condition)?</li>
+          <li>Is surgery captured at baseline only, or also as incident events during follow-up? (Baseline only / Incident / Not applicable)</li>
+          <li>Was intact uterine and/or ovarian status used as an enrollment eligibility criterion?</li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>3. Gynecologic Conditions</summary>
+        <ul class="reference-list">
+          <li>Polycystic Ovary Syndrome (PCOS) / Polyendocrine Metabolic Ovarian Syndrome (PMOS)</li>
+          <li>Premature Ovarian Insufficiency (POI)</li>
+          <li>Endometriosis</li>
+          <li>Pelvic prolapse or relaxation</li>
+          <li>Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries)</li>
+          <li>Fibroids (benign growths in the uterus or womb)</li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>4. Contraception</summary>
+        <ul class="reference-list">
+          <li>Ever used a method to prevent pregnancy
+            <ul>
+              <li>Type of method used</li>
+              <li>Primary reason for taking birth control pills</li>
+              <li>When started</li>
+              <li>Duration of use</li>
+            </ul>
+          </li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>5. Pregnancy &amp; Obstetric History</summary>
+        <ul class="reference-list">
+          <li>Ever pregnant
+            <ul>
+              <li>Number of pregnancies</li>
+              <li>Age at pregnancies</li>
+              <li>Outcome of pregnancy (e.g., live birth, still birth, miscarriage, etc.)</li>
+              <li>Number of live births</li>
+              <li>Sex of live births</li>
+              <li>Complications of pregnancy &mdash; e.g. gestational diabetes, preeclampsia, eclampsia, placenta previa, anemia, depression or anxiety, postpartum depression</li>
+              <li>Breastfeeding</li>
+              <li>Timing of breastfeeding</li>
+            </ul>
+          </li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>6. Fertility Treatment</summary>
+        <ul class="reference-list">
+          <li>Fertility medications used to help get pregnant
+            <ul>
+              <li>Type of fertility medication used</li>
+            </ul>
+          </li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>7. Menopause Status &amp; Timing</summary>
+        <ul class="reference-list">
+          <li>Menopausal status</li>
+          <li>Age at menopause</li>
+          <li>Age at final menstrual period</li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>8. Menopause Symptoms</summary>
+        <ul class="reference-list">
+          <li>Menopause-related symptoms (overall)</li>
+          <li>Vasomotor symptoms
+            <ul>
+              <li>Vasomotor symptoms (overall)</li>
+              <li>Hot flashes</li>
+              <li>Night sweats</li>
+            </ul>
+          </li>
+          <li>Sleep symptoms
+            <ul>
+              <li>Sleep symptoms (overall)</li>
+              <li>Difficulty getting to sleep</li>
+              <li>Difficulty staying asleep</li>
+              <li>Nighttime awakening</li>
+            </ul>
+          </li>
+          <li>Somatic symptoms
+            <ul>
+              <li>Somatic symptoms (overall)</li>
+              <li>Heart palpitations</li>
+              <li>Skin itching</li>
+              <li>Headaches</li>
+              <li>Bloated stomach</li>
+              <li>Breast tenderness</li>
+              <li>Joint pains</li>
+            </ul>
+          </li>
+          <li>Mood symptoms
+            <ul>
+              <li>Mood symptoms (overall)</li>
+              <li>Tiredness</li>
+              <li>Irritability</li>
+              <li>Feeling anxious</li>
+              <li>Feeling depressed</li>
+              <li>Mood swings</li>
+              <li>Crying spells</li>
+            </ul>
+          </li>
+          <li>Cognitive symptoms
+            <ul>
+              <li>Cognitive symptoms (overall)</li>
+              <li>Difficulty concentrating</li>
+              <li>Poor memory</li>
+            </ul>
+          </li>
+          <li>Genitourinary symptoms
+            <ul>
+              <li>Genitourinary symptoms (overall)</li>
+              <li>Frequent urination</li>
+              <li>Urine leakage</li>
+              <li>Painful urination</li>
+              <li>Bladder infection</li>
+              <li>Stool or gas</li>
+              <li>Dry vagina</li>
+              <li>Vaginal itching</li>
+              <li>Abnormal vaginal discharge</li>
+              <li>Vaginal infection</li>
+              <li>Pain during intercourse</li>
+              <li>Pain inside vagina during intercourse</li>
+              <li>Bleeding after intercourse</li>
+            </ul>
+          </li>
+          <li>Sexual/libido symptoms
+            <ul>
+              <li>Sexual/libido symptoms (overall)</li>
+              <li>Lack of sexual desire</li>
+              <li>Orgasm difficulty</li>
+              <li>Limited sexual opportunity</li>
+            </ul>
+          </li>
+          <li>Symptom detail
+            <ul>
+              <li>Severity of symptom</li>
+              <li>Time frame of symptom</li>
+            </ul>
+          </li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>9. Perceptions of Menopause</summary>
+        <ul class="reference-list">
+          <li>Knowledge of menopause (e.g., self-rated knowledge about menopause)</li>
+          <li>Views or perceptions (positive or negative) of menopause</li>
+          <li>Sources of knowledge about menopause</li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>10. Hormone Therapy (HT) Use</summary>
+        <ul class="reference-list">
+          <li>Hormone therapy use
+            <ul>
+              <li>Frequency or duration of use</li>
+              <li>Start / stop age</li>
+              <li>Type</li>
+              <li>Reasons why women start taking hormones (not including birth control pills)</li>
+            </ul>
+          </li>
+          <li>Knowledge, views &amp; sources &mdash; HT
+            <ul>
+              <li>Knowledge of HT (e.g., self-rated knowledge about HT)</li>
+              <li>Views or perceptions (positive or negative) of HT</li>
+              <li>Sources of knowledge about HT</li>
+            </ul>
+          </li>
+        </ul>
+      </details>
+
+      <details class="reference-category">
+        <summary>11. Cognitive / Imaging / Biological / Health Record Linked Data</summary>
+        <ul class="reference-list">
+          <li>Sex hormones</li>
+          <li>Other biomarkers</li>
+          <li>Health records linked</li>
+          <li>Cognitive testing</li>
+          <li>Neuroimaging variables (MRI, fMRI, PET would be most common)</li>
+          <li>Other &mdash; any other relevant variables available in a cohort</li>
+        </ul>
+      </details>
     </section>
 
     <!-- Table 3: Custom Filter (AND/OR) -->
@@ -144,7 +610,7 @@
         dropdown. The table updates instantly as you add, edit, or remove conditions, so
         it's a quick way to answer questions like "which cohorts are publicly available and
         include a hysterectomy question?" without digging through the raw spreadsheet.
-        Procedure Separation Type is also available as a condition field, and matching rows
+        Hysterectomy Inference Types is also available as a condition field, and matching rows
         are color-coded by type &mdash; see the key on the right.</p>
       </div>
       <div class="panel-toolbar">
@@ -158,7 +624,15 @@
         <button type="button" class="btn secondary" id="t3-add-condition">+ Add condition</button>
       </div>
       <div id="t3-conditions"></div>
-      <p class="result-count" id="t3-result-count"></p>
+      <div class="result-row">
+        <p class="result-count" id="t3-result-count"></p>
+        <div class="table-zoom" data-table="t3-table">
+          <span class="table-zoom-label">Table size</span>
+          <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
+          <span class="table-zoom-pct">100%</span>
+          <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
+        </div>
+      </div>
       <div class="panel-body-with-key">
         <div class="panel-main">
           <div class="table-scroll">
@@ -177,8 +651,8 @@
       <div class="hint-banner">
         <span class="hint-label">Tip</span>
         <p>Hover over a marker to preview that cohort; click it for full details. Marker size
-        reflects sample size (N), and marker color follows the same Procedure Separation
-        Type &mdash; see the key on the right. Markers are placed using each
+        reflects sample size (N), and marker color follows the same Hysterectomy
+        Inference Types &mdash; see the key on the right. Markers are placed using each
         cohort's participant location where one is clearly listed, falling back to the
         study's PI/site location when the participant location is missing, "Nationwide,"
         or lists more than one place &mdash; see "Mapped to" in each marker's tooltip.</p>
@@ -191,6 +665,7 @@
         <aside class="panel-key procedure-key" id="map-procedure-key"></aside>
       </div>
     </section>
+
   </main>
 
   <div class="modal-backdrop" id="detail-modal-backdrop">

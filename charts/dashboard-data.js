@@ -332,11 +332,23 @@
    * match, then numeric-set match (so "100" matches a cell of "0/100",
    * "40-60" matches "40 to 60 years", etc.), then a fuzzy fallback for
    * typos/small differences.
-   */
-  function _matchesEquals(text, target) {
+   *
+   * `strict`, when true, stops after the plain case-insensitive exact
+   * match and skips every tolerant fallback below it, including the
+   * Levenshtein-based one -- used when `target` was picked verbatim from
+   * (or otherwise exactly matches) the field's own list of real existing
+   * values (see evaluateCondition()'s `exactValue` handling), where a
+   * "close enough" match is actively wrong, not just generous: e.g. the
+   * fuzzy fallback's edit-distance threshold scales with the *whole*
+   * string's length, so two long, mostly-identical cohort names that
+   * differ only in their first word -- "Apple Women's Health Study" vs
+   * "NYU Women's Health Study" -- fell well within it and matched each
+   * other, even though the user picked one specific, exact name. */
+  function _matchesEquals(text, target, strict) {
     var t = target.trim();
     if (t === "") return text.trim() === "";
     if (text.trim().toLowerCase() === t.toLowerCase()) return true;
+    if (strict) return false;
 
     var normText = _normalizeLoose(text);
     var normTarget = _normalizeLoose(t);
@@ -439,7 +451,9 @@
 
   /**
    * Evaluate a single condition against a record.
-   * condition: { field, operator, value }
+   * condition: { field, operator, value, exactValue }. `exactValue`
+   * (see renderTable3()'s activeConditions in dashboard.js) forces
+   * "equals"/"not_equals" into strict mode -- see _matchesEquals().
    */
   function evaluateCondition(record, condition) {
     if (!condition || !condition.field || !condition.operator) return true;
@@ -454,9 +468,9 @@
       case "is_not_empty":
         return text !== "";
       case "equals":
-        return _matchesEquals(text, target);
+        return _matchesEquals(text, target, condition.exactValue);
       case "not_equals":
-        return !_matchesEquals(text, target);
+        return !_matchesEquals(text, target, condition.exactValue);
       case "contains":
         return _matchesContains(text, target);
       case "not_contains":

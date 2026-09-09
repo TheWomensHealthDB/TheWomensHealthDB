@@ -30,10 +30,6 @@
      overt gender-coded styling anywhere else in the UI. */
   --accent-rose: #c2698a;
   --accent-rose-soft: #f7e9ee;
-  /* Light pastel pink used specifically for the "TWHDB" wordmark in the
-     header -- a touch bolder than a true pastel so the small bold text
-     stays legible against the white header, while still reading as pink. */
-  --accent-pastel-pink: #ee8fbb;
 
   --warn: #b06a00;
   --warn-bg: #fdf3e2;
@@ -100,13 +96,62 @@ header.app-header::before {
   gap: 0.65rem;
 }
 
+/* Logo + <h1> both live inside this link now -- it, not ".header-top",
+   carries the flex layout/gap between them, since ".header-top" itself
+   only has this one child. A subtle opacity dip on hover is the only
+   affordance (rather than an underline, which would look wrong drawn
+   across a whole heading) so it still reads as branding at rest. */
+.brand-home-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.15s ease;
+}
+
+.brand-home-link:hover {
+  opacity: 0.82;
+}
+
+/* Logo: one solid badge carrying the full wordmark, filled with the same
+   gradient as the header's own top accent bar (see "header.app-header
+   ::before" above) so the two read as drawn from a single design system
+   rather than two unrelated brand touches. */
 .brand-mark {
-  display: inline-block;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
   flex: none;
+  padding: 0.4rem 0.85rem 0.45rem;
+  border-radius: 10px;
+  background: linear-gradient(100deg, var(--accent) 0%, var(--accent-dark) 45%, var(--accent) 70%, var(--accent-rose) 100%);
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-wordmark {
+  font-weight: 500;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
+}
+
+.brand-wordmark strong {
   font-weight: 800;
-  font-size: 1.15rem;
-  letter-spacing: 0.04em;
-  color: var(--accent-pastel-pink);
+  font-size: 0.98rem;
+  letter-spacing: 0.05em;
+  color: #fff;
+  margin-left: 0.12em;
+}
+
+/* Small heartbeat/data-line flourish under the wordmark -- the one purely
+   graphic element in the mark, tying it back to the health-data subject
+   matter without needing a separate icon glyph. */
+.brand-flourish {
+  display: block;
+  margin-top: 0.2rem;
 }
 
 header.app-header h1 {
@@ -147,6 +192,9 @@ nav.tabs {
 }
 
 nav.tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   border: 1px solid transparent;
   border-bottom: none;
   background: transparent;
@@ -157,6 +205,14 @@ nav.tabs button {
   color: var(--text-muted);
   font-weight: 500;
   transition: background 0.15s ease, color 0.15s ease;
+}
+
+/* Home icon on the Information tab -- inherits the button's current text
+   color (muted / hover / active-accent) via `stroke: currentColor` on the
+   inline SVG, so it never needs its own color rules. */
+nav.tabs button .tab-icon {
+  flex: none;
+  display: block;
 }
 
 nav.tabs button:hover {
@@ -341,6 +397,73 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
   margin: 0.25rem 0 0.6rem;
 }
 
+/* Pairs a table's result-count text with its "Table size" zoom control on
+   the same row -- see ".table-zoom" below and wireTableZoom() in
+   dashboard.js. `.result-count`'s own margin is zeroed here since this
+   wrapper carries the vertical spacing instead, keeping the two visually
+   aligned on one baseline rather than the count sitting slightly above the
+   control. */
+.result-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0.25rem 0 0.6rem;
+}
+.result-row .result-count {
+  margin: 0;
+}
+
+.table-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.table-zoom-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+.table-zoom-out, .table-zoom-in {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent-dark);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.table-zoom-out:hover, .table-zoom-in:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.table-zoom-out:disabled, .table-zoom-in:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: #fff;
+  border-color: var(--border);
+}
+.table-zoom-pct {
+  min-width: 3em;
+  text-align: center;
+  font-weight: 700;
+  color: var(--text-main);
+  /* Clicking this resets zoom to 100% -- see wireTableZoom() in
+     dashboard.js. */
+  cursor: pointer;
+}
+
 /* ---------------------------------------------------------------------
    Tables
    --------------------------------------------------------------------- */
@@ -348,7 +471,17 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 table.data-table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 0.85rem;
+  /* Default zoom level (100%) -- overridden inline by wireTableZoom() in
+     dashboard.js as `style.setProperty("--table-zoom", ...)` directly on
+     this <table> element when the user clicks its "Table size" +/- buttons
+     (see ".table-zoom" below). Every table-relative size derived from this
+     element's own font-size -- column widths/padding in "em" (see
+     ".narrow-col-header" etc.), the matrix header's own font-size just
+     below, chip sizing -- scales together from this one variable, so
+     zooming out simultaneously shrinks the text *and* narrows columns,
+     fitting more of them on screen at once (and vice versa zooming in). */
+  --table-zoom: 1;
+  font-size: calc(0.85rem * var(--table-zoom));
   background: #fff;
 }
 
@@ -459,36 +592,37 @@ th.sorted-desc .sort-icon .arrow-down { color: var(--accent); opacity: 1; }
 th.sorted-desc .sort-icon .arrow-up { opacity: 0.3; }
 
 /* Placement, variant 1 -- "right side of the cell, label on the left":
-   every Cohort Summary/Custom Filter header, plus the Coverage
-   Checklist's own Cohort column specifically (it's wide/horizontal like
-   the others here, unlike the narrow checklist-item columns below). The
-   extra right padding reserves room so the label's text never renders
-   underneath the icon.
+   Table 1/Table 3's wide columns (just Cohort Name, now that their other
+   columns are ".narrow-col-header" -- see variant 2 below) plus the
+   Coverage Checklist's own Cohort column specifically (it's wide/
+   horizontal like Cohort Name, unlike the narrow checklist-item columns
+   below). The extra right padding reserves room so the label's text never
+   renders underneath the icon.
    Note: the Coverage Checklist's <table> carries *both* "data-table" and
    "matrix-table" classes (see index.html), so the plain
    "table.data-table thead th.sortable" selector on its own would also
    match that table's narrow checklist-item columns -- not just Table 1/
-   Table 3's headers -- fighting with variant 2's bottom-of-cell rules
+   Table 3's wide header -- fighting with variant 2's bottom-of-cell rules
    below (both sets of top/right/bottom/left would apply at once,
    stretching the icon between them). ":not(.matrix-table)" keeps this
-   variant scoped to Table 1/Table 3's plain data-tables specifically;
-   the Coverage Checklist's Cohort column is opted back in by name via
+   variant scoped to Table 1/Table 3's plain data-tables specifically, and
+   ":not(.narrow-col-header)" excludes their own narrow columns the same
+   way; the Coverage Checklist's Cohort column is opted back in by name via
    its own ".cohort-col-header" selector alongside it.
    The reserved padding-right is generous (well beyond the icon's own
-   ~1.4em rendered width) rather than a tight fit: these headers use
-   `white-space: nowrap` with the default (non-fixed) table-layout, so a
-   column's width auto-sizes to exactly fit its widest cell -- and for
-   the longest label here ("Procedure Separation Type"), that widest
-   cell IS the header itself, leaving zero natural slack. A tight
-   padding-right would size the column just barely around the text,
-   right up against the icon with no room for font-metric variance;
-   the wider padding-right here reserves real breathing room so the
-   text and icon never crowd each other regardless of font rendering. */
-table.data-table:not(.matrix-table) thead th.sortable,
+   ~1.4em rendered width) rather than a tight fit: this header uses
+   `white-space: nowrap` with the default (non-fixed) table-layout, so the
+   Cohort Name column's width auto-sizes to exactly fit its widest cell --
+   and the header label itself is part of that, leaving little natural
+   slack. A tight padding-right would size the column just barely around
+   the text, right up against the icon with no room for font-metric
+   variance; the wider padding-right here reserves real breathing room so
+   the text and icon never crowd each other regardless of font rendering. */
+table.data-table:not(.matrix-table) thead th.sortable:not(.narrow-col-header),
 table.matrix-table thead th.cohort-col-header.sortable {
   padding-right: 2.75em;
 }
-table.data-table:not(.matrix-table) thead th.sortable .sort-icon,
+table.data-table:not(.matrix-table) thead th.sortable:not(.narrow-col-header) .sort-icon,
 table.matrix-table thead th.cohort-col-header.sortable .sort-icon {
   right: 0.75em;
   top: 50%;
@@ -496,20 +630,105 @@ table.matrix-table thead th.cohort-col-header.sortable .sort-icon {
 }
 
 /* Placement, variant 2 -- "bottom of the cell, centered": the Coverage
-   Checklist's narrower columns (Procedure separation type and every
-   checklist item). These headers are taller than they are wide and often
-   wrap onto multiple lines, so the icon consistently sits centered below
-   the label rather than sometimes sharing its line and sometimes not.
-   The larger bottom padding (vs. the generic matrix header's own
-   padding-bottom above) opens up clear breathing room between the label
-   text and the icon underneath it. */
-table.matrix-table thead th.sortable:not(.cohort-col-header) {
+   Checklist's narrower columns (every checklist item/rollup), plus Table
+   1/Table 3's own narrow columns (".narrow-col-header" -- everything
+   except Cohort Name; see appendColumnHeader() in dashboard.js). These
+   headers are taller than they are wide and often wrap onto multiple
+   lines, so the icon consistently sits centered below the label rather
+   than sometimes sharing its line and sometimes not. The larger bottom
+   padding (vs. the generic matrix header's own padding-bottom above)
+   opens up clear breathing room between the label text and the icon
+   underneath it. */
+table.matrix-table thead th.sortable:not(.cohort-col-header),
+table.data-table:not(.matrix-table) thead th.sortable.narrow-col-header {
   padding-bottom: 1.9rem;
 }
-table.matrix-table thead th.sortable:not(.cohort-col-header) .sort-icon {
+table.matrix-table thead th.sortable:not(.cohort-col-header) .sort-icon,
+table.data-table:not(.matrix-table) thead th.sortable.narrow-col-header .sort-icon {
   left: 50%;
   bottom: 0.5rem;
   transform: translateX(-50%);
+}
+
+/* Table 1/Table 3's narrow columns (everything but Cohort Name) --
+   allowed to wrap onto multiple lines (their ".th-label" span handles the
+   actual wrapping/hyphenation, generalized above) and capped at a shared
+   width, the same way the Coverage Checklist's own narrow columns are,
+   rather than forcing the column wide enough to fit one long unwrapped
+   label -- see appendColumnHeader() in dashboard.js. 11em (rather than a
+   tighter fit) so a long label like "Distinguishes hysterectomy type
+   (supracervical / total / radical)?" wraps across a handful of lines
+   instead of reading as a tall, cramped, one-word-per-line column; once
+   there are enough of these columns to no longer all fit on screen at
+   once, ".table-scroll"'s own `overflow: auto` (see above) just lets the
+   table scroll horizontally rather than squeezing every column narrower
+   to force them all into view. */
+table.data-table:not(.matrix-table) thead th.narrow-col-header {
+  width: 11em;
+  max-width: 11em;
+  text-align: center;
+  vertical-align: middle;
+}
+table.data-table:not(.matrix-table) td.narrow-col-cell {
+  text-align: center;
+}
+/* Table 1/Table 3 specifically (not ".matrix-table", which already sets
+   this on its own): with the base "table.data-table" rule's plain
+   `width: 100%` above, auto layout treats every column's `width` below as
+   only a soft preference -- when honoring all of them literally would make
+   the table wider than its 100%, the browser was quietly compressing them
+   back down to fit instead of actually growing the table and letting
+   ".table-scroll"'s `overflow: auto` (see above) kick in, no matter how
+   wide a width was requested. Fixed layout instead takes each column's
+   width as authoritative and sizes the table to their sum, overflowing
+   its container -- exactly the horizontal-scrolling trade the widths
+   below are deliberately making. */
+table.data-table:not(.matrix-table) {
+  table-layout: fixed;
+}
+
+/* Hysterectomy Inference Classification specifically: wider than Custom
+   Filter's own narrow columns (11em above) -- with 13 columns total
+   (vs. Custom Filter's default 5), this tab already needs horizontal
+   scrolling regardless, so trading a bit more of it for headers/values
+   that wrap across fewer, more legible lines is a better trade here. */
+#t1-table thead th.narrow-col-header {
+  width: 15em;
+  max-width: 15em;
+}
+/* Hysterectomy Inference Classification's Cohort Name column, widened --
+   deliberately at the cost of fewer of the 12 columns after it fitting on
+   screen at once (this tab already scrolls horizontally regardless, see
+   above), so long cohort names read on one or two lines instead of
+   wrapping much further. */
+#t1-table thead th.sortable:not(.narrow-col-header) {
+  width: 22em;
+  max-width: 22em;
+}
+/* Custom Filter specifically: Cohort Name has no width cap of its own
+   elsewhere (unlike the Coverage Checklist matrix's sticky cohort column),
+   so it was sizing to its single longest name and crowding out this tab's
+   normally-short baseline columns beside it. Capped here -- not on
+   Hysterectomy Inference Classification's own Cohort Name column, which
+   wasn't reported as a problem -- so a long name just wraps onto a second
+   line instead. */
+#t3-table thead th.sortable:not(.narrow-col-header) {
+  width: 14em;
+  max-width: 14em;
+}
+
+/* Table 1/Table 3's one wide column (Cohort Name) -- centered the same
+   way its narrow siblings above are, rather than the plain left/top
+   alignment every other data-table cell gets by default (see "table.
+   data-table th, table.data-table td" near the top of this file). Left
+   uncentered, it visibly sat apart from its now-wrapped, vertically-
+   centered neighbors: top-aligned against their multi-line labels, and
+   left-aligned against their centered text. Scoped to the header only --
+   its own body cells (long free-text cohort names) stay left-aligned,
+   which is what that column's actual content wants. */
+table.data-table:not(.matrix-table) thead th.sortable:not(.narrow-col-header) {
+  text-align: center;
+  vertical-align: middle;
 }
 
 table.data-table tbody tr {
@@ -629,64 +848,48 @@ table.data-table tbody tr.accent-row:hover td {
   top: 0.75rem;
 }
 
-/* Coverage Checklist tab: the key's content (five fixed Type 1..5 entries)
-   never needs the full 17rem every other tab's key column gets, so give it
-   a narrower column here specifically -- moving it further right, closer
-   to the true edge of the negative space it sits in -- and hand the
-   reclaimed width back to `.panel-main` (and, inside that, to the matrix
-   table's 1fr column in `.two-col`), so more checklist-item columns fit
-   in view before the table needs to scroll horizontally. */
-#panel-checklist .panel-body-with-key {
-  grid-template-columns: 1fr 12rem;
-}
-/* Unlike every other tab, the Coverage Checklist's key box should NOT be
-   stretched down to match `.panel-main`'s height (the table's own,
-   data-driven, often-tall height) -- it should just end right after its
-   own fixed five-entry content, like a normal document flow box would.
-   `align-self: start` overrides the grid's inherited `align-items:
-   stretch` (see ".panel-body-with-key" above) for this one instance,
-   sizing the box to its content instead of the shared grid row's height.
-   See also syncChecklistHeight() in dashboard.js, which used to stretch
-   this box to match the table via JS and no longer does. */
-#panel-checklist .panel-key {
-  align-self: start;
-}
-
-/* Custom Filter tab: `.table-scroll` caps at 65vh (see `.table-scroll`
-   above), but the key's own content -- title plus all five Type 1-5
-   entries, each with a full sentence of definition text -- is naturally
-   taller than that on its own. Left alone, `align-items: stretch` sizes
-   the shared row to fit the *taller* of the two (the key), which stretches
+/* Hysterectomy Inference Classification and Custom Filter tabs:
+   `.table-scroll`'s generic 65vh cap (see `.table-scroll` above) is too
+   short for both of this pair's actual needs -- the key's own content
+   (title plus all five Type 1-5 entries, each with a full sentence of
+   definition text) doesn't fit within it on most screens, and neither did
+   ~10 rows of the table. Left alone, `align-items: stretch` sizes the
+   shared row to fit the *taller* of the two (the key), which stretches
    `.panel-main`/the table up to match but doesn't make the table any
    taller (it's independently capped at 65vh), leaving the key's box to
    trail off below the table's bottom edge instead of ending flush with it.
-   Pinning the row to that same 65vh forces both boxes' bottoms (as well as
-   their already-aligned tops) to land in exactly the same place; `.panel-
-   key` gets a matching internal scrollbar as a fallback so its text is
-   still reachable if it doesn't all fit in that height. */
-#panel-filter .panel-body-with-key {
-  grid-template-rows: 65vh;
-}
-#panel-filter .panel-key {
-  overflow-y: auto;
-}
-
-/* Cohort Summary tab: same mismatch, same fix, as the Custom Filter tab
-   above -- this tab's `.table-scroll` is also capped at the generic 65vh
-   (nothing here overrides it back to "none" the way the Coverage
-   Checklist tab does), but the key's five full-sentence Type entries are
-   naturally taller than that, so without a pinned row height the key's
-   box trailed off well below the table's actual bottom edge. */
+   Pinning the row to a taller, guaranteed-minimum height instead --
+   `minmax()` rather than a flat value, so it still grows further on a
+   tall viewport -- forces both boxes' bottoms (as well as their
+   already-aligned tops) to land in exactly the same place, tall enough
+   that the key's full five-entry content fits without its own scrollbar
+   on a typical laptop-or-larger screen; `.panel-key` keeps a matching
+   internal scrollbar as a fallback for shorter viewports where it still
+   doesn't fit. */
+#panel-filter .panel-body-with-key,
 #panel-summary .panel-body-with-key {
-  grid-template-rows: 65vh;
+  grid-template-rows: minmax(48rem, 85vh);
 }
+#panel-filter .panel-key,
 #panel-summary .panel-key {
   overflow-y: auto;
 }
+/* ".table-scroll"'s own generic 65vh cap (see ".table-scroll" above) would
+   otherwise still apply regardless of how tall the grid row above just
+   became -- `height: 100%` instead fills exactly whatever height
+   ".panel-main" (a grid item stretched by the row above, via the default
+   `align-items: stretch`) actually resolves to, so the table's own visible
+   height always tracks the row's -- the same guaranteed minimum, and the
+   same further growth on a taller viewport -- keeping the table and key's
+   bottom edges aligned exactly like every other tab's key pairing does. */
+#panel-filter .table-scroll,
+#panel-summary .table-scroll {
+  max-height: none;
+  height: 100%;
+}
 
 @media (max-width: 900px) {
-  .panel-body-with-key,
-  #panel-checklist .panel-body-with-key {
+  .panel-body-with-key {
     grid-template-columns: 1fr;
   }
   #panel-filter .panel-body-with-key,
@@ -714,6 +917,19 @@ table.data-table tbody tr.accent-row:hover td {
   }
   header.app-header h1 {
     font-size: 1.2rem;
+  }
+
+  /* At phone width the logo badge sits on the same row as the already-
+     shrunk <h1> (see ".header-top" -- it doesn't wrap), so trim its
+     padding/text down a notch to keep the row from crowding. */
+  .brand-mark {
+    padding: 0.3rem 0.6rem 0.35rem;
+  }
+  .brand-wordmark {
+    font-size: 0.68rem;
+  }
+  .brand-wordmark strong {
+    font-size: 0.85rem;
   }
 
   nav.tabs button {
@@ -809,14 +1025,13 @@ table.data-table tbody tr.accent-row:hover td {
    Landscape-phone / small-tablet width (641px-900px)
    --------------------------------------------------------------------- */
 /* This range sits strictly between the two breakpoints above: wide enough
-   that ".two-col" (the Coverage Checklist's picker sidebar next to its
-   table -- see ".two-col" further below) is still showing side by side
-   rather than stacked (that only happens at <=640px, in the block above),
-   but still well short of a real desktop window. At these widths the
-   Cohorts / Procedure Separation Type / Checklist items picker stack
-   naturally runs shorter than the table beside it, leaving its column
-   trailing off above the table's actual bottom edge instead of lining up
-   with it top-to-bottom.
+   that ".two-col" (the Women's Health Data Inventory's picker sidebar next
+   to its table -- see ".two-col" further below) is still showing side by
+   side rather than stacked (that only happens at <=640px, in the block
+   above), but still well short of a real desktop window. At these widths
+   the Cohorts / Checklist items picker stack naturally runs shorter than
+   the table beside it, leaving its column trailing off above the table's
+   actual bottom edge instead of lining up with it top-to-bottom.
    An earlier version of this block tried to fix that with CSS alone --
    `align-items: stretch` on ".two-col" plus `flex: 1 1 0; min-height: 0`
    on the Cohorts/Checklist-items pickers -- but that combination turned
@@ -836,31 +1051,6 @@ table.data-table tbody tr.accent-row:hover td {
     max-height: none;
   }
 
-  /* Paired with syncLandscapeProcedureKeyPlacement() in dashboard.js: at
-     this same breakpoint that function wraps "#t2-table-scroll" in a new
-     "#t2-table-col" div (right there in ".two-col", taking the table's
-     old spot as the column-2 grid item) and moves "#t2-procedure-key"
-     into that wrapper too, right after the table.
-     This wrapper -- not a bare "grid-column: 2" on the key -- is what
-     actually makes the key land directly under the table: ".two-col"'s
-     two original children (the picker sidebar and the table) share row 1
-     of the same grid, so with the sidebar's long picker stack usually
-     much taller than the table, row 1's own track height gets stretched
-     to match the *sidebar*, not the table -- a plain second grid row
-     placed under the table would then only start after that whole
-     inflated row 1, i.e. after the tall sidebar's bottom edge, leaving a
-     big gap above it instead of sitting flush under the table. Wrapping
-     the table (and now the key) in their own flex column sidesteps that
-     entirely: that wrapper becomes column 2's *only* row-1 grid item, and
-     its own height is just the table's height plus the key's height,
-     completely independent of column 1's (the sidebar's) height. */
-  .t2-table-col {
-    display: flex;
-    flex-direction: column;
-  }
-  .t2-table-col > .procedure-key-in-table-col {
-    margin-top: 1rem;
-  }
 }
 
 /* ---------------------------------------------------------------------
@@ -872,16 +1062,16 @@ table.data-table tbody tr.accent-row:hover td {
    hidden everywhere by default; the media query below is the only thing
    that ever makes it visible. Unlike the rest of this stylesheet's mobile
    handling (which makes every tab genuinely usable on a phone), the
-   Coverage Checklist's dozens of narrow checklist-item columns don't fit
-   a phone-portrait width at any font size without heavy horizontal
-   scrolling no matter what CSS does here -- so rather than present a
-   barely-usable sliver of that table, portrait phone users see this
-   notice instead and are steered toward landscape or a larger screen.
-   The other three tabs (Cohort Summary, Custom Filter, Map) have no such
-   column-count problem and stay fully usable in portrait, so this is
-   deliberately scoped to the Coverage Checklist tab specifically -- see
-   "#panel-checklist" in every selector below -- rather than applied
-   site-wide.
+   Women's Health Data Inventory's dozens of narrow checklist-item columns
+   don't fit a phone-portrait width at any font size without heavy
+   horizontal scrolling no matter what CSS does here -- so rather than
+   present a barely-usable sliver of that table, portrait phone users see
+   this notice instead and are steered toward landscape or a larger screen.
+   The other three tabs (Hysterectomy Inference Classification, Custom
+   Filter, Cohort Map) have no such column-count problem and stay fully
+   usable in portrait, so this is deliberately scoped to this tab
+   specifically -- see "#panel-checklist" in every selector below -- rather
+   than applied site-wide.
    `orientation: portrait` (alongside the same `max-width: 640px` used by
    the phone-width block above) specifically targets narrow *and* tall
    screens, rather than every screen <=640px -- a handful of small phones
@@ -896,7 +1086,7 @@ table.data-table tbody tr.accent-row:hover td {
   #panel-checklist > .hint-banner:not(.portrait-notice),
   #panel-checklist > .result-count,
   #panel-checklist > .legend,
-  #panel-checklist > .panel-body-with-key {
+  #panel-checklist > .two-col {
     display: none;
   }
   #panel-checklist .portrait-notice {
@@ -945,17 +1135,6 @@ table.data-table tbody tr.accent-row:hover td {
   flex: 1 1 auto;
   gap: 1rem;
   justify-content: space-between;
-}
-/* Coverage Checklist tab specifically: its key box's height is now matched
-   to the table's own (data-driven, often shorter) height rather than a
-   generic tall stretch -- see syncChecklistHeight() in dashboard.js -- so
-   spreading the five entries with `justify-content: space-between` would
-   space them out awkwardly far apart. Pack them together near the top
-   instead; any leftover room just becomes a bit of blank space at the very
-   bottom of the box, which is fine here (unlike the table/sidebar, this
-   box isn't showing filterable data, just a fixed five-item legend). */
-#panel-checklist .procedure-key .procedure-key-list {
-  justify-content: flex-start;
 }
 .procedure-key .procedure-key-item {
   display: flex;
@@ -1018,31 +1197,33 @@ table.matrix-table thead th {
   white-space: normal;
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
-  font-size: 0.72rem;
+  /* Explicit (rather than just inheriting "table.data-table"'s own
+     zoom-scaled font-size) since this header is deliberately smaller than
+     the body text -- still needs its own "* var(--table-zoom)" so it
+     scales in step with everything else when the user zooms. */
+  font-size: calc(0.72rem * var(--table-zoom, 1));
   cursor: default;
   vertical-align: bottom;
 }
-/* Checklist-item column headers (everything except the sticky Cohort Name
-   column and the Procedure separation type column, which each set their
-   own width below): capped at the same ~8em width as the Procedure
-   separation type column, so no column -- however long its variable name
-   -- ever gets wider than that shared baseline. Long labels wrap onto
-   multiple lines within that width instead. Centered both ways
-   (vertical-align + text-align) to mirror the Procedure separation type
-   header's own alignment exactly, rather than sitting bottom-aligned like
-   the generic `table.matrix-table thead th` rule above sets. */
-table.matrix-table thead th:not(.cohort-col-header):not(.type-col-header) {
+/* Checklist-item and rollup column headers (everything except the sticky
+   Cohort Name column, which sets its own width below): capped at a shared
+   ~8em width so no column -- however long its variable/domain name -- ever
+   gets wider than that baseline. Long labels wrap onto multiple lines
+   within that width instead. Centered both ways (vertical-align +
+   text-align) rather than sitting bottom-aligned like the generic
+   `table.matrix-table thead th` rule above sets. */
+table.matrix-table thead th:not(.cohort-col-header) {
   width: 8em;
   max-width: 8em;
   text-align: center;
   vertical-align: middle;
 }
-/* Checklist item body cells (the Yes/No/To some extent/Other chips): center
-   each chip within its column, matching the centered header above it,
-   rather than the default left alignment table cells get. Cohort Name and
-   Procedure separation type cells have their own alignment rules already
-   (sticky-left and centered respectively) so they're excluded here. */
-table.matrix-table td:not(.cohort-cell):not(.type-cell) {
+/* Checklist item / rollup body cells (the Yes/No/To some extent/Other
+   chips): center each chip within its column, matching the centered header
+   above it, rather than the default left alignment table cells get. Cohort
+   Name cells have their own (sticky-left) alignment already, so they're
+   excluded here. */
+table.matrix-table td:not(.cohort-cell) {
   text-align: center;
 }
 /* The label text used to live in its own inner span so a `transform:
@@ -1050,8 +1231,13 @@ table.matrix-table td:not(.cohort-cell):not(.type-cell) {
    positioned `<th>` itself, avoiding a browser repaint bug. Headers are
    horizontal now, so that transform is gone, but the label is kept in its
    own span regardless -- harmless, and one less thing to change if a
-   similar positioning need comes up again later. */
-table.matrix-table thead th .th-label {
+   similar positioning need comes up again later.
+   Plain "table.data-table" (not scoped to ".matrix-table") so Table 1 and
+   Table 3's own narrow columns (see ".narrow-col-header" further below)
+   get the same wrap/hyphenate treatment as the Coverage Checklist's --
+   every ".matrix-table" is already a ".data-table" too, so this one rule
+   covers both. */
+table.data-table thead th .th-label {
   display: block;
   white-space: normal;
   overflow-wrap: break-word;
@@ -1073,6 +1259,13 @@ table.matrix-table thead th .th-label {
 table.matrix-table thead th.cohort-col-header {
   height: auto;
   vertical-align: middle;
+}
+/* Rollup (domain-level) columns get a faint accent tint on their header so
+   they read as a distinct kind of column from the plain-white specific-item
+   headers beside them once a user drills into any -- without needing a
+   second legend to explain the difference. */
+table.matrix-table thead th.rollup-col-header {
+  background-color: var(--accent-soft);
 }
 /* Capped so the very longest cohort names (e.g. the ~74-character full
    title of Add Health) don't dominate the sticky first column and push
@@ -1122,37 +1315,6 @@ table.matrix-table td.cohort-cell:hover {
   text-decoration: underline;
 }
 
-/* Procedure Separation Type's own dedicated matrix column -- plain "Type
-   N" text (colored to match the fixed key/row color, see
-   renderTable2Body() in dashboard.js), not a rotated header or a
-   yes/no/partial chip like the checklist item columns next to it. */
-table.matrix-table th.type-col-header {
-  vertical-align: middle;
-  white-space: normal;
-  width: 8em;
-  min-width: 8em;
-  text-align: center;
-  line-height: 1.3;
-}
-table.matrix-table td.type-cell {
-  font-weight: 700;
-  white-space: nowrap;
-  text-align: center;
-}
-/* Same "enlarge on hover" affordance as the Yes/No/To some extent/Other
-   value chips below (.chip:hover), applied here to the Procedure
-   Separation Type text instead of a chip -- scoped to the inner
-   ".type-text" span (see renderTable2Body() in dashboard.js) rather than
-   the whole <td>, so the transform scales just the text in place instead
-   of the table cell itself. */
-table.matrix-table td.type-cell .type-text {
-  display: inline-block;
-  transition: transform 0.12s ease;
-}
-table.matrix-table td.type-cell:hover .type-text {
-  transform: scale(1.18);
-}
-
 .chip {
   display: inline-flex;
   align-items: center;
@@ -1160,7 +1322,11 @@ table.matrix-table td.type-cell:hover .type-text {
   min-width: 1.6em;
   height: 1.6em;
   border-radius: 4px;
-  font-size: 0.75rem;
+  /* "em"-based min-width/height above scale automatically with this --
+     inherited from the ".matrix-table" ancestor's own zoom-scaled
+     font-size (see "table.data-table" above), same mechanism as every
+     other zoom-scaled size in the table. */
+  font-size: calc(0.75rem * var(--table-zoom, 1));
   font-weight: 700;
   color: #fff;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
@@ -1266,34 +1432,30 @@ table.matrix-table td.type-cell:hover .type-text {
   border-radius: 4px;
   transition: background 0.1s ease;
 }
+/* A long label (e.g. a domain name like "Cognitive / Imaging / Biological
+   / Health Record Linked Data") should wrap onto multiple lines within the
+   sidebar rather than force the row wider than the picker -- flex items
+   default to `min-width: auto`, which keeps them from shrinking below
+   their text's un-wrapped natural width, so this label span needs both an
+   explicit `min-width: 0` (to allow shrinking at all) and `overflow-wrap`
+   (as a fallback in case a run of the label has no natural space to break
+   at). The checkbox itself (`flex: none` implicitly, via its fixed
+   intrinsic size) is unaffected. */
+.picker label.picker-row span {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
 .picker label.picker-row:hover {
   background: var(--hover-bg);
 }
 
-/* The Procedure Separation Type picker's "Hide column" toggle (see
-   t2-type-hide-column-btn in dashboard.js) sits in the .picker-actions row
-   alongside Select all/Select none rather than as its own checkbox row --
-   it controls whether the matrix table shows a Procedure Separation Type
-   column at all, which is independent of (and not overridden by) that same
-   picker's row-filtering Select all/Select none buttons. When the column is
-   currently hidden, the button gets a deeper fill than the plain :hover
-   state below so it reads as "engaged" rather than just moused-over. */
-.picker .picker-actions button.toggle-active {
-  background: color-mix(in srgb, var(--accent) 30%, var(--accent-soft) 70%);
-  color: var(--accent-dark);
-  border-color: var(--accent);
-}
-.picker .picker-actions button.toggle-active:hover {
-  background: color-mix(in srgb, var(--accent) 40%, var(--accent-soft) 60%);
-}
-
-/* Coverage Checklist item picker: distinguishes a section-header row (e.g.
-   "Vasomotor symptoms") from its indented sub-items (e.g. "Hot flashes
-   item", "Night sweats item") -- see renderChecklistItemPicker() in
-   dashboard.js. Checking/unchecking a header row cascades to all of its
-   children (the header's checkbox itself goes indeterminate when only
-   some of its children are checked); each child can still be toggled on
-   its own. */
+/* Women's Health Data Inventory item picker: distinguishes a
+   section-header row (e.g. "Vasomotor symptoms") from its indented
+   sub-items (e.g. "Hot flashes item", "Night sweats item") -- see
+   renderChecklistItemPicker() in dashboard.js. Checking/unchecking a
+   header row cascades to all of its children (the header's checkbox
+   itself goes indeterminate when only some of its children are checked);
+   each child can still be toggled on its own. */
 .picker label.picker-row.picker-header {
   font-weight: 700;
   color: var(--accent-dark);
@@ -1489,4 +1651,422 @@ table.matrix-table td.type-cell:hover .type-text {
 .custom-tooltip.visible {
   opacity: 1;
   visibility: visible;
+}
+
+/* ---------------------------------------------------------------------
+   Static content tabs (Information, Hysterectomy Procedure Separation
+   Info)
+   --------------------------------------------------------------------- */
+/* Unlike the four data tabs, these have no table/map/data-table
+   scaffolding of their own -- static content, styled to match the rest of
+   the site (same card/border/radius/shadow language, same accent gradients
+   as .hint-banner and the header's top bar) while reading distinctly as a
+   home/intro-style page rather than another data view. ".info-hero"/
+   ".info-card" aren't scoped to a specific panel's id since any static
+   content tab can use them. */
+
+/* Body text beside a couple of stat call-outs (see ".info-hero-stats") --
+   a plain single column of fairly short paragraphs left a wide strip of
+   empty space beside them on anything wider than a phone; splitting into
+   two flex children fills that space with something purposeful instead of
+   just stretching the text itself wider. */
+.info-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-rose-soft) 160%);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1rem;
+}
+
+.info-hero-body {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 26em;
+}
+
+.info-hero h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.3rem;
+  color: var(--accent-dark);
+}
+
+.info-hero p {
+  position: relative;
+  margin: 0;
+  color: #3a4451;
+  line-height: 1.55;
+}
+
+.info-hero p + p {
+  margin-top: 0.65rem;
+}
+
+/* Stat call-outs beside the body text -- both numbers are already stated
+   in the paragraph itself (29 cohorts, 11 domains), just pulled out and
+   presented the way a typical landing page highlights its headline
+   figures. */
+.info-hero-stats {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 1.25rem;
+}
+
+.info-hero-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1.1rem;
+  min-width: 6.5em;
+}
+
+.info-hero-stat-num {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--accent-dark);
+  line-height: 1.1;
+}
+
+.info-hero-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.15rem;
+}
+
+/* Purely decorative echo of the logo's heartbeat/data-line flourish (see
+   ".brand-flourish"), oversized and washed out in the hero's bottom-right
+   corner -- gives the banner some landing-page presence without adding any
+   new copy of its own. Sized/positioned so it sits behind the text rather
+   than crowding it, and never causes the hero to scroll horizontally
+   (".info-hero" clips it via `overflow: hidden`). z-index:0 (with
+   ".info-hero-body"/".info-hero-stats" explicitly at z-index:1) keeps it
+   from painting over the real content -- a plain absolutely-positioned
+   element would otherwise stack above its static-position siblings
+   regardless of DOM order. */
+.info-hero-deco {
+  position: absolute;
+  z-index: 0;
+  right: -6%;
+  bottom: -18%;
+  width: 55%;
+  max-width: 320px;
+  height: auto;
+  color: var(--accent);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+/* The Procedure Separation Type explanation and the Citing sidebar sit
+   side by side rather than stacking full-width -- a home page reads more
+   like a laid-out page and less like a plain list of cards when at least
+   one section pairs main content with a shorter aside. Falls back to a
+   single stacked column at narrower widths (see the phone/tablet media
+   queries below). */
+.info-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 1rem;
+  /* Stretch (the grid default) rather than "start": the citation list is
+     much shorter than the procedure-type explanation beside it, and
+     leaving it top-aligned at its own natural height stranded a tall
+     empty gap next to a short floating box. Matching both cards' heights
+     reads as one deliberately roomy pairing instead. */
+  align-items: stretch;
+  margin-bottom: 1rem;
+}
+
+.info-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.1rem 1.3rem;
+  margin-bottom: 1rem;
+}
+
+/* Cards inside ".info-row" are grid items -- ".info-row" itself already
+   carries the bottom margin for the row as a whole, so a second margin
+   here would just add uneven trailing space under whichever card happens
+   to be shorter. */
+.info-row > .info-card {
+  margin-bottom: 0;
+}
+
+/* Sidebar card reads as a distinct "aside" next to the main explanation --
+   a tinted fill (rather than the same plain white as every other card)
+   makes that pairing look deliberate instead of like a mis-sized card. */
+.info-card-aside {
+  background: var(--bg-subtle);
+}
+
+.info-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  color: var(--accent-dark);
+}
+
+.info-card-icon {
+  flex: none;
+  width: 1.05em;
+  height: 1.05em;
+}
+
+.info-card p {
+  margin: 0;
+  color: var(--text-main);
+  line-height: 1.55;
+}
+
+.info-card p + p {
+  margin-top: 0.65rem;
+}
+
+/* First mention of "hysterectomy"/"oophorectomy" in the Procedure
+   Separation Type explanation -- bolded and colored with the site's rose
+   accent to flag them as the key terms the rest of the paragraph builds
+   on, without introducing a new color of its own. */
+.term-highlight {
+  font-weight: 700;
+  color: var(--accent-rose);
+}
+
+/* Placeholder link to the Yoon et al. (2026) paper -- underlined (rather
+   than styled like the plain body text around it) so it reads as a link,
+   and `cursor: help` hints that hovering it reveals the full citation via
+   its `title` attribute, matching the same hint used for the cohort detail
+   modal's Procedure Separation Type value (see ".modal dd.detail-proc-
+   type" under "Detail modal"). */
+.paper-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 0.15em;
+  cursor: help;
+}
+
+.paper-link:hover {
+  color: var(--accent-dark);
+  text-decoration-color: currentColor;
+}
+
+/* In-page link to another tab (e.g. pointing from the Procedure Separation
+   Type explanation over to its dedicated info tab) -- a <button> under the
+   hood (see wireInPageTabLinks() in dashboard.js, which just clicks the
+   matching nav.tabs button), styled to read as a plain inline hyperlink
+   within the surrounding paragraph rather than a UI button. */
+.tab-link {
+  display: inline;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.tab-link:hover {
+  color: var(--accent-dark);
+  text-decoration-color: currentColor;
+}
+
+/* The embedded Procedure Separation Type key reuses ".procedure-key" as-is
+   (see the "Procedure Separation Type key" comment above it) but, unlike
+   its `.panel-key` use elsewhere, isn't stretched to match a sibling's
+   height here -- so give it its own vertical rhythm between the
+   surrounding paragraphs instead of relying on a grid parent for spacing. */
+.info-card .procedure-key {
+  margin: 0.9rem 0;
+}
+
+/* Citation formats (APA/MLA/Chicago) -- a label/citation pair per format,
+   matching the <dl>/<dt>/<dd> pattern already used for the cohort detail
+   modal's field list (see ".modal dl"/"dt"/"dd" under "Detail modal"
+   above) rather than inventing a second convention for the same shape of
+   content. */
+.citation-list {
+  margin: 0;
+}
+
+.citation-list dt {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--accent-dark);
+  margin: 0.9rem 0 0.25rem;
+}
+
+.citation-list dt:first-child {
+  margin-top: 0;
+}
+
+.citation-list dd {
+  margin: 0;
+  color: var(--text-main);
+  line-height: 1.55;
+}
+
+/* Contribute call to action -- same stacked heading-then-paragraph shape
+   as every other card, but with a soft rose-tinted wash (rather than the
+   plain white the others use) that echoes the hero's gradient at the top
+   of the page, bookending the tab with the same accent language a closing
+   CTA band gets on a typical home page. */
+.info-cta {
+  background: linear-gradient(135deg, #fff 0%, var(--accent-rose-soft) 220%);
+  border-left: 3px solid var(--accent-rose);
+}
+
+/* Bold, slightly larger lead sentence directly under the hero's <h2> --
+   reads as a tagline/strapline, the way a typical landing-page hero leads
+   with a punchy one-liner before the fuller body copy beneath it. */
+.info-hero p.info-hero-lead {
+  font-weight: 700;
+  font-size: 1.02rem;
+  color: var(--accent-dark);
+  margin-bottom: 0.65rem;
+}
+
+/* Small version-tag pill for "Current Release" -- reads as a release badge
+   (the kind a changelog or software release page would show) rather than
+   plain body text. */
+.info-card p.release-badge {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+}
+
+/* Generic inline link within card body text (e.g. Contribute's "click
+   here") -- same treatment as ".paper-link" minus `cursor: help`, since
+   this one is a real navigable link rather than a hover-for-citation
+   affordance. */
+.inline-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 0.15em;
+}
+
+.inline-link:hover {
+  color: var(--accent-dark);
+  text-decoration-color: currentColor;
+}
+
+@media (max-width: 900px) {
+  /* The main-explanation/citing-sidebar pairing only has room to sit side
+     by side above tablet width -- stack them like every other section
+     below that. */
+  .info-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .info-hero,
+  .info-card {
+    padding: 0.9rem 1rem;
+  }
+
+  .info-hero-deco {
+    width: 70%;
+  }
+
+  .info-cta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Items Reference tab
+   --------------------------------------------------------------------- */
+/* Native <details>/<summary> per domain -- collapsed by default, no JS
+   needed for the show/hide behavior. Styled to match the card language
+   used elsewhere (border/radius/shadow) rather than the browser default
+   disclosure widget. */
+.reference-category {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.reference-category summary {
+  cursor: pointer;
+  padding: 0.85rem 1.2rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent-dark);
+  list-style: none;
+  transition: background 0.15s ease;
+}
+
+.reference-category summary::-webkit-details-marker {
+  display: none;
+}
+
+.reference-category summary::before {
+  content: "\25B8";
+  display: inline-block;
+  width: 1em;
+  margin-right: 0.4rem;
+  color: var(--accent);
+  transition: transform 0.15s ease;
+}
+
+.reference-category[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.reference-category summary:hover {
+  background: var(--bg-subtle);
+}
+
+.reference-category[open] summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.reference-list {
+  margin: 0;
+  padding: 0.9rem 1.2rem 0.9rem 2.6rem;
+  list-style: disc;
+}
+
+.reference-list ul {
+  margin: 0.3rem 0 0.3rem 0;
+  padding-left: 1.2rem;
+  list-style: circle;
+}
+
+.reference-list li {
+  margin: 0.3rem 0;
+  line-height: 1.5;
+  color: var(--text-main);
 }

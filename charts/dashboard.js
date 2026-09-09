@@ -27,11 +27,18 @@
     // since the column's actual field key isn't known until the schema
     // has loaded.
     t1Sort: { column: null, direction: "asc" },
+    t1Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
     // Table 2
     t2SelectedCohorts: null, // Set, populated once data loads
-    t2SelectedColumns: null, // Set
-    t2SelectedTypes: null, // Set of selected "Type N" values (Procedure Separation Type filter)
-    t2ShowTypeColumn: true, // "Hide column" toggle button in the Procedure Separation Type picker's actions row
+    // Set of the 11 domain rollup labels currently shown as columns --
+    // starts with all of them selected (see loadData()), and the
+    // "Domains" picker toggles individual ones off/on.
+    t2SelectedDomains: null,
+    // Set of individually-drilled-into leaf checklist items -- starts empty
+    // so the matrix opens showing just the 11 umbrella-category rollup
+    // columns (see checklistCategoryRollups()); checking specific items in
+    // the "Checklist items" picker adds their own columns alongside those.
+    t2SelectedColumns: null,
     t2Rendered: false, // see loadData()/wireTabs() -- deferred until the tab is visible
     t2Sort: { column: null, direction: "asc" },
     // Table 3
@@ -48,7 +55,9 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     wireTabs();
+    wireInPageTabLinks();
     wireModal();
+    wireTableZoom();
     renderAllProcedureSeparationKeys();
     loadData();
   });
@@ -72,26 +81,36 @@
             return c[state.schema.cohort_name_column];
           })
         );
-        state.t2SelectedColumns = new Set(state.schema.checklist_columns || []);
-        state.t2SelectedTypes = new Set(
-          DD.uniqueValues(state.cohorts, state.schema.procedure_separation_type_column)
+        // All 11 domains start selected -- see the comment on
+        // t2SelectedDomains in `state` above.
+        state.t2SelectedDomains = new Set(
+          checklistCategoryRollups().map(function (r) {
+            return r.label;
+          })
         );
+        // Starts empty -- see the comment on t2SelectedColumns in `state`
+        // above -- rather than every checklist_columns entry.
+        state.t2SelectedColumns = new Set();
 
         renderDataSourceBanner();
-        renderTable1();
         renderTable3Fields();
 
-        // Table 2 (Coverage Checklist) and Table 3 (Custom Filter) both
-        // build tables with `position: sticky` header cells (see
-        // dashboard.css). Building sticky-positioned cells while their tab
-        // panel is still `display: none` (every tab except the default
-        // "Cohort Summary" one) leaves the browser's sticky-offset
-        // calculations stale -- the header ends up rendered behind the
-        // body and only self-corrects for a flash on hover, never staying
-        // fixed. So, same as the Map tab's initMap() below, defer actually
-        // building these two tables' DOM until their tab is first shown
-        // (see wireTabs()), and only build eagerly here if that tab
-        // happens to already be the active one on load.
+        // Table 1 (Cohort Summary), Table 2 (Coverage Checklist), and
+        // Table 3 (Custom Filter) all build tables with `position: sticky`
+        // header cells (see dashboard.css). Building sticky-positioned
+        // cells while their tab panel is still `display: none` (every tab
+        // except the default "Information" one) leaves the browser's
+        // sticky-offset calculations stale -- the header ends up rendered
+        // behind the body and only self-corrects for a flash on hover,
+        // never staying fixed. So, same as the Map tab's initMap() below,
+        // defer actually building these tables' DOM until their tab is
+        // first shown (see wireTabs()), and only build eagerly here if
+        // that tab happens to already be the active one on load.
+        var summaryPanel = document.getElementById("panel-summary");
+        if (summaryPanel && summaryPanel.classList.contains("active")) {
+          renderTable1();
+          state.t1Rendered = true;
+        }
         var checklistPanel = document.getElementById("panel-checklist");
         if (checklistPanel && checklistPanel.classList.contains("active")) {
           renderTable2();
@@ -112,14 +131,20 @@
       })
       .catch(function (err) {
         console.error(err);
-        document.querySelectorAll(".tab-panel").forEach(function (panel) {
-          panel.innerHTML =
-            '<p class="empty-state">Could not load cohort data (' +
-            escapeHtml(err.message) +
-            "). If you're viewing this locally, make sure charts/data/*.json exist " +
-            "(run fetch_data.py) and that you're serving the charts/ folder over HTTP, " +
-            "not opening index.html directly as a file.</p>";
-        });
+        // Information and Items Reference are both static markup with no
+        // cohort-data dependency (see their sections in index.html), so
+        // they're excluded here and stay usable even when the data fetch
+        // below fails.
+        document
+          .querySelectorAll(".tab-panel:not(#panel-information):not(#panel-items-reference)")
+          .forEach(function (panel) {
+            panel.innerHTML =
+              '<p class="empty-state">Could not load cohort data (' +
+              escapeHtml(err.message) +
+              "). If you're viewing this locally, make sure charts/data/*.json exist " +
+              "(run fetch_data.py) and that you're serving the charts/ folder over HTTP, " +
+              "not opening index.html directly as a file.</p>";
+          });
       });
   }
 
@@ -173,8 +198,12 @@
         }
 
         // Same deferred-build reasoning as the Map tab above -- see the
-        // comment in loadData() for why Table 2/3 can't be safely built
+        // comment in loadData() for why Table 1/2/3 can't be safely built
         // while their panel is still display:none.
+        if (target === "summary" && !state.t1Rendered && state.cohorts.length) {
+          renderTable1();
+          state.t1Rendered = true;
+        }
         if (target === "checklist" && !state.t2Rendered && state.cohorts.length) {
           renderTable2();
           state.t2Rendered = true;
@@ -184,21 +213,18 @@
           state.t3Rendered = true;
         }
 
-        // Landscape-phone/small-tablet sidebar height sync and Procedure
-        // Separation Type key placement (see syncLandscapeChecklistHeight()
-        // and syncLandscapeProcedureKeyPlacement() below) need to (re)run
-        // every time the Coverage Checklist tab becomes visible, not just
-        // the first time it's rendered -- their measurements are all 0
-        // while the panel is display:none, so switching *back* to an
-        // already-rendered checklist tab needs its own fresh run too.
-        // Deferred with the same 0ms setTimeout as the Map's
-        // invalidateSize() above, so the panel's just-applied "active"
-        // class has actually taken effect (and the panel is laid
-        // out/visible) before measuring it.
+        // Landscape-phone/small-tablet sidebar height sync (see
+        // syncLandscapeChecklistHeight() below) needs to (re)run every time
+        // the Women's Health Data Inventory tab becomes visible, not just
+        // the first time it's rendered -- its measurements are all 0 while
+        // the panel is display:none, so switching *back* to an
+        // already-rendered tab needs its own fresh run too. Deferred with
+        // the same 0ms setTimeout as the Map's invalidateSize() above, so
+        // the panel's just-applied "active" class has actually taken effect
+        // (and the panel is laid out/visible) before measuring it.
         if (target === "checklist") {
           setTimeout(function () {
             syncLandscapeChecklistHeight();
-            syncLandscapeProcedureKeyPlacement();
           }, 0);
         }
       });
@@ -247,15 +273,90 @@
         if (window.innerWidth === lastLandscapeSyncWidth) return;
         lastLandscapeSyncWidth = window.innerWidth;
         syncLandscapeChecklistHeight();
-        syncLandscapeProcedureKeyPlacement();
       }, 120);
     });
     window.addEventListener("orientationchange", function () {
       setTimeout(function () {
         lastLandscapeSyncWidth = window.innerWidth;
         syncLandscapeChecklistHeight();
-        syncLandscapeProcedureKeyPlacement();
       }, 150);
+    });
+  }
+
+  // In-page links that jump to another tab -- the Information tab's
+  // Procedure Separation Type explanation pointing over to its dedicated
+  // info tab (".tab-link"), and the header logo/title acting as a "go
+  // home" link back to Information (".brand-home-link"). Rather than
+  // duplicating wireTabs()'s tab-switch logic, this just clicks the
+  // matching nav.tabs button so every side effect of a real tab switch
+  // (active-state highlighting, lazy table/map rendering, etc.) happens
+  // exactly as it would from a direct click. `preventDefault()` covers
+  // ".brand-home-link", a real `<a href="#">` (needed so it reads as a
+  // link and gets keyboard/middle-click support) that would otherwise also
+  // jump the page to the top and add a stray "#" to the URL.
+  function wireInPageTabLinks() {
+    document
+      .querySelectorAll(".tab-link[data-goto-tab], .brand-home-link[data-goto-tab]")
+      .forEach(function (link) {
+        link.addEventListener("click", function (event) {
+          event.preventDefault();
+          var target = link.getAttribute("data-goto-tab");
+          var btn = document.querySelector('nav.tabs button[data-tab="' + target + '"]');
+          if (btn) btn.click();
+        });
+      });
+  }
+
+  // ---------------------------------------------------------------------
+  // Table zoom ("Table size" +/- control -- shared by Hysterectomy
+  // Inference Classification, Women's Health Data Inventory, and Custom
+  // Filter; see ".table-zoom" in index.html/dashboard.css)
+  // ---------------------------------------------------------------------
+  // Purely a font-size multiplier, applied as an inline "--table-zoom"
+  // custom property directly on the relevant <table> element -- every
+  // column width/padding throughout these tables is already sized in "em"
+  // (relative to the table's own font-size; see "table.data-table" and
+  // ".narrow-col-header" in dashboard.css), so scaling that one property
+  // simultaneously shrinks/grows the text *and* every column's width
+  // together: zooming out fits more columns on screen at a smaller size,
+  // zooming in shows fewer of them at a larger one.
+  var TABLE_ZOOM_MIN = 60;
+  var TABLE_ZOOM_MAX = 160;
+  var TABLE_ZOOM_STEP = 10;
+  function wireTableZoom() {
+    document.querySelectorAll(".table-zoom").forEach(function (control) {
+      var table = document.getElementById(control.getAttribute("data-table"));
+      var outBtn = control.querySelector(".table-zoom-out");
+      var inBtn = control.querySelector(".table-zoom-in");
+      var pctEl = control.querySelector(".table-zoom-pct");
+      if (!table || !outBtn || !inBtn || !pctEl) return;
+
+      var level = 100;
+
+      function apply() {
+        table.style.setProperty("--table-zoom", level / 100);
+        pctEl.textContent = level + "%";
+        outBtn.disabled = level <= TABLE_ZOOM_MIN;
+        inBtn.disabled = level >= TABLE_ZOOM_MAX;
+      }
+
+      outBtn.addEventListener("click", function () {
+        level = Math.max(TABLE_ZOOM_MIN, level - TABLE_ZOOM_STEP);
+        apply();
+      });
+      inBtn.addEventListener("click", function () {
+        level = Math.min(TABLE_ZOOM_MAX, level + TABLE_ZOOM_STEP);
+        apply();
+      });
+      // Clicking the percentage readout itself resets to 100% -- a
+      // lightweight built-in reset without needing a dedicated button.
+      pctEl.title = "Click to reset to 100%";
+      pctEl.addEventListener("click", function () {
+        level = 100;
+        apply();
+      });
+
+      apply();
     });
   }
 
@@ -329,80 +430,6 @@
     columnPicker.style.height = columnNatural + addEach + "px";
   }
 
-  // ---------------------------------------------------------------------
-  // Landscape-phone / small-tablet width (641px-900px): move the
-  // Procedure Separation Type key into the empty space below the table
-  // ---------------------------------------------------------------------
-  // At every other breakpoint "#t2-procedure-key" lives in its normal
-  // spot -- the last child of "#panel-checklist .panel-body-with-key",
-  // alongside ".panel-main" (see dashboard.css). Once that grid collapses
-  // to a single column at <=900px, the key simply stacks below whichever
-  // of ".panel-main"'s contents is taller. At 641-900px specifically,
-  // ".two-col" is still showing the picker sidebar beside the table (only
-  // the <=640px block stacks that too, see dashboard.css), and the
-  // Checklist items picker's long list often makes the sidebar column run
-  // well past the table's own, usually much shorter, bottom edge -- so
-  // the key ends up scrolled far down the page, beneath that whole tall
-  // sidebar+table block, even though there's empty space directly under
-  // the table on the right, above where the key would otherwise land,
-  // that's just sitting unused.
-  //
-  // A first attempt just moved the key into ".two-col" as a bare third
-  // grid item (grid-column: 2, auto row). That still landed in the wrong
-  // place: ".two-col"'s sidebar and table share row 1 of the same grid,
-  // so row 1's track height gets stretched to match whichever of the two
-  // is taller -- usually the sidebar, not the table -- and a second row
-  // placed under the table then only starts after that *whole* inflated
-  // row 1, i.e. after the sidebar's bottom edge, not the table's.
-  //
-  // This instead wraps "#t2-table-scroll" in a new "#t2-table-col" div
-  // right there in ".two-col" (taking the table's old spot as the
-  // column-2 grid item), then moves the key inside that wrapper, after
-  // the table (see ".t2-table-col" in dashboard.css, a plain flex
-  // column). That wrapper is column 2's *only* row-1 grid item, so its
-  // height is just the table's height plus the key's height -- completely
-  // independent of column 1's (the sidebar's) height. Outside the
-  // 641-900px range the wrapper is removed again (table-scroll goes back
-  // to being ".two-col"'s direct child) and the key is moved back to its
-  // original spot at the end of ".panel-body-with-key", so every other
-  // breakpoint's already-established layout (desktop's side key, the
-  // <=640px stacked phone layout, the <=640px-portrait notice) keeps
-  // working completely unchanged.
-  function syncLandscapeProcedureKeyPlacement() {
-    var key = document.getElementById("t2-procedure-key");
-    var twoCol = document.querySelector("#panel-checklist .two-col");
-    var tableScroll = document.getElementById("t2-table-scroll");
-    var bodyWithKey = document.querySelector("#panel-checklist .panel-body-with-key");
-    if (!key || !twoCol || !tableScroll || !bodyWithKey) return;
-
-    var inRange = window.innerWidth > 640 && window.innerWidth <= 900;
-    var wrapper = document.getElementById("t2-table-col");
-
-    if (inRange) {
-      if (!wrapper) {
-        wrapper = document.createElement("div");
-        wrapper.id = "t2-table-col";
-        wrapper.className = "t2-table-col";
-        twoCol.insertBefore(wrapper, tableScroll);
-        wrapper.appendChild(tableScroll);
-      }
-      if (key.parentNode !== wrapper || key.previousElementSibling !== tableScroll) {
-        wrapper.appendChild(key); // lands right after tableScroll, wrapper's other child
-      }
-      key.classList.add("procedure-key-in-table-col");
-    } else {
-      key.classList.remove("procedure-key-in-table-col");
-      if (key.parentNode !== bodyWithKey) {
-        bodyWithKey.appendChild(key);
-      }
-      if (wrapper) {
-        // Un-wrap: put table-scroll back as ".two-col"'s direct child in
-        // its original spot, then discard the now-empty wrapper.
-        twoCol.insertBefore(tableScroll, wrapper);
-        twoCol.removeChild(wrapper);
-      }
-    }
-  }
 
   // ---------------------------------------------------------------------
   // Modal (cohort detail)
@@ -603,17 +630,43 @@
   function t1Columns() {
     if (T1_COLUMNS) return T1_COLUMNS;
     var procCol = state.schema.procedure_separation_type_column;
+    // These six don't correspond to any column fetch_data.py currently
+    // pulls from the spreadsheet -- there's no source data for them yet,
+    // by design (see the "Reproductive Surgical History" discussion this
+    // table was built from). Their `key` intentionally matches no record
+    // field, so every cohort's cell renders blank (DD.formatValue(undefined)
+    // -- see dashboard-data.js) rather than a misleading "No", until real
+    // columns exist to back them.
+    var PENDING_NOTE = "Not yet collected in this database";
+    // `narrow: true` on every column but Cohort Name -- their labels (e.g.
+    // "Distinguishes laterality (unilateral vs. bilateral)?") run much
+    // longer than their actual cell content (a short Yes/No/Type N/blank),
+    // so renderTable1Head()/renderTable3() wrap these headers instead of
+    // forcing the column to fit the whole label on one line -- see
+    // ".narrow-col-header" in dashboard.css.
     T1_COLUMNS = [
       { key: state.schema.cohort_name_column, label: "Cohort Name" },
-      { key: procCol, label: "Procedure Separation Type" },
-      { key: "Sample Size (N)", label: "Sample Size (N)" },
-      { key: "Age Range", label: "Age Range" },
+      { key: procCol, label: "Hysterectomy Inference Types", narrow: true },
+      { key: "Sample Size (N)", label: "Sample Size (N)", narrow: true },
+      { key: "Age Range", label: "Age Range", narrow: true },
       // The raw sheet's sex-composition column is renamed to this stable
       // "% Female" key by fetch_data.py's _rename_sex_composition_column()
       // regardless of how the raw header is currently spelled/punctuated
       // (it's been "%male/%female" and "%female." at different points) --
       // see SEX_COMPOSITION_COLUMN in fetch_data.py.
-      { key: "% Female", label: "% Female" },
+      { key: "% Female", label: "% Female", narrow: true },
+      // Reproductive Surgical History -- the same distinctions behind each
+      // cohort's Hysterectomy Inference Types classification, broken out
+      // into individual yes/no questions. Only the first two currently
+      // have real source data (see PENDING_NOTE above for the rest).
+      { key: "Hysterectomy item", label: "Asks about hysterectomy?", narrow: true },
+      { key: "Oophorectomy item", label: "Asks about oophorectomy?", narrow: true },
+      { key: "Distinguishes laterality (unilateral vs. bilateral)", label: "Distinguishes laterality (unilateral vs. bilateral)?", note: PENDING_NOTE, narrow: true },
+      { key: "Distinguishes hysterectomy type (supracervical / total / radical)", label: "Distinguishes hysterectomy type (supracervical / total / radical)?", note: PENDING_NOTE, narrow: true },
+      { key: "Age at surgery recorded", label: "Age at surgery recorded?", note: PENDING_NOTE, narrow: true },
+      { key: "Indication of surgery recorded", label: "Indication of surgery recorded?", note: PENDING_NOTE, narrow: true },
+      { key: "Surgery captured at baseline only or also as incident events", label: "Baseline only or also incident?", note: PENDING_NOTE, narrow: true },
+      { key: "Intact uterine / ovarian status used as enrollment eligibility criterion", label: "Used as enrollment eligibility criterion?", note: PENDING_NOTE, narrow: true },
     ];
     return T1_COLUMNS;
   }
@@ -639,19 +692,36 @@
     }
     thead.innerHTML = "";
     t1Columns().forEach(function (col) {
-      var th = document.createElement("th");
-      // Label text lives in its own span (rather than directly as the
-      // <th>'s text) so the sort icon -- absolutely positioned at the
-      // header's right edge, see ".sort-icon" in dashboard.css -- never
-      // overlaps or gets visually tangled up with it.
-      var label = document.createElement("span");
+      appendColumnHeader(thead, col, state.t1Sort, renderTable1Body);
+    });
+  }
+
+  // Shared by renderTable1Head() and renderTable3() -- both build their
+  // <thead> from t1Columns()-shaped {key, label, narrow} objects. A
+  // "narrow" column's label wraps (and soft-hyphenates) onto multiple
+  // lines, with its sort icon centered underneath, matching the Coverage
+  // Checklist's narrow-column treatment (see ".narrow-col-header" in
+  // dashboard.css) -- its cell content (a short Yes/No/Type N/blank) is
+  // nowhere near as wide as the label describing it, so wrapping the
+  // header keeps the column sized to its actual content instead of
+  // ballooning out to fit one long unwrapped label. Everything else (just
+  // Cohort Name, the one genuinely wide column) keeps the plain one-line,
+  // icon-on-the-right treatment.
+  function appendColumnHeader(theadRow, col, sortState, onSortChange) {
+    var th = document.createElement("th");
+    var label = document.createElement("span");
+    if (col.narrow) {
+      th.classList.add("narrow-col-header");
+      label.className = "th-label";
+      label.textContent = softHyphenateLabel(col.label);
+    } else {
       label.className = "th-text";
       label.textContent = col.label;
-      th.appendChild(label);
-      th.title = "Click to sort by " + col.label;
-      wireSortableHeader(th, col.key, state.t1Sort, renderTable1Body);
-      thead.appendChild(th);
-    });
+    }
+    th.appendChild(label);
+    th.title = "Click to sort by " + col.label + (col.note ? " (" + col.note + ")" : "");
+    wireSortableHeader(th, col.key, sortState, onSortChange);
+    theadRow.appendChild(th);
   }
 
   function renderTable1Body() {
@@ -700,6 +770,23 @@
         t1Columns().forEach(function (col, i) {
           var td = document.createElement("td");
           td.textContent = DD.formatValue(r[col.key]);
+          // The Hysterectomy Inference Types cell itself -- not just this
+          // row's background tint above -- gets bolded and colored to
+          // match its type, with a hover tooltip giving that type's full
+          // definition (see procedureTypeDefinition()), the same treatment
+          // this value gets in the cohort detail modal (".detail-proc-
+          // type" in renderDetailSection()) -- this table is specifically
+          // about that classification, so its own column gets the same
+          // at-a-glance color coding here too.
+          if (col.key === procCol) {
+            if (accentColor) {
+              td.style.color = accentColor;
+              td.style.fontWeight = "700";
+            }
+            var typeDef = procedureTypeDefinition(procVal);
+            if (typeDef) attachTooltip(td, typeDef, 500);
+          }
+          if (col.narrow) td.classList.add("narrow-col-cell");
           if (i === 0 && accentColor) {
             td.classList.add("accent-cell");
           }
@@ -720,8 +807,104 @@
   }
 
   // ---------------------------------------------------------------------
-  // Table 2: Coverage checklist matrix
+  // Table 2: Women's Health Data Inventory matrix
   // ---------------------------------------------------------------------
+
+  var CHECKLIST_CATEGORY_ROLLUPS = null; // memoized -- see checklistCategoryRollups()
+
+  // Computes the matrix's 11 default umbrella-category columns from
+  // schema.checklist_groups (see CHECKLIST_SECTION_GROUPS in fetch_data.py)
+  // -- one rollup per top-level category, each carrying the flat list of
+  // every real checklist_columns entry nested underneath it (a header that
+  // is itself also a real column, like "Menopause-related symptom items",
+  // counts as one of its own members). These are what the table shows
+  // before the user drills into any specific item via the "Checklist
+  // items" picker -- see categoryRollupClassification() below for how a
+  // rollup's per-cohort value is derived from its members, and
+  // renderTable2Body() for where these render alongside picker-selected
+  // individual columns.
+  function checklistCategoryRollups() {
+    if (CHECKLIST_CATEGORY_ROLLUPS) return CHECKLIST_CATEGORY_ROLLUPS;
+    var known = {};
+    (state.schema.checklist_columns || []).forEach(function (c) {
+      known[c] = true;
+    });
+    function collectMembers(node) {
+      var members = known[node.header] ? [node.header] : [];
+      (node.children || []).forEach(function (child) {
+        if (typeof child === "string") {
+          if (known[child]) members.push(child);
+        } else {
+          members = members.concat(collectMembers(child));
+        }
+      });
+      return members;
+    }
+    CHECKLIST_CATEGORY_ROLLUPS = (state.schema.checklist_groups || []).map(function (group) {
+      return {
+        key: " rollup:" + group.header,
+        label: group.header,
+        members: collectMembers(group),
+      };
+    });
+    return CHECKLIST_CATEGORY_ROLLUPS;
+  }
+
+  // A category rollup is deliberately only ever yes/no/empty -- never
+  // "partial"/"other" -- per this rule: a domain is "no" or blank ONLY if
+  // every one of its member columns, for this cohort, is itself "no" or
+  // blank; ANY member that's "yes", "to some extent", or non-blank free
+  // text ("other" -- e.g. "Other women's health item"'s actual answer,
+  // once it's not empty and doesn't literally read "no") counts as the
+  // domain having *something* tracked, so the domain reads "yes". Only
+  // once nothing at all is tracked does it fall back to "no" (if at least
+  // one member is an explicit "no") or "empty" (if every member is blank).
+  // `label` lists which specific member(s) drove a "yes"/"no" result, each
+  // with its own raw value, for the cell's tooltip (see
+  // renderTable2Body()) -- left "" when every member is blank, so that
+  // tooltip's "(no data)" fallback applies.
+  function categoryRollupClassification(record, members) {
+    var trackedParts = []; // members classified yes/partial/other -- anything non-blank, non-"no"
+    var noParts = []; // members explicitly classified "no"
+    members.forEach(function (m) {
+      var classified = DD.classifyValue(record[m]);
+      if (classified.category === "empty") return;
+      if (classified.category === "no") {
+        noParts.push(m);
+      } else {
+        trackedParts.push(m + ": " + classified.label);
+      }
+    });
+    if (trackedParts.length) return { category: "yes", label: trackedParts.join("; ") };
+    if (noParts.length) return { category: "no", label: noParts.join(", ") };
+    return { category: "empty", label: "" };
+  }
+
+  // The "Domains" picker and the top-level rows of the "Checklist items"
+  // picker both read/write the same state.t2SelectedDomains Set (see
+  // renderChecklistItemPicker()'s domainSelectedSet parameter), so a
+  // change from either one has to redraw *both* pickers -- not just
+  // itself -- to keep their checkboxes in sync, plus the table. Passed as
+  // the `onChange` callback to both.
+  function renderDomainAndColumnPickers() {
+    renderPicker(
+      "t2-domain-picker",
+      checklistCategoryRollups().map(function (r) {
+        return r.label;
+      }),
+      state.t2SelectedDomains,
+      renderDomainAndColumnPickers
+    );
+    renderChecklistItemPicker(
+      "t2-column-picker",
+      state.schema.checklist_columns || [],
+      state.schema.checklist_groups || [],
+      state.t2SelectedColumns,
+      state.t2SelectedDomains,
+      renderDomainAndColumnPickers
+    );
+    renderTable2Body();
+  }
 
   function renderTable2() {
     renderPicker(
@@ -732,71 +915,24 @@
       state.t2SelectedCohorts,
       renderTable2Body
     );
-    renderChecklistItemPicker(
-      "t2-column-picker",
-      state.schema.checklist_columns || [],
-      state.schema.checklist_groups || [],
-      state.t2SelectedColumns,
-      renderTable2Body
-    );
-    // Procedure Separation Type isn't a per-cohort yes/no checklist item, so
-    // it doesn't belong in the checkbox-toggle "Checklist items" picker
-    // above -- instead it gets its own multi-select filter (reusing the
-    // plain renderPicker(), same as the Cohorts picker) that narrows which
-    // cohort *rows* are shown, plus its own dedicated matrix column (see
-    // renderTable2Body()).
-    renderPicker(
-      "t2-type-picker",
-      DD.uniqueValues(state.cohorts, state.schema.procedure_separation_type_column),
-      state.t2SelectedTypes,
-      renderTable2Body
-    );
-    wireTypeColumnToggle();
+    renderDomainAndColumnPickers();
     renderCategoryLegend("t2-legend");
     renderTable2Hint();
-    renderTable2Body();
-  }
-
-  // Wires the Procedure Separation Type picker's "Hide column" button (sits
-  // in that picker's .picker-actions row next to Select all/Select none) to
-  // state.t2ShowTypeColumn -- independent of (and not affected by) that
-  // same picker's Select all/Select none row-filtering buttons beside it.
-  // Only toggles whether renderTable2Body() draws the dedicated Procedure
-  // Separation Type column; it never changes which cohort rows are shown.
-  // The button gets a "toggle-active" class (deeper fill than :hover, see
-  // dashboard.css) whenever the column is currently hidden, so its state
-  // reads clearly at a glance rather than just on hover/click flash.
-  function wireTypeColumnToggle() {
-    var btn = document.getElementById("t2-type-hide-column-btn");
-    if (!btn) return;
-    function refreshButtonState() {
-      var hidden = !state.t2ShowTypeColumn;
-      btn.classList.toggle("toggle-active", hidden);
-      btn.setAttribute("aria-pressed", hidden ? "true" : "false");
-    }
-    refreshButtonState();
-    if (!btn._wired) {
-      btn.addEventListener("click", function () {
-        state.t2ShowTypeColumn = !state.t2ShowTypeColumn;
-        refreshButtonState();
-        renderTable2Body();
-      });
-      btn._wired = true;
-    }
   }
 
   function renderTable2Hint() {
     var el = document.getElementById("t2-hint-text");
     if (!el) return;
-    var total = (state.schema.checklist_columns || []).length;
+    var total = checklistCategoryRollups().length;
     el.textContent =
-      "This matrix covers " +
+      "The matrix opens showing all " +
       total +
-      " questionnaire item(s) across all cohorts. Use the checkboxes on the menu in the " +
-      "left-hand side of the page to narrow which cohorts and items are shown, including " +
-      "the Procedure Separation Type filter (select one or more types). Hover a " +
-      "colored cell to see its exact response text, and click a cohort name for its full " +
-      "record.";
+      " domain(s) as a single rollup column each -- \"yes\" as soon as any item in " +
+      "that domain is tracked. Uncheck a domain under \"Domains\" in the menu on the left " +
+      "to hide its column, or check specific items under \"Checklist items\" to break a " +
+      "domain out into its individual questions as additional columns. Use the Cohorts " +
+      "checkboxes to narrow which cohorts are shown. Hover a colored cell to see its exact " +
+      "response text, and click a cohort name for its full record.";
   }
 
   function renderPicker(containerId, allValues, selectedSet, onChange) {
@@ -874,7 +1010,15 @@
   // "Menopause-related symptom items" nests "Vasomotor symptom items",
   // which in turn nests "Hot flashes item"/"Night sweats item") -- not
   // just leaf column-name strings.
-  function renderChecklistItemPicker(containerId, allValues, groups, selectedSet, onChange) {
+  // `domainSelectedSet` (state.t2SelectedDomains) is the *same* Set the
+  // "Domains" picker (see renderTable2()) reads and writes -- a top-level
+  // group's row here is one of the 11 domains, so its checkbox reflects
+  // and controls domain rollup-column visibility directly, kept in sync
+  // with the Domains picker's own checkbox for that same domain, rather
+  // than the usual tri-state "are all of this header's real descendant
+  // columns individually selected" cascade every *nested* header below it
+  // still uses (see makeRow()/groupState() below).
+  function renderChecklistItemPicker(containerId, allValues, groups, selectedSet, domainSelectedSet, onChange) {
     var container = document.getElementById(containerId);
     if (!container) return;
 
@@ -992,7 +1136,22 @@
       cb.type = "checkbox";
       var displayText;
 
-      if (opts.isHeader) {
+      if (opts.isHeader && opts.isTopLevel) {
+        // One of the 11 domains -- see the comment on
+        // renderChecklistItemPicker()'s domainSelectedSet parameter above.
+        // Plain boolean (never indeterminate): this checkbox's own state
+        // *is* the domain's rollup-column visibility, not a summary of its
+        // children's individual selection state.
+        var domainNode = valueOrNode;
+        displayText = domainNode.header;
+        cb.checked = domainSelectedSet.has(domainNode.header);
+        cb.addEventListener("change", function () {
+          if (cb.checked) domainSelectedSet.add(domainNode.header);
+          else domainSelectedSet.delete(domainNode.header);
+          draw();
+          onChange();
+        });
+      } else if (opts.isHeader) {
         var node = valueOrNode;
         displayText = node.header;
         var st = groupState(node);
@@ -1047,7 +1206,9 @@
       });
       if (query && !headerMatches && !childrenToRender.length) return false;
 
-      listEl.appendChild(makeRow(node, { isHeader: true, extraClass: "picker-header", depth: depth }));
+      listEl.appendChild(
+        makeRow(node, { isHeader: true, isTopLevel: depth === 0, extraClass: "picker-header", depth: depth })
+      );
       childrenToRender.forEach(function (child) {
         if (typeof child === "string") {
           listEl.appendChild(makeRow(child, { extraClass: "picker-child", depth: depth + 1 }));
@@ -1152,9 +1313,24 @@
   function renderProcedureSeparationKey(containerId) {
     var el = document.getElementById(containerId);
     if (!el) return;
+    // A title naming which specific visual cue this key explains -- "row
+    // color" for the two data tables (Hysterectomy Inference Classification,
+    // Custom Filter), "marker color" for the Map -- rather than the old
+    // combined "(row / marker color)" wording everywhere, since only one of
+    // the two is ever actually true for any given container. On the static
+    // Information tab there's no row or marker to refer to at all, and the
+    // surrounding paragraph ("The exact types are as follows:") already
+    // introduces the list, so the title is omitted there entirely.
+    var titleSuffix =
+      containerId === "info-procedure-key"
+        ? null
+        : containerId === "map-procedure-key"
+        ? "marker color"
+        : "row color";
     var html =
-      '<p class="procedure-key-title">Procedure Separation Type<br />(row / marker color)</p>' +
-      '<div class="procedure-key-list">';
+      (titleSuffix
+        ? '<p class="procedure-key-title">Hysterectomy Inference Types<br />(' + titleSuffix + ")</p>"
+        : "") + '<div class="procedure-key-list">';
     (DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS || []).forEach(function (def) {
       var color = (DD.PROCEDURE_SEPARATION_TYPE_COLORS || {})[def.type] || "#999";
       html +=
@@ -1171,12 +1347,15 @@
   }
 
   // The key's content is identical everywhere it appears -- called once per
-  // container, for all four tabs' key sidebars, right after the static DOM
-  // is in place (see DOMContentLoaded below). Doesn't depend on
-  // state.cohorts/state.schema at all, so it doesn't need to wait for
-  // loadData()'s fetch to resolve.
+  // container, for Hysterectomy Inference Classification, Custom Filter,
+  // and Map's key sidebars plus the embedded copy on the Information tab,
+  // right after the static DOM is in place (see DOMContentLoaded below).
+  // Doesn't depend on state.cohorts/state.schema at all, so it doesn't
+  // need to wait for loadData()'s fetch to resolve. Women's Health Data
+  // Inventory (formerly Coverage Checklist) used to have its own copy of
+  // this key too, but no longer does -- see its section in index.html.
   function renderAllProcedureSeparationKeys() {
-    ["t1-procedure-key", "t2-procedure-key", "t3-procedure-key", "map-procedure-key"].forEach(
+    ["info-procedure-key", "t1-procedure-key", "t3-procedure-key", "map-procedure-key"].forEach(
       renderProcedureSeparationKey
     );
   }
@@ -1210,26 +1389,25 @@
     if (!table) return;
 
     var nameCol = state.schema.cohort_name_column;
-    var procCol = state.schema.procedure_separation_type_column;
     // Default to alphabetical-by-cohort-name the first time this table
     // renders, until the user picks a different sort column themselves
     // (see the "Sortable table headers" section above t1Columns()).
     if (!state.t2Sort.column) {
       state.t2Sort.column = nameCol;
     }
+    // The 11 umbrella-category rollups render for whichever domains are
+    // checked in the "Domains" picker (state.t2SelectedDomains, all 11 by
+    // default -- see loadData()); "columns" here is just whichever
+    // specific leaf items the user has additionally drilled into via the
+    // "Checklist items" picker, rendered after them.
+    var rollups = checklistCategoryRollups().filter(function (r) {
+      return state.t2SelectedDomains.has(r.label);
+    });
     var columns = (state.schema.checklist_columns || []).filter(function (c) {
       return state.t2SelectedColumns.has(c);
     });
     var rows = state.cohorts.filter(function (r) {
-      if (!state.t2SelectedCohorts.has(r[nameCol])) return false;
-      // Procedure Separation Type filtering: a cohort with no recognizable
-      // type value isn't represented by any checkbox in the type picker
-      // (see DD.uniqueValues() in renderTable2()), so it can never be
-      // deliberately excluded by the user -- always show it rather than
-      // silently hiding it because its blank value can't match anything in
-      // t2SelectedTypes.
-      var procVal = procCol ? String(r[procCol] || "").trim() : "";
-      return procVal === "" || state.t2SelectedTypes.has(procVal);
+      return state.t2SelectedCohorts.has(r[nameCol]);
     });
     rows = DD.sortRecords(rows, state.t2Sort.column, state.t2Sort.direction);
 
@@ -1254,29 +1432,22 @@
     wireSortableHeader(cornerTh, nameCol, state.t2Sort, renderTable2Body);
     headRow.appendChild(cornerTh);
 
-    // Procedure Separation Type gets its own dedicated column (showing
-    // "Type N" text, not a Yes/No/Partial-classified chip like the
-    // checklist items below), since it isn't a per-cohort yes/no item.
-    // Uses the same ".th-label" wrapper as the checklist item headers
-    // (rather than ".th-text" like the wider Cohort column above) so it
-    // gets that same narrow-column treatment: label on top, sort icon
-    // centered underneath it, consistent with every column beside it.
-    //
-    // The "Hide column" button in the Procedure Separation Type picker's
-    // actions row (see wireTypeColumnToggle()) skips this column entirely
-    // -- independent of state.t2SelectedTypes above, which only ever
-    // filters which cohort *rows* are shown, never the column itself.
-    if (state.t2ShowTypeColumn) {
-      var typeTh = document.createElement("th");
-      typeTh.className = "type-col-header";
-      var typeLabel = document.createElement("span");
-      typeLabel.className = "th-label";
-      typeLabel.textContent = "Procedure separation type";
-      typeTh.appendChild(typeLabel);
-      typeTh.title = "Click to sort by Procedure separation type";
-      wireSortableHeader(typeTh, procCol, state.t2Sort, renderTable2Body);
-      headRow.appendChild(typeTh);
-    }
+    // Rollup columns aren't sortable -- there's no real record field behind
+    // a rollup's synthetic key for DD.sortRecords() to read (see
+    // categoryRollupClassification()), and a "which domain has more yeses"
+    // ordering isn't a meaningful question the way sorting a real column
+    // is -- so these headers skip wireSortableHeader() entirely (no sort
+    // icon, no click handler).
+    rollups.forEach(function (rollup) {
+      var th = document.createElement("th");
+      th.className = "rollup-col-header";
+      var label = document.createElement("span");
+      label.className = "th-label";
+      label.textContent = softHyphenateLabel(rollup.label);
+      th.appendChild(label);
+      th.title = rollup.label + " \u2014 \"yes\" if any item in this domain is tracked";
+      headRow.appendChild(th);
+    });
 
     columns.forEach(function (col) {
       var th = document.createElement("th");
@@ -1302,25 +1473,15 @@
     });
     thead.appendChild(headRow);
 
-    if (!rows.length || !columns.length) {
-      var msg = !rows.length ? "No cohorts selected." : "No checklist columns selected.";
+    if (!rows.length || (!rollups.length && !columns.length)) {
+      var msg = !rows.length ? "No cohorts selected." : "No domains or checklist items selected.";
       tbody.innerHTML = '<tr><td class="empty-state">' + msg + "</td></tr>";
     } else {
       rows.forEach(function (r) {
         var tr = document.createElement("tr");
-        var procVal = procCol ? String(r[procCol] || "").trim() : "";
-        var accentColor = procedureTypeColor(procVal);
-        // Same row-level accent pattern as Table 1 -- see the comment in
-        // renderTable1Body() for why this is set on the <tr> itself.
-        if (accentColor) {
-          tr.classList.add("accent-row");
-          tr.style.setProperty("--row-accent", accentColor);
-          var rowTint = procedureTypeRowTint(procVal);
-          if (rowTint) tr.style.setProperty("--row-tint", rowTint);
-        }
 
         var nameTd = document.createElement("td");
-        nameTd.className = "cohort-cell" + (accentColor ? " accent-cell" : "");
+        nameTd.className = "cohort-cell";
         nameTd.textContent = r[nameCol];
         // This column is width-capped with ellipsis truncation (see
         // ".cohort-cell" in dashboard.css) so long names can get cut off
@@ -1340,36 +1501,20 @@
         });
         tr.appendChild(nameTd);
 
-        if (state.t2ShowTypeColumn) {
-          var typeTd = document.createElement("td");
-          typeTd.className = "type-cell";
-          // The text lives in its own inner span (like the checklist item
-          // chips' own element) rather than directly on the <td>, so the
-          // hover "enlarge" transform below can be scoped to just the text
-          // -- see ".type-cell .type-text:hover" in dashboard.css --
-          // instead of transforming (and potentially overlapping
-          // neighboring cells with) the whole table cell.
-          var typeText = document.createElement("span");
-          typeText.className = "type-text";
-          typeText.textContent = procVal || "\u2014";
-          typeTd.appendChild(typeText);
-          if (accentColor) {
-            typeTd.style.color = accentColor;
-          }
-          // Custom tooltip (see attachTooltip() above) showing this type's
-          // full definition -- the same text shown in the key/legend off to
-          // the side (renderProcedureSeparationKey()) -- so hovering "Type
-          // 3" here explains what that means without having to look it up
-          // elsewhere. A short (500ms) delay, same as the value chips
-          // below, rather than instant like the cohort name -- only the
-          // cohort name (which is truncated and needs immediate
-          // confirmation of what it says) gets the 0ms treatment.
-          var typeDef = procedureTypeDefinition(procVal);
-          if (typeDef) {
-            attachTooltip(typeTd, typeDef, 500);
-          }
-          tr.appendChild(typeTd);
-        }
+        rollups.forEach(function (rollup) {
+          var td = document.createElement("td");
+          var classified = categoryRollupClassification(r, rollup.members);
+          var chip = document.createElement("span");
+          chip.className = "chip cat-" + classified.category;
+          attachTooltip(
+            chip,
+            rollup.label + ": " + (classified.label || "(no data)"),
+            500
+          );
+          chip.textContent = chipSymbol(classified.category, classified.label);
+          td.appendChild(chip);
+          tr.appendChild(td);
+        });
 
         columns.forEach(function (col) {
           var td = document.createElement("td");
@@ -1391,21 +1536,20 @@
     }
 
     if (countEl) {
-      countEl.textContent = rows.length + " cohort(s) \u00d7 " + columns.length + " item(s)";
+      countEl.textContent =
+        rows.length +
+        " cohort(s) \u00d7 " +
+        rollups.length +
+        " domain(s)" +
+        (columns.length ? " + " + columns.length + " specific item(s)" : "");
     }
 
     // A filter/search change can shrink or grow the table's own rendered
     // height (fewer/more matching rows), so the landscape-breakpoint
     // sidebar height sync (see syncLandscapeChecklistHeight() above) needs
     // to re-run here too, not just on tab-switch/resize. No-ops instantly
-    // outside the 641-900px range or while this tab isn't visible. Also
-    // re-runs syncLandscapeProcedureKeyPlacement() here (rather than only
-    // on tab-switch/resize/orientationchange) so the one edge case where
-    // this table is built eagerly because the Coverage Checklist tab is
-    // already active on page load (see loadData() above) still gets the
-    // key moved into place, not just left in its default DOM position.
+    // outside the 641-900px range or while this tab isn't visible.
     syncLandscapeChecklistHeight();
-    syncLandscapeProcedureKeyPlacement();
   }
 
   function chipSymbol(category, label) {
@@ -1484,7 +1628,7 @@
   function t3FieldLabel(field) {
     var procCol = state.schema && state.schema.procedure_separation_type_column;
     if (procCol && field === procCol) {
-      return "Procedure Separation Type";
+      return "Hysterectomy Inference Types";
     }
     return field;
   }
@@ -1648,11 +1792,30 @@
     // is_not_empty don't), that value has been entered. Otherwise an
     // unfinished row (e.g. the default blank condition on first load) would
     // make every cohort look like a non-match, which is confusing.
-    var activeConditions = state.t3Conditions.filter(function (c) {
-      if (!c.field) return false;
-      if (op_needsValue(c.operator) && (!c.value || !c.value.trim())) return false;
-      return true;
-    });
+    var activeConditions = state.t3Conditions
+      .filter(function (c) {
+        if (!c.field) return false;
+        if (op_needsValue(c.operator) && (!c.value || !c.value.trim())) return false;
+        return true;
+      })
+      .map(function (c) {
+        // "equals"/"not_equals" only get DD._matchesEquals()'s tolerant
+        // typo/formatting fallback when the value wasn't picked verbatim
+        // from this field's own list of real existing values (its value
+        // input's <datalist> -- see renderTable3Conditions()) -- an exact
+        // value should match that value alone, not anything merely close
+        // to it (e.g. one cohort name shouldn't match a *different*
+        // cohort's name just because most of the string happens to be the
+        // same). A plain object copy (not mutating `c`/state.t3Conditions
+        // itself) since this flag is only meaningful for this one
+        // evaluation pass.
+        if (c.operator !== "equals" && c.operator !== "not_equals") return c;
+        var exact = DD.uniqueValues(state.cohorts, c.field).some(function (v) {
+          return v.toLowerCase() === c.value.trim().toLowerCase();
+        });
+        if (!exact) return c;
+        return { id: c.id, field: c.field, operator: c.operator, value: c.value, exactValue: true };
+      });
 
     var rows = state.cohorts.filter(function (r) {
       return DD.evaluateGroup(r, activeConditions, state.t3Mode);
@@ -1665,29 +1828,54 @@
     }
     rows = DD.sortRecords(rows, state.t3Sort.column, state.t3Sort.direction);
 
+    // Baseline summary columns (always shown, in this fixed order) --
+    // deliberately just these five, not every column t1Columns() now
+    // carries for Hysterectomy Inference Classification (the Reproductive
+    // Surgical History breakdown belongs to that tab specifically, not
+    // here). Any condition field outside this set gets appended as its own
+    // column after them, in the order its condition was added -- see
+    // extraColumns below.
+    var BASE_KEYS = [
+      state.schema.cohort_name_column,
+      state.schema.procedure_separation_type_column,
+      "Sample Size (N)",
+      "Age Range",
+      "% Female",
+    ];
+    var baseColumns = t1Columns().filter(function (c) {
+      return BASE_KEYS.indexOf(c.key) !== -1;
+    });
+    var baseKeySet = {};
+    baseColumns.forEach(function (c) {
+      baseKeySet[c.key] = true;
+    });
+    var extraColumns = [];
+    var seenExtra = {};
+    activeConditions.forEach(function (c) {
+      if (baseKeySet[c.field] || seenExtra[c.field]) return;
+      seenExtra[c.field] = true;
+      // narrow: true -- same reasoning as t1Columns()'s narrow columns
+      // (see appendColumnHeader()): a filter condition's field is
+      // typically a checklist item, whose label is a full question much
+      // longer than its own Yes/No/Partial/blank cell content.
+      extraColumns.push({ key: c.field, label: t3FieldLabel(c.field), narrow: true });
+    });
+    var columns = baseColumns.concat(extraColumns);
+
     var thead = table.querySelector("thead tr");
     var tbody = table.querySelector("tbody");
     thead.innerHTML = "";
     tbody.innerHTML = "";
 
-    t1Columns().forEach(function (col) {
-      var th = document.createElement("th");
-      // See the matching comment in renderTable1Head() -- same reasoning
-      // for keeping the label text in its own span here.
-      var label = document.createElement("span");
-      label.className = "th-text";
-      label.textContent = col.label;
-      th.appendChild(label);
-      th.title = "Click to sort by " + col.label;
-      wireSortableHeader(th, col.key, state.t3Sort, renderTable3);
-      thead.appendChild(th);
+    columns.forEach(function (col) {
+      appendColumnHeader(thead, col, state.t3Sort, renderTable3);
     });
 
     var procCol = state.schema.procedure_separation_type_column;
 
     if (!rows.length) {
       tbody.innerHTML =
-        '<tr><td colspan="' + t1Columns().length + '" class="empty-state">No cohorts match these conditions.</td></tr>';
+        '<tr><td colspan="' + columns.length + '" class="empty-state">No cohorts match these conditions.</td></tr>';
     } else {
       rows.forEach(function (r) {
         var tr = document.createElement("tr");
@@ -1702,9 +1890,10 @@
           var rowTint = procedureTypeRowTint(procVal);
           if (rowTint) tr.style.setProperty("--row-tint", rowTint);
         }
-        t1Columns().forEach(function (col, i) {
+        columns.forEach(function (col, i) {
           var td = document.createElement("td");
           td.textContent = DD.formatValue(r[col.key]);
+          if (col.narrow) td.classList.add("narrow-col-cell");
           if (i === 0 && accentColor) {
             td.classList.add("accent-cell");
           }
@@ -1860,7 +2049,7 @@
           // matching how the Cohort Summary/Coverage Checklist tables color
           // that same value.
           (typeVal
-            ? "Procedure Separation Type: " +
+            ? "Hysterectomy Inference Types: " +
               '<span style="color:' + color + '; font-weight:700;">' +
               escapeHtml(typeVal) +
               "</span><br/>"
