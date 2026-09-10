@@ -55,8 +55,25 @@
         Information
       </button>
       <button type="button" data-tab="summary">Hysterectomy Inference Classification</button>
-      <button type="button" data-tab="checklist">Women's Health Data Inventory</button>
-      <button type="button" data-tab="items-reference">WHD Inv. - Items Reference</button>
+      <!-- Items Reference lives as a hover dropdown under Women's Health
+           Data Inventory rather than its own top-level tab, since it's
+           really a reference appendix to that tab specifically. The
+           visible button (outside ".nav-dropdown") is a real, independent
+           link straight to the Data Inventory tab -- clicking it never
+           opens the dropdown instead, only hovering/focusing the group
+           does (see ".nav-item-group" in dashboard.css) -- so it behaves
+           exactly like every other top-level tab button except for also
+           revealing the two-item menu underneath it. Both dropdown
+           entries are real "nav.tabs button"s too (same data-tab-driven
+           mechanism wireTabs() already uses for every other tab), so no
+           new JS is needed for either to work. -->
+      <div class="nav-item-group">
+        <button type="button" data-tab="checklist">Women's Health Data Inventory</button>
+        <div class="nav-dropdown">
+          <button type="button" data-tab="checklist">Women's Health Data Inventory</button>
+          <button type="button" data-tab="items-reference">Items Reference</button>
+        </div>
+      </div>
       <button type="button" data-tab="filter">Custom Filter</button>
       <button type="button" data-tab="map">Cohort Map</button>
     </nav>
@@ -152,7 +169,7 @@
           <div class="procedure-key" id="info-procedure-key"></div>
         </div>
 
-        <div class="info-card info-card-aside">
+        <div class="info-card info-card-aside info-card-explore">
           <h3>
             <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="7" />
@@ -166,6 +183,24 @@
             evaluate the strength and limitations of the inferences that
             the data can support.
           </p>
+          <!-- Purely decorative, filling roughly the bottom-right quadrant
+               of the empty space this shorter card is left with next to
+               its much taller sibling (both stretched to match height) --
+               subtle, single-color line art in the same washed-out style as
+               ".info-hero-deco" above, not a bold filled shape. Three
+               parallel bands tracing the same winding coastline, each
+               fading out a bit further than the last -- the same way a
+               topographic map stacks elevation-contour lines alongside an
+               actual coastline -- read as "map" on their own, without
+               needing any literal marker/compass/pin on top. -->
+          <svg class="info-card-deco" viewBox="0 0 100 100" aria-hidden="true" preserveAspectRatio="none">
+            <path d="M10,98 C28,84 22,60 40,55 C60,50 55,26 78,20 C87,18 94,13 99,7"
+                  fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            <path d="M4,96 C24,80 17,54 37,49 C58,44 52,18 76,12 C86,10 93,6 99,1"
+                  fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity="0.7" />
+            <path d="M-2,93 C20,75 12,48 33,42 C56,36 49,10 74,4 C85,1 93,-3 99,-6"
+                  fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.45" />
+          </svg>
         </div>
       </div>
 
@@ -261,11 +296,19 @@
       </div>
       <div class="result-row">
         <p class="result-count" id="t1-result-count"></p>
-        <div class="table-zoom" data-table="t1-table">
-          <span class="table-zoom-label">Table size</span>
-          <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
-          <span class="table-zoom-pct">100%</span>
-          <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
+        <div class="result-controls">
+          <div class="table-export" data-table="t1-table" data-filename="hysterectomy-inference-classification">
+            <span class="table-export-label">Export</span>
+            <button type="button" class="btn small secondary" data-export="csv">CSV</button>
+            <button type="button" class="btn small secondary" data-export="excel">Excel</button>
+            <button type="button" class="btn small secondary" data-export="pdf">PDF</button>
+          </div>
+          <div class="table-zoom" data-table="t1-table">
+            <span class="table-zoom-label">Table size</span>
+            <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
+            <span class="table-zoom-pct">100%</span>
+            <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
+          </div>
         </div>
       </div>
       <div class="panel-body-with-key">
@@ -306,11 +349,19 @@
       </div>
       <div class="result-row">
         <p class="result-count" id="t2-result-count"></p>
-        <div class="table-zoom" data-table="t2-table">
-          <span class="table-zoom-label">Table size</span>
-          <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
-          <span class="table-zoom-pct">100%</span>
-          <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
+        <div class="result-controls">
+          <div class="table-export" data-table="t2-table" data-filename="womens-health-data-inventory">
+            <span class="table-export-label">Export</span>
+            <button type="button" class="btn small secondary" data-export="csv">CSV</button>
+            <button type="button" class="btn small secondary" data-export="excel">Excel</button>
+            <button type="button" class="btn small secondary" data-export="pdf">PDF</button>
+          </div>
+          <div class="table-zoom" data-table="t2-table">
+            <span class="table-zoom-label">Table size</span>
+            <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
+            <span class="table-zoom-pct">100%</span>
+            <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
+          </div>
         </div>
       </div>
       <div class="legend" id="t2-legend"></div>
@@ -336,7 +387,7 @@
             <div class="picker-list"></div>
           </div>
           <div class="picker" id="t2-column-picker" style="margin-top: 0.75rem;">
-            <h3>Checklist items</h3>
+            <h3>Checklist Items</h3>
             <div class="field">
               <input type="search" class="picker-search" placeholder="Search items&hellip;" />
             </div>
@@ -365,12 +416,20 @@
     <section id="panel-items-reference" class="tab-panel">
       <div class="info-hero">
         <div class="info-hero-body">
-          <h2>WHD Inv. - Items Reference</h2>
+          <h2>Items Reference</h2>
           <p>
             Every variable The WHD tracks, grouped into the same 11 domains
             used throughout the site. This page doesn't show any cohort
             data itself &mdash; it's a glossary of what each variable
             means. Click a domain to expand it.
+          </p>
+          <p>
+            These same domains, and the individual items that make each of
+            them up, can be filtered directly in
+            <button type="button" class="tab-link" data-goto-tab="checklist">Women's Health Data Inventory</button>
+            &mdash; check a domain there to see it as a single rollup
+            column, or drill into its specific items to see which cohorts
+            actually collect each one.
           </p>
         </div>
       </div>
@@ -610,8 +669,8 @@
         dropdown. The table updates instantly as you add, edit, or remove conditions, so
         it's a quick way to answer questions like "which cohorts are publicly available and
         include a hysterectomy question?" without digging through the raw spreadsheet.
-        Hysterectomy Inference Types is also available as a condition field, and matching rows
-        are color-coded by type &mdash; see the key on the right.</p>
+        Hysterectomy Inference Types is also available as a condition field -- add it to
+        color-code matching rows by type, with a key above the table.</p>
       </div>
       <div class="panel-toolbar">
         <div class="field">
@@ -626,6 +685,37 @@
       <div id="t3-conditions"></div>
       <div class="result-row">
         <p class="result-count" id="t3-result-count"></p>
+        <div class="result-controls">
+          <div class="table-share">
+            <button type="button" class="btn small secondary" id="t3-share">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.5 1.5" />
+                <path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.5-1.5" />
+              </svg>
+              Share a link for this custom filter set
+            </button>
+            <span class="table-share-note">Opens directly to this exact match-mode and conditions, already applied.</span>
+            <span class="share-feedback" id="t3-share-feedback" hidden>Link copied!</span>
+          </div>
+          <div class="table-export" data-table="t3-table" data-filename="custom-filter">
+            <span class="table-export-label">Export</span>
+            <button type="button" class="btn small secondary" data-export="csv">CSV</button>
+            <button type="button" class="btn small secondary" data-export="excel">Excel</button>
+            <button type="button" class="btn small secondary" data-export="pdf">PDF</button>
+          </div>
+        </div>
+      </div>
+      <!-- Compact swatch-only legend (no full definitions -- just enough
+           to read which color is which type, plus a pointer to hover/click
+           for the definition) -- shown only while Hysterectomy Inference
+           Types is one of the active condition fields (see
+           renderTable3()/refreshTypeLegend() in dashboard.js), the same
+           way ".legend" appears unconditionally on Women's Health Data
+           Inventory. Table size shares this row (rather than the row
+           above, with Share/Export) so it always lines up with the key,
+           whether or not the key itself happens to be showing. -->
+      <div class="legend-row">
+        <div class="legend procedure-type-legend" id="t3-type-legend" hidden></div>
         <div class="table-zoom" data-table="t3-table">
           <span class="table-zoom-label">Table size</span>
           <button type="button" class="table-zoom-out" aria-label="Smaller text, more columns visible">&minus;</button>
@@ -633,16 +723,11 @@
           <button type="button" class="table-zoom-in" aria-label="Larger text, fewer columns visible">+</button>
         </div>
       </div>
-      <div class="panel-body-with-key">
-        <div class="panel-main">
-          <div class="table-scroll">
-            <table class="data-table" id="t3-table">
-              <thead><tr></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-        <aside class="panel-key procedure-key" id="t3-procedure-key"></aside>
+      <div class="table-scroll">
+        <table class="data-table" id="t3-table">
+          <thead><tr></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </section>
 
@@ -675,6 +760,9 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.2.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
   <script src="dashboard-data.js"></script>
   <script src="dashboard.js"></script>
 </body>

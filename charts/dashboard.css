@@ -230,6 +230,77 @@ nav.tabs button.active {
   position: relative;
 }
 
+/* Women's Health Data Inventory / Items Reference dropdown grouping (see
+   the comment on ".nav-item-group" in index.html). The group itself is a
+   flex item right alongside every plain top-level button, so it lines up
+   in the same row without needing its own layout rules; its own
+   `position: relative` is just this dropdown's positioning anchor. */
+.nav-item-group {
+  position: relative;
+  display: flex;
+}
+.nav-dropdown {
+  display: none;
+  flex-direction: column;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  min-width: 14em;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: 0 8px 8px 8px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  padding: 0.3rem;
+}
+.nav-item-group:hover .nav-dropdown,
+.nav-item-group:focus-within .nav-dropdown {
+  display: flex;
+}
+/* Landing on Items Reference (via the dropdown -- it has no top-level
+   button of its own) leaves the visible "Women's Health Data Inventory"
+   button not itself ".active" (see wireTabs() in dashboard.js), which
+   would otherwise leave the whole nav bar looking like nothing is
+   selected. A lighter tint -- not the full ".active" treatment below,
+   which would wrongly claim this exact tab is showing -- reads as "you're
+   somewhere in this group" instead. ":not(.active)" skips this when the
+   button *is* the exact active tab, so the two indicators never stack. */
+.nav-item-group.group-active > button:not(.active) {
+  background: var(--bg-subtle);
+  color: var(--accent-dark);
+}
+/* Overrides "nav.tabs button" above for buttons specifically inside the
+   dropdown -- needs the extra "nav.tabs" ancestor prefix to out-specificity
+   that rule (a plain ".nav-dropdown button" selector alone loses to it).
+   Stacked full-width rows instead of that rule's inline-flex tab shape,
+   and no bottom-border/negative-margin tab styling, which only made sense
+   for a horizontal tab strip. */
+nav.tabs .nav-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: -1px; /* cancel out the inherited rule's own margin-bottom on .active */
+}
+nav.tabs .nav-dropdown button:hover {
+  background: var(--hover-bg);
+}
+/* A left accent bar instead of the horizontal tab bar's gradient
+   underline (see "nav.tabs button.active::after" below, suppressed here
+   via display:none) -- reads correctly for a vertical list of options
+   rather than implying an underline beneath text that isn't there. */
+nav.tabs .nav-dropdown button.active {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  padding-left: calc(0.7rem - 3px);
+}
+nav.tabs .nav-dropdown button.active::after {
+  display: none;
+}
+
 /* Gradient underline on the active tab instead of a flat color, echoing
    the header's top accent bar. */
 nav.tabs button.active::after {
@@ -274,6 +345,44 @@ main {
   gap: 0.75rem;
   align-items: flex-end;
   margin-bottom: 0.9rem;
+}
+/* Custom Filter's "Share a link for this custom filter set" button, its
+   own explanatory note underneath, and the transient "Link copied!"
+   feedback -- grouped as their own stack so the whole thing reads as one
+   unit sitting to the left of "Export" in ".result-controls" (see
+   ".result-controls" below), the same row the Export controls are already
+   in, rather than living up in ".panel-toolbar" as a lone button the way
+   it used to. `align-items: center` centers the note/feedback under the
+   button itself, rather than under the whole (wider) stack's left edge. */
+.table-share {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+.table-share button.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.table-share .btn-icon {
+  flex: none;
+  width: 1em;
+  height: 1em;
+}
+/* Italic distinguishes this as an aside/caption on the button above it,
+   the same role ".legend-note" plays for the compact type legend. */
+.table-share-note {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--text-muted);
+  max-width: 22rem;
+  text-align: center;
+}
+.share-feedback {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-dark);
 }
 
 .field {
@@ -324,6 +433,23 @@ main {
 /* ---------------------------------------------------------------------
    Inputs / buttons
    --------------------------------------------------------------------- */
+
+/* Safari gives `type="search"` its own native "capsule" chrome (rounded
+   shape, inset shadow, built-in margin for the magnifier/clear-button
+   decoration) that's otherwise never fully overridden by a plain border/
+   padding/border-radius reset -- left in place, it renders every search
+   box here a few pixels narrower and shifted from where a `type="text"`
+   sibling with identical CSS sits (e.g. the hint banner and table above/
+   below it, or the "Cohorts"/"Checklist items" search boxes next to their
+   own plain-text labels), throwing off what should be a shared left edge.
+   Chrome/Firefox never apply that native chrome, so this was invisible
+   there -- `appearance: none` (plus the `-webkit-` prefix Safari still
+   needs) strips it so every search box measures exactly like a text
+   input everywhere. */
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
 
 input[type="text"], input[type="search"], input[type="number"], select {
   border: 1px solid var(--border);
@@ -406,13 +532,76 @@ button:focus-visible, a:focus-visible, [tabindex]:focus-visible {
 .result-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  /* flex-start, not center: Custom Filter's ".result-controls" here can be
+     taller than the plain one-line result-count text (its Share button
+     stack -- see ".table-share" -- carries a note/feedback line below the
+     button itself), so centering the two against each other's total
+     height left the count sitting visibly lower than the buttons beside
+     it instead of level with them. */
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem 1rem;
   margin: 0.25rem 0 0.6rem;
 }
 .result-row .result-count {
   margin: 0;
+}
+
+/* Groups a table's Share/Export controls together on the right side of
+   ".result-row" -- without this wrapper, ".result-row"'s own
+   space-between would spread them apart from each other instead of
+   keeping them together opposite the count. `align-items: flex-start`
+   (rather than the default center) lines up the *top* of each group --
+   Custom Filter's Share button (see ".table-share" above) sits above its
+   own note/feedback line, so centering the whole taller stack next to
+   Export's single-line row would leave the Share button itself sitting
+   noticeably lower than the CSV/Excel/PDF buttons beside it. */
+.result-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+/* Custom Filter only: pairs the compact Hysterectomy Inference Types key
+   (".procedure-type-legend", hidden unless that field is an active
+   condition -- see refreshTypeLegend() in dashboard.js) with the Table
+   size control on one row below Share/Export, rather than in
+   ".result-controls" with them -- so Table size always lines up with the
+   key's own row instead of the row above it, whether or not the key
+   itself happens to be visible right now. `margin-left: auto` on
+   ".table-zoom" here (rather than `justify-content: space-between` on
+   this row) keeps it pinned to the right in both cases, including when
+   the key is hidden and it's the row's only visible child. */
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.4rem 0 0.9rem;
+}
+.legend-row .procedure-type-legend {
+  margin: 0;
+}
+.legend-row .table-zoom {
+  margin-left: auto;
+}
+
+.table-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.table-export-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+.table-export button.btn.small {
+  padding: 0.22rem 0.55rem;
 }
 
 .table-zoom {
@@ -803,6 +992,17 @@ table.data-table tbody tr.accent-row:hover td {
   color: var(--text-muted);
   align-items: center;
 }
+/* Without this, the plain `hidden` attribute (see Custom Filter's
+   "#t3-type-legend" -- toggled by refreshTypeLegend() in dashboard.js)
+   doesn't actually hide a ".legend": author stylesheets always win over
+   the browser's own `[hidden] { display: none }` default regardless of
+   specificity, so ".legend"'s own `display: flex` above was quietly
+   overriding it and leaving the (still-populated) legend visible. The
+   extra `[hidden]` here outranks the plain class on specificity, so this
+   wins instead. */
+.legend[hidden] {
+  display: none;
+}
 .legend .legend-caption {
   font-weight: 600;
   color: var(--text-main);
@@ -815,6 +1015,17 @@ table.data-table tbody tr.accent-row:hover td {
   border-radius: 3px;
   display: inline-block;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
+}
+/* Custom Filter's compact Hysterectomy Inference Types legend (see
+   refreshTypeLegend() in dashboard.js) -- unlike the full key aside every
+   other tab shows this information in, each swatch here carries its
+   definition as a hover tooltip (attachTooltip()) rather than printing it
+   inline, so a "help" cursor signals that up front. */
+.procedure-type-legend .legend-item {
+  cursor: help;
+}
+.legend .legend-note {
+  font-style: italic;
 }
 
 /* ---------------------------------------------------------------------
@@ -848,29 +1059,26 @@ table.data-table tbody tr.accent-row:hover td {
   top: 0.75rem;
 }
 
-/* Hysterectomy Inference Classification and Custom Filter tabs:
-   `.table-scroll`'s generic 65vh cap (see `.table-scroll` above) is too
-   short for both of this pair's actual needs -- the key's own content
-   (title plus all five Type 1-5 entries, each with a full sentence of
-   definition text) doesn't fit within it on most screens, and neither did
-   ~10 rows of the table. Left alone, `align-items: stretch` sizes the
-   shared row to fit the *taller* of the two (the key), which stretches
-   `.panel-main`/the table up to match but doesn't make the table any
-   taller (it's independently capped at 65vh), leaving the key's box to
-   trail off below the table's bottom edge instead of ending flush with it.
-   Pinning the row to a taller, guaranteed-minimum height instead --
-   `minmax()` rather than a flat value, so it still grows further on a
-   tall viewport -- forces both boxes' bottoms (as well as their
-   already-aligned tops) to land in exactly the same place, tall enough
-   that the key's full five-entry content fits without its own scrollbar
-   on a typical laptop-or-larger screen; `.panel-key` keeps a matching
-   internal scrollbar as a fallback for shorter viewports where it still
-   doesn't fit. */
-#panel-filter .panel-body-with-key,
+/* Hysterectomy Inference Classification tab: `.table-scroll`'s generic
+   65vh cap (see `.table-scroll` above) was too short for either of this
+   tab's actual needs -- the key's own content (title plus all five Type
+   1-5 entries, each with a full sentence of definition text) doesn't fit
+   within it on most screens, and neither did ~10 rows of the table. Left
+   alone, `align-items: stretch` sizes the shared row to fit the *taller*
+   of the two (the key), which stretches `.panel-main`/the table up to
+   match but doesn't make the table any taller (it's independently capped
+   at 65vh), leaving the key's box to trail off below the table's bottom
+   edge instead of ending flush with it. Pinning the row to a taller,
+   guaranteed-minimum height instead -- `minmax()` rather than a flat
+   value, so it still grows further on a tall viewport -- forces both
+   boxes' bottoms (as well as their already-aligned tops) to land in
+   exactly the same place, tall enough that the key's full five-entry
+   content fits without its own scrollbar on a typical laptop-or-larger
+   screen; `.panel-key` keeps a matching internal scrollbar as a fallback
+   for shorter viewports where it still doesn't fit. */
 #panel-summary .panel-body-with-key {
   grid-template-rows: minmax(48rem, 85vh);
 }
-#panel-filter .panel-key,
 #panel-summary .panel-key {
   overflow-y: auto;
 }
@@ -882,22 +1090,36 @@ table.data-table tbody tr.accent-row:hover td {
    height always tracks the row's -- the same guaranteed minimum, and the
    same further growth on a taller viewport -- keeping the table and key's
    bottom edges aligned exactly like every other tab's key pairing does. */
-#panel-filter .table-scroll,
 #panel-summary .table-scroll {
   max-height: none;
   height: 100%;
+}
+/* Custom Filter has no key aside anymore (see ".procedure-type-legend" --
+   its own Hysterectomy Inference Types key, when relevant, is a compact
+   legend above the table instead), so there's no sibling to stretch-match
+   here. A flat `height` (this used to be `height: max(48rem, 85vh)`) forced
+   the box to that height regardless of how many rows actually matched,
+   leaving a block of empty space below a short, heavily-filtered result --
+   `max-height` instead only ever caps the box, so it still shrinks to fit
+   however many rows are actually there (down to a single row), and only
+   grows up to this same generous cap (scrolling internally past that) once
+   there's enough data to need it. */
+#panel-filter .table-scroll {
+  max-height: max(48rem, 85vh);
 }
 
 @media (max-width: 900px) {
   .panel-body-with-key {
     grid-template-columns: 1fr;
   }
-  #panel-filter .panel-body-with-key,
   #panel-summary .panel-body-with-key {
     grid-template-rows: none;
   }
   .panel-key {
     position: static;
+  }
+  #panel-filter .table-scroll {
+    max-height: 65vh;
   }
 }
 
@@ -1404,6 +1626,17 @@ table.matrix-table td.cohort-cell:hover {
   border-bottom: 2px solid transparent;
   border-image: linear-gradient(90deg, var(--accent) 0%, var(--accent-rose-soft) 100%) 1;
 }
+/* The Cohorts/Checklist Items pickers' search box sat flush against the
+   Select all/Select none row right below it (".field" carries no bottom
+   margin of its own, and ".picker-actions" below carries no top margin),
+   while the Domains picker -- which has no search box, so its title's own
+   0.5rem margin-bottom above is the only gap before its buttons -- reads
+   with real breathing room by comparison. Matching that same 0.5rem here
+   makes the gap consistent whether or not a picker happens to have a
+   search box in between. */
+.picker .field {
+  margin-bottom: 0.5rem;
+}
 .picker .picker-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1811,6 +2044,41 @@ table.matrix-table td.cohort-cell:hover {
    makes that pairing look deliberate instead of like a mis-sized card. */
 .info-card-aside {
   background: var(--bg-subtle);
+}
+
+/* See the decorative <svg> markup itself in index.html for what this is
+   -- position/overflow here just set up the card as its clipping/
+   positioning context, the same pattern as ".info-hero"/".info-hero-deco"
+   above. */
+.info-card-explore {
+  position: relative;
+  overflow: hidden;
+}
+/* Its own text/heading sit in normal flow after the decoration in the
+   DOM, but a positioned element paints above static ones regardless of
+   source order (see the equivalent note on ".info-hero-deco" above) --
+   z-index: 0 here plus z-index: 1 on the card's real content keeps the
+   decoration behind it. */
+.info-card-explore h3,
+.info-card-explore p {
+  position: relative;
+  z-index: 1;
+}
+/* Anchored to the bottom-right corner, sized to roughly the bottom-right
+   quadrant of whatever empty space this shorter card is left with next to
+   its taller sibling -- and washed out to the same low opacity/single
+   color as ".info-hero-deco", so it reads as the same kind of quiet
+   background motif, not a second competing focal point. */
+.info-card-deco {
+  position: absolute;
+  z-index: 0;
+  right: -6%;
+  bottom: -6%;
+  width: 62%;
+  height: 62%;
+  color: var(--accent);
+  opacity: 0.16;
+  pointer-events: none;
 }
 
 .info-card h3 {

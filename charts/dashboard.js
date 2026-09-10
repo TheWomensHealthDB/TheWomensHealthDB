@@ -58,7 +58,30 @@
     wireInPageTabLinks();
     wireModal();
     wireTableZoom();
+    wireTableExport();
     renderAllProcedureSeparationKeys();
+
+    // A shared Custom Filter link (see buildShareableFilterURL()) --
+    // applied here, before loadData() below, so renderTable3Fields()'s own
+    // "start with one blank condition" fallback naturally never fires
+    // (state.t3Conditions is already non-empty by the time it checks).
+    // Independent of the cohorts/schema fetch itself -- just reads the
+    // page's own URL -- so there's no need to wait for loadData() first.
+    var sharedFilter = parseSharedFilterFromURL();
+    if (sharedFilter) {
+      state.t3Conditions = sharedFilter.conditions;
+      state.t3Mode = sharedFilter.mode;
+      var modeSelect = document.getElementById("t3-mode");
+      if (modeSelect) modeSelect.value = state.t3Mode;
+      // Jump straight to Custom Filter so the shared setup is immediately
+      // visible rather than landing on Information as usual -- reuses the
+      // same nav.tabs button wireTabs() above already wired, so every
+      // side effect of a real tab switch happens exactly as it would from
+      // a direct click.
+      var filterBtn = document.querySelector('nav.tabs button[data-tab="filter"]');
+      if (filterBtn) filterBtn.click();
+    }
+
     loadData();
   });
 
@@ -181,8 +204,28 @@
       btn.addEventListener("click", function () {
         var target = btn.getAttribute("data-tab");
 
+        // Matched by data-tab value, not by "b === btn" identity: the
+        // Women's Health Data Inventory / Items Reference dropdown group
+        // (see ".nav-item-group" in index.html) has *two* buttons sharing
+        // data-tab="checklist" -- the always-visible one and the
+        // dropdown's own copy of it -- and both need to show active
+        // together regardless of which one was actually clicked.
         buttons.forEach(function (b) {
-          b.classList.toggle("active", b === btn);
+          b.classList.toggle("active", b.getAttribute("data-tab") === target);
+        });
+        // Items Reference has no top-level button of its own (see
+        // ".nav-item-group" in index.html) -- landing on it via its
+        // dropdown entry would otherwise leave the whole nav bar showing
+        // nothing highlighted. Marking the group itself lets the always-
+        // visible "Women's Health Data Inventory" button show a lighter
+        // "you're somewhere in here" indicator (see ".nav-item-group.
+        // group-active" in dashboard.css) instead of full active styling,
+        // which would wrongly claim you're on that exact tab.
+        document.querySelectorAll(".nav-item-group").forEach(function (group) {
+          var inGroup = Array.prototype.some.call(group.querySelectorAll("button"), function (b) {
+            return b.getAttribute("data-tab") === target;
+          });
+          group.classList.toggle("group-active", inGroup);
         });
         document.querySelectorAll(".tab-panel").forEach(function (panel) {
           panel.classList.toggle("active", panel.id === "panel-" + target);
@@ -357,6 +400,160 @@
       });
 
       apply();
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Table export (CSV / Excel / PDF)
+  // ---------------------------------------------------------------------
+
+  // Human-readable title for a table id, used as the PDF export's own
+  // on-page heading. CSV/Excel have no such heading -- the filename
+  // (each ".table-export"'s own data-filename) already carries this.
+  var TABLE_EXPORT_TITLES = {
+    "t1-table": "Hysterectomy Inference Classification",
+    "t2-table": "Women's Health Data Inventory",
+    "t3-table": "Custom Filter",
+  };
+
+  // Strips the soft hyphens narrow column headers use to hint mid-word
+  // line breaks (see softHyphenateLabel()) -- meaningless outside that
+  // specific visual context -- and collapses any stray whitespace left
+  // over from reading text out of a rendered DOM cell.
+  function cleanExportText(text) {
+    return String(text === null || text === undefined ? "" : text)
+      .replace(/\u00ad/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Reads whatever a table's own render function (renderTable1Body() /
+  // renderTable2Body() / renderTable3()) has already put in the live DOM
+  // -- the same headers, columns, rows, sort order, and filtering the
+  // user is currently looking at -- rather than recomputing any of that
+  // independently, so every export is guaranteed to match the current
+  // on-screen view exactly (per-table column selection, search/filter
+  // conditions, cohort selection, and sort order all included for free).
+  // A cell can opt out of its own literal textContent via a
+  // `data-export-value` attribute set at render time -- see
+  // renderTable2Body()'s chip cells, whose visible glyph (Y/N/~/T) is far
+  // too compact on its own to be useful in an exported file.
+  function collectTableExportData(table) {
+    var headers = [];
+    table.querySelectorAll("thead th").forEach(function (th) {
+      var labelEl = th.querySelector(".th-text, .th-label");
+      headers.push(cleanExportText(labelEl ? labelEl.textContent : th.textContent));
+    });
+
+    var rows = [];
+    table.querySelectorAll("tbody tr").forEach(function (tr) {
+      var cells = tr.querySelectorAll("td");
+      // Skip a "No cohorts match..." / "No Domains or Checklist Items
+      // selected." placeholder row -- it isn't real data.
+      if (tr.querySelector(".empty-state")) return;
+      var row = [];
+      cells.forEach(function (td) {
+        var raw = td.hasAttribute("data-export-value") ? td.getAttribute("data-export-value") : td.textContent;
+        row.push(cleanExportText(raw));
+      });
+      rows.push(row);
+    });
+
+    return { headers: headers, rows: rows };
+  }
+
+  function triggerDownload(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    // Deferred, not immediate -- some browsers need the object URL to
+    // still be valid a moment after the click before the download
+    // actually starts.
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  // RFC 4180 field escaping: quote (doubling any inner quotes) whenever a
+  // field itself contains a comma, quote, or newline that would otherwise
+  // make it ambiguous.
+  function csvCell(text) {
+    if (/[",\n]/.test(text)) {
+      return '"' + text.replace(/"/g, '""') + '"';
+    }
+    return text;
+  }
+
+  function exportTableCSV(data, filename) {
+    var lines = [data.headers].concat(data.rows).map(function (row) {
+      return row.map(csvCell).join(",");
+    });
+    // A leading UTF-8 BOM so Excel -- which otherwise guesses ANSI and
+    // mangles the em dashes and accented characters that show up
+    // elsewhere in this dataset -- opens the file with the right
+    // encoding instead of needing a manual "Import" step.
+    var blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    triggerDownload(blob, filename + ".csv");
+  }
+
+  function exportTableExcel(data, filename) {
+    if (typeof XLSX === "undefined") {
+      window.alert(
+        "The Excel export library failed to load (probably a network issue) -- please reload the page and try again."
+      );
+      return;
+    }
+    var sheet = XLSX.utils.aoa_to_sheet([data.headers].concat(data.rows));
+    var workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "Data");
+    XLSX.writeFile(workbook, filename + ".xlsx");
+  }
+
+  function exportTablePDF(data, filename, title) {
+    if (typeof window.jspdf === "undefined") {
+      window.alert(
+        "The PDF export library failed to load (probably a network issue) -- please reload the page and try again."
+      );
+      return;
+    }
+    // Landscape -- every one of these tables is far wider than it is
+    // tall, with anywhere from a handful up to dozens of columns.
+    var doc = new window.jspdf.jsPDF({ orientation: "landscape" });
+    doc.setFontSize(13);
+    doc.text(title, 14, 12);
+    doc.autoTable({
+      head: [data.headers],
+      body: data.rows,
+      startY: 17,
+      styles: { fontSize: 6.5, cellPadding: 1.5 },
+      headStyles: { fillColor: [47, 90, 130] },
+      margin: { left: 8, right: 8 },
+    });
+    doc.save(filename + ".pdf");
+  }
+
+  function wireTableExport() {
+    document.querySelectorAll(".table-export").forEach(function (control) {
+      var tableId = control.getAttribute("data-table");
+      var table = document.getElementById(tableId);
+      var filename = control.getAttribute("data-filename") || "export";
+      var title = TABLE_EXPORT_TITLES[tableId] || filename;
+      if (!table) return;
+      control.querySelectorAll("[data-export]").forEach(function (btn) {
+        if (btn._wired) return;
+        btn._wired = true;
+        btn.addEventListener("click", function () {
+          var data = collectTableExportData(table);
+          var kind = btn.getAttribute("data-export");
+          if (kind === "csv") exportTableCSV(data, filename);
+          else if (kind === "excel") exportTableExcel(data, filename);
+          else if (kind === "pdf") exportTablePDF(data, filename, title);
+        });
+      });
     });
   }
 
@@ -767,6 +964,7 @@
           if (rowTint) tr.style.setProperty("--row-tint", rowTint);
         }
 
+        var typeTd = null;
         t1Columns().forEach(function (col, i) {
           var td = document.createElement("td");
           td.textContent = DD.formatValue(r[col.key]);
@@ -785,6 +983,7 @@
             }
             var typeDef = procedureTypeDefinition(procVal);
             if (typeDef) attachTooltip(td, typeDef, 500);
+            typeTd = td;
           }
           if (col.narrow) td.classList.add("narrow-col-cell");
           if (i === 0 && accentColor) {
@@ -794,6 +993,14 @@
         });
         tr.style.cursor = "pointer";
         tr.title = "Click for full record";
+        // An element's own "title" (even empty) takes precedence over an
+        // ancestor's for that element specifically -- so this stops the
+        // native "Click for full record" tooltip from covering the type
+        // cell, where the custom attachTooltip() above should be the only
+        // tooltip a hover shows (the two were overlapping/fighting for the
+        // same space). The rest of the row is unaffected, since no other
+        // cell sets its own "title".
+        if (typeTd) typeTd.title = "";
         tr.addEventListener("click", function () {
           openCohortDetail(r);
         });
@@ -928,11 +1135,12 @@
       "The matrix opens showing all " +
       total +
       " domain(s) as a single rollup column each -- \"yes\" as soon as any item in " +
-      "that domain is tracked. Uncheck a domain under \"Domains\" in the menu on the left " +
-      "to hide its column, or check specific items under \"Checklist items\" to break a " +
-      "domain out into its individual questions as additional columns. Use the Cohorts " +
-      "checkboxes to narrow which cohorts are shown. Hover a colored cell to see its exact " +
-      "response text, and click a cohort name for its full record.";
+      "that domain is tracked. Uncheck a domain under \"Domains\" (or in \"Checklist Items\", " +
+      "which checks/unchecks all of its individual items too) to hide its column, or check " +
+      "specific items under \"Checklist Items\" to break a domain out into its individual " +
+      "questions as additional columns. Use the Cohorts checkboxes to narrow which cohorts " +
+      "are shown. Hover a colored cell to see its exact response text, and click a cohort " +
+      "name for its full record.";
   }
 
   function renderPicker(containerId, allValues, selectedSet, onChange) {
@@ -1139,15 +1347,22 @@
       if (opts.isHeader && opts.isTopLevel) {
         // One of the 11 domains -- see the comment on
         // renderChecklistItemPicker()'s domainSelectedSet parameter above.
-        // Plain boolean (never indeterminate): this checkbox's own state
-        // *is* the domain's rollup-column visibility, not a summary of its
-        // children's individual selection state.
+        // Plain boolean (never indeterminate): this checkbox's own
+        // checked/unchecked state *is* the domain's rollup-column
+        // visibility, not a summary of its children's individual
+        // selection state. Toggling it ALSO cascades to every one of the
+        // domain's individual items (setGroupSelected(), the same
+        // cascade a nested sub-header's own checkbox uses below) as a
+        // convenience -- checking a domain both shows its rollup *and*
+        // breaks it out into every one of its specific columns in one
+        // click, rather than needing two separate clicks to get both.
         var domainNode = valueOrNode;
         displayText = domainNode.header;
         cb.checked = domainSelectedSet.has(domainNode.header);
         cb.addEventListener("change", function () {
           if (cb.checked) domainSelectedSet.add(domainNode.header);
           else domainSelectedSet.delete(domainNode.header);
+          setGroupSelected(domainNode, cb.checked);
           draw();
           onChange();
         });
@@ -1474,7 +1689,7 @@
     thead.appendChild(headRow);
 
     if (!rows.length || (!rollups.length && !columns.length)) {
-      var msg = !rows.length ? "No cohorts selected." : "No domains or checklist items selected.";
+      var msg = !rows.length ? "No cohorts selected." : "No Domains or Checklist Items selected.";
       tbody.innerHTML = '<tr><td class="empty-state">' + msg + "</td></tr>";
     } else {
       rows.forEach(function (r) {
@@ -1512,6 +1727,11 @@
             500
           );
           chip.textContent = chipSymbol(classified.category, classified.label);
+          // The cell's visible glyph (Y/N/~/T) is too compact to be useful
+          // in an exported file -- see collectTableExportData() -- so
+          // exports read this attribute instead and get the same full
+          // text the chip's own tooltip above already shows.
+          td.setAttribute("data-export-value", classified.label || "");
           td.appendChild(chip);
           tr.appendChild(td);
         });
@@ -1528,6 +1748,7 @@
           // default. Only the cohort name cell (see above) is instant.
           attachTooltip(chip, col + ": " + (classified.label || "(no data)"), 500);
           chip.textContent = chipSymbol(classified.category, classified.label);
+          td.setAttribute("data-export-value", classified.label || "");
           td.appendChild(chip);
           tr.appendChild(td);
         });
@@ -1633,9 +1854,103 @@
     return field;
   }
 
+  // ---------------------------------------------------------------------
+  // Custom Filter: shareable link
+  // ---------------------------------------------------------------------
+  // The whole filter setup (mode + every condition's field/operator/value)
+  // round-trips through a single "?filter=" query parameter, a JSON blob
+  // percent-encoded via encodeURIComponent() -- no server, no shortener,
+  // just enough to reconstruct state.t3Conditions/state.t3Mode from a
+  // pasted URL. Condition "id"s are deliberately left out of the encoded
+  // payload (they're only ever used locally, as React-key-style DOM
+  // identity for the condition-row list -- see renderTable3Conditions()
+  // -- meaningless to whoever opens the link) and get fresh ones assigned
+  // on decode instead.
+  var SHARE_FILTER_PARAM = "filter";
+
+  function buildShareableFilterURL() {
+    var payload = {
+      mode: state.t3Mode,
+      conditions: state.t3Conditions.map(function (c) {
+        return { field: c.field, operator: c.operator, value: c.value };
+      }),
+    };
+    var url = new URL(window.location.href);
+    url.searchParams.set(SHARE_FILTER_PARAM, JSON.stringify(payload));
+    url.hash = "";
+    return url.toString();
+  }
+
+  // Reads "?filter=" off the current page URL (if present) and returns a
+  // {mode, conditions} object ready to assign into state, or null if
+  // there's no (valid) shared filter to load. Deliberately tolerant of a
+  // malformed/hand-edited value -- falls back to null (the normal "start
+  // with one blank condition" behavior in renderTable3Fields() below)
+  // rather than throwing and breaking the rest of the page.
+  function parseSharedFilterFromURL() {
+    var raw;
+    try {
+      raw = new URLSearchParams(window.location.search).get(SHARE_FILTER_PARAM);
+    } catch (e) {
+      return null;
+    }
+    if (!raw) return null;
+    var payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+    if (!payload || !Array.isArray(payload.conditions)) return null;
+    var conditions = payload.conditions
+      .filter(function (c) {
+        return c && typeof c.field === "string" && typeof c.operator === "string";
+      })
+      .map(function (c) {
+        return {
+          id: state.t3ConditionIdSeq++,
+          field: c.field,
+          operator: c.operator,
+          value: typeof c.value === "string" ? c.value : "",
+        };
+      });
+    if (!conditions.length) return null;
+    return { mode: payload.mode === "any" ? "any" : "all", conditions: conditions };
+  }
+
+  function wireTable3Share() {
+    var btn = document.getElementById("t3-share");
+    var feedback = document.getElementById("t3-share-feedback");
+    if (!btn || btn._wired) return;
+    btn._wired = true;
+    btn.addEventListener("click", function () {
+      var url = buildShareableFilterURL();
+      var showFeedback = function () {
+        if (!feedback) return;
+        feedback.hidden = false;
+        clearTimeout(feedback._hideTimer);
+        feedback._hideTimer = setTimeout(function () {
+          feedback.hidden = true;
+        }, 2500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showFeedback, function () {
+          window.prompt("Copy this link to share your filter:", url);
+        });
+      } else {
+        // Older browsers without the async Clipboard API -- a visible
+        // prompt (its text pre-selected) is the simplest universal
+        // fallback that still lets a user copy the link in one action
+        // (Ctrl/Cmd+C), without pulling in a polyfill for this one case.
+        window.prompt("Copy this link to share your filter:", url);
+      }
+    });
+  }
+
   function renderTable3Fields() {
     var addBtn = document.getElementById("t3-add-condition");
     var modeSelect = document.getElementById("t3-mode");
+    wireTable3Share();
     if (addBtn && !addBtn._wired) {
       addBtn.addEventListener("click", function () {
         var fields = t3AllFields();
@@ -1829,19 +2144,16 @@
     rows = DD.sortRecords(rows, state.t3Sort.column, state.t3Sort.direction);
 
     // Baseline summary columns (always shown, in this fixed order) --
-    // deliberately just these five, not every column t1Columns() now
+    // deliberately just these four, not every column t1Columns() now
     // carries for Hysterectomy Inference Classification (the Reproductive
     // Surgical History breakdown belongs to that tab specifically, not
-    // here). Any condition field outside this set gets appended as its own
-    // column after them, in the order its condition was added -- see
-    // extraColumns below.
-    var BASE_KEYS = [
-      state.schema.cohort_name_column,
-      state.schema.procedure_separation_type_column,
-      "Sample Size (N)",
-      "Age Range",
-      "% Female",
-    ];
+    // here) -- and, unlike before, not Hysterectomy Inference Types either:
+    // that classification's row color-coding/bolding/key is only relevant
+    // once the user actually asks about it, so it (like every other field)
+    // only appears -- as one of extraColumns below -- once it's an active
+    // condition's field, in the order that condition was added.
+    var procCol = state.schema.procedure_separation_type_column;
+    var BASE_KEYS = [state.schema.cohort_name_column, "Sample Size (N)", "Age Range", "% Female"];
     var baseColumns = t1Columns().filter(function (c) {
       return BASE_KEYS.indexOf(c.key) !== -1;
     });
@@ -1861,6 +2173,11 @@
       extraColumns.push({ key: c.field, label: t3FieldLabel(c.field), narrow: true });
     });
     var columns = baseColumns.concat(extraColumns);
+    // Whether Hysterectomy Inference Types is currently one of those extra
+    // columns -- gates the row color-coding/bolding below and the compact
+    // type legend (see refreshTypeLegend()) the same way.
+    var typeColActive = !!procCol && seenExtra[procCol];
+    refreshTypeLegend(typeColActive);
 
     var thead = table.querySelector("thead tr");
     var tbody = table.querySelector("tbody");
@@ -1871,28 +2188,41 @@
       appendColumnHeader(thead, col, state.t3Sort, renderTable3);
     });
 
-    var procCol = state.schema.procedure_separation_type_column;
-
     if (!rows.length) {
       tbody.innerHTML =
         '<tr><td colspan="' + columns.length + '" class="empty-state">No cohorts match these conditions.</td></tr>';
     } else {
       rows.forEach(function (r) {
         var tr = document.createElement("tr");
-        var procVal = procCol ? String(r[procCol] || "").trim() : "";
-        var accentColor = procedureTypeColor(procVal);
+        var procVal = typeColActive ? String(r[procCol] || "").trim() : "";
+        var accentColor = typeColActive ? procedureTypeColor(procVal) : null;
         // Same row-level accent pattern as Table 1/Table 2 -- see the
         // comment in renderTable1Body() for why this is set on the <tr>
-        // itself.
+        // itself. Only applied at all once Hysterectomy Inference Types is
+        // an active condition field (typeColActive above) -- otherwise
+        // this table has no classification of its own to color-code by.
         if (accentColor) {
           tr.classList.add("accent-row");
           tr.style.setProperty("--row-accent", accentColor);
           var rowTint = procedureTypeRowTint(procVal);
           if (rowTint) tr.style.setProperty("--row-tint", rowTint);
         }
+        var typeTd = null;
         columns.forEach(function (col, i) {
           var td = document.createElement("td");
           td.textContent = DD.formatValue(r[col.key]);
+          // Same bold/colored/hover-definition treatment as Hysterectomy
+          // Inference Classification's own Type column -- see the
+          // matching comment in renderTable1Body().
+          if (typeColActive && col.key === procCol) {
+            if (accentColor) {
+              td.style.color = accentColor;
+              td.style.fontWeight = "700";
+            }
+            var typeDef = procedureTypeDefinition(procVal);
+            if (typeDef) attachTooltip(td, typeDef, 500);
+            typeTd = td;
+          }
           if (col.narrow) td.classList.add("narrow-col-cell");
           if (i === 0 && accentColor) {
             td.classList.add("accent-cell");
@@ -1901,6 +2231,9 @@
         });
         tr.style.cursor = "pointer";
         tr.title = "Click for full record";
+        // See the matching comment in renderTable1Body() -- stops that
+        // title from fighting with the type cell's own tooltip above.
+        if (typeTd) typeTd.title = "";
         tr.addEventListener("click", function () {
           openCohortDetail(r);
         });
@@ -1911,6 +2244,60 @@
     if (countEl) {
       countEl.textContent = rows.length + " of " + state.cohorts.length + " cohort(s) match";
     }
+  }
+
+  // Compact swatch-only legend for Hysterectomy Inference Types on Custom
+  // Filter -- shown only while that field is an active condition (see
+  // typeColActive in renderTable3() above), unlike the full key aside
+  // every other tab gets: this table's whole point is building custom
+  // conditions, so a tall always-on definitions sidebar would compete for
+  // space with that far more often than it'd actually be relevant. Reuses
+  // ".legend" (see renderCategoryLegend()) rather than inventing a second
+  // legend style for the same shape of content.
+  function refreshTypeLegend(active) {
+    var el = document.getElementById("t3-type-legend");
+    if (!el) return;
+    el.hidden = !active;
+    if (!active) {
+      // Also clear out any stale content from the last time this was
+      // active, rather than just leaving it hidden -- belt-and-suspenders
+      // alongside the CSS fix (see ".legend[hidden]") for the same bug:
+      // ".legend"'s own `display: flex` otherwise wins over the plain
+      // `hidden` attribute's default `display: none` (author styles beat
+      // the UA stylesheet regardless of specificity), which was letting
+      // this reappear, still showing its last content, the moment
+      // anything gave it height again.
+      el.innerHTML = "";
+      return;
+    }
+    el.innerHTML = "";
+
+    var caption = document.createElement("span");
+    caption.className = "legend-caption";
+    caption.textContent = "Hysterectomy Inference Types:";
+    el.appendChild(caption);
+
+    (DD.PROCEDURE_SEPARATION_TYPE_DEFINITIONS || []).forEach(function (def) {
+      var color = (DD.PROCEDURE_SEPARATION_TYPE_COLORS || {})[def.type] || "#999";
+      var item = document.createElement("span");
+      item.className = "legend-item";
+      var swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = color;
+      item.appendChild(swatch);
+      item.appendChild(document.createTextNode(def.type));
+      // Same definition text procedureTypeDefinition() gives the table
+      // cells themselves (see renderTable3()) -- so the key on its own is
+      // just as informative as hovering a matching row, not just a color
+      // reference.
+      attachTooltip(item, def.type + ": " + def.text, 300);
+      el.appendChild(item);
+    });
+
+    var note = document.createElement("span");
+    note.className = "legend-note";
+    note.textContent = "Hover over each type for that type's definition.";
+    el.appendChild(note);
   }
 
   // ---------------------------------------------------------------------
