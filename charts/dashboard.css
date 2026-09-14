@@ -477,7 +477,12 @@ input[type="text"]:focus, input[type="search"]:focus, input[type="number"]:focus
   box-sizing: border-box;
 }
 
-button.btn {
+/* `a.btn` alongside `button.btn` covers the Contribute tab's "Open the
+   Contributor Form" link -- a real external link (needs a genuine <a
+   href>, not a <button>), styled identically to every other primary
+   action on the site rather than as an ".inline-link"-style hyperlink. */
+button.btn, a.btn {
+  display: inline-block;
   border: 1px solid var(--accent);
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
   color: #fff;
@@ -486,15 +491,17 @@ button.btn {
   font-size: 0.85rem;
   cursor: pointer;
   font-weight: 600;
+  text-decoration: none;
   transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
 }
 
-button.btn:hover {
+button.btn:hover, a.btn:hover {
   background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent-rose) 145%);
   box-shadow: var(--shadow-sm);
+  color: #fff;
 }
 
-button.btn:active {
+button.btn:active, a.btn:active {
   transform: translateY(1px);
 }
 
@@ -2167,13 +2174,20 @@ table.matrix-table td.cohort-cell:hover {
   margin: 0.9rem 0;
 }
 
-/* Citation formats (APA/MLA/Chicago) -- a label/citation pair per format,
-   matching the <dl>/<dt>/<dd> pattern already used for the cohort detail
-   modal's field list (see ".modal dl"/"dt"/"dd" under "Detail modal"
-   above) rather than inventing a second convention for the same shape of
-   content. */
+/* Citation format(s) -- a label/citation pair per format, matching the
+   <dl>/<dt>/<dd> pattern already used for the cohort detail modal's field
+   list (see ".modal dl"/"dt"/"dd" under "Detail modal" above) rather than
+   inventing a second convention for the same shape of content. Only APA
+   is shown now (MLA/Chicago were dropped to keep this to one canonical
+   format), but the markup stays a <dl> rather than flattening to a plain
+   paragraph in case more formats come back later. Centered (rather than
+   left-aligned like every other card's text) now that it's down to a
+   single short label-plus-citation pair -- reads as a deliberately
+   centered citation block instead of a left-aligned list missing its
+   other rows. */
 .citation-list {
   margin: 0;
+  text-align: center;
 }
 
 .citation-list dt {
@@ -2203,6 +2217,53 @@ table.matrix-table td.cohort-cell:hover {
 .info-cta {
   background: linear-gradient(135deg, #fff 0%, var(--accent-rose-soft) 220%);
   border-left: 3px solid var(--accent-rose);
+}
+
+/* Spacing for the "Open the Contributor Form" button sitting under its own
+   paragraph inside ".info-cta" -- ".info-card p + p"'s margin only applies
+   between two <p> siblings, not before a following ".btn". */
+.info-cta .btn {
+  margin-top: 0.9rem;
+}
+
+/* Fine-print note under the "Open the Contributor Form" button -- the
+   eligibility disclaimer that isn't part of the release agreement above
+   it, so it reads as a caveat on the button itself rather than another
+   numbered legal item. Selector specificity (class + type + class) beats
+   ".info-card p"'s plain `margin: 0` above without needing !important. */
+.info-card p.cta-subtext {
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Numbered lists on the Contribute tab -- the "How to Contribute" steps
+   and the release-form disclaimers below them. Decimal-numbered, unlike
+   Items Reference's bullet-only ".reference-list", and each <li> may hold
+   several <p>s (the withdrawal-notice disclaimer runs three paragraphs)
+   rather than always being a single line. */
+.ordered-list {
+  margin: 0;
+  padding-left: 1.4rem;
+  color: var(--text-main);
+}
+
+.ordered-list > li {
+  margin: 0 0 0.6rem;
+  line-height: 1.55;
+}
+
+.ordered-list > li:last-child {
+  margin-bottom: 0;
+}
+
+.ordered-list > li p {
+  margin: 0 0 0.5rem;
+}
+
+.ordered-list > li p:last-child {
+  margin-bottom: 0;
 }
 
 /* Bold, slightly larger lead sentence directly under the hero's <h2> --

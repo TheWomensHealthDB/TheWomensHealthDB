@@ -76,6 +76,7 @@
       </div>
       <button type="button" data-tab="filter">Custom Filter</button>
       <button type="button" data-tab="map">Cohort Map</button>
+      <button type="button" data-tab="contribute">Contribute</button>
     </nav>
   </header>
 
@@ -103,7 +104,7 @@
              space beside the (fairly short) paragraphs with something
              purposeful instead of just stretching the text wider. -->
         <div class="info-hero-body">
-          <h2>About The WHD</h2>
+          <h2>About the WHD</h2>
           <p class="info-hero-lead">
             A curated, searchable catalog of women's health variables across
             major cohort studies worldwide.
@@ -158,7 +159,11 @@
             <strong class="term-highlight">oophorectomy</strong>. We
             developed a five-type framework that characterizes the
             inferences about hysterectomy and ovarian status that can be
-            supported by the information available in each cohort.
+            supported by the information available in each cohort
+            (<span
+              class="paper-link"
+              title="[Author, A. A., Author, B. B., &amp; Author, C. C.]. (in preparation). [Title of the manuscript describing the five-type hysterectomy/oophorectomy inference framework]. [Journal name]. Placeholder &mdash; citation to be added once the paper is available."
+            >Author et al., in preparation</span>).
           </p>
           <!-- Populated by renderProcedureSeparationKey() (dashboard.js), the
                same function that fills the identical key on every data tab --
@@ -220,12 +225,6 @@
           <dl class="citation-list">
             <dt>APA</dt>
             <dd>Eich, T., Yoon, D., Hulscher, M., Capaldi, J. M., Belkind, D., &amp; Naveen, R. (2026, September 4). <em>The Women's Health Database</em>. https://doi.org/10.17605/OSF.IO/4KZUE</dd>
-
-            <dt>MLA</dt>
-            <dd>Eich, Teal, et al. &ldquo;The Women's Health Database.&rdquo; <em>OSF</em>, 4 Sept. 2026. Web.</dd>
-
-            <dt>Chicago</dt>
-            <dd>Eich, Teal, Dokyung Yoon, Margaret Hulscher, Jessica M. Capaldi, Daniel Belkind, and Rahul Naveen. 2026. &ldquo;The Women's Health Database.&rdquo; <em>OSF</em>. September 4. doi:10.17605/OSF.IO/4KZUE.</dd>
           </dl>
         </div>
 
@@ -244,30 +243,6 @@
             periodic releases.
           </p>
         </div>
-      </div>
-
-      <div class="info-card info-cta">
-        <h3>
-          <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M15 20v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="8" cy="7" r="4" />
-            <line x1="19" y1="8" x2="19" y2="14" />
-            <line x1="22" y1="11" x2="16" y2="11" />
-          </svg>
-          Contribute
-        </h3>
-        <p>
-          The Women's Health Database is a living, curated resource that
-          will grow through contributions from the research community. To
-          add a cohort to the Women's Health Database (or submit updates),
-          please
-          <a
-            class="inline-link"
-            href="https://redcapsurveys.med.usc.edu/surveys/?s=AAYYLE78E988Y83C"
-            target="_blank"
-            rel="noopener noreferrer"
-          >click here</a>.
-        </p>
       </div>
     </section>
 
@@ -418,7 +393,7 @@
         <div class="info-hero-body">
           <h2>Items Reference</h2>
           <p>
-            Every variable The WHD tracks, grouped into the same 11 domains
+            Every variable the WHD tracks, grouped into the same 11 domains
             used throughout the site. This page doesn't show any cohort
             data itself &mdash; it's a glossary of what each variable
             means. Click a domain to expand it.
@@ -748,6 +723,174 @@
           <p class="result-count" id="map-note"></p>
         </div>
         <aside class="panel-key procedure-key" id="map-procedure-key"></aside>
+      </div>
+    </section>
+
+    <!-- Contribute: formerly a single "Contribute" card at the bottom of
+         Information (see git history) -- broken out into its own tab so
+         the contributor form, the context around it, and the release-form
+         disclaimers all have room to breathe rather than sharing a page
+         with the site's own about copy. Static markup, no cohort-data
+         dependency, same as Information/Items Reference -- see the
+         ":not(#panel-contribute)" exclusion in dashboard.js's loadData()
+         error handler, which keeps this tab (and its external form link)
+         usable even if the cohort-data fetch itself fails. -->
+    <section id="panel-contribute" class="tab-panel">
+      <div class="info-hero">
+        <svg class="info-hero-deco" viewBox="0 0 100 40" aria-hidden="true" preserveAspectRatio="none">
+          <polyline points="0,32 15,10 28,32 40,14 55,32 68,10 82,32 100,16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <div class="info-hero-body">
+          <h2>Contribute a Cohort</h2>
+          <p class="info-hero-lead">
+            Help grow the Women's Health Database with your cohort's data.
+          </p>
+          <p>
+            Is there a women's health cohort study that you would like to
+            see included on this database? Please complete the contributor
+            form below to submit its information!
+          </p>
+          <p>
+            The WHD is a living catalog &mdash; we rely on the
+            contributions of researchers like you to continue growing. If
+            your study measures any of the domains cataloged on this site,
+            we'd like to hear from you.
+          </p>
+        </div>
+      </div>
+
+      <div class="info-row">
+        <div class="info-card info-card-main">
+          <h3>
+            <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+              <path d="M8 8h8M8 12h8M8 16h5" />
+            </svg>
+            How to Contribute
+          </h3>
+          <ol class="ordered-list">
+            <li>
+              Skim the
+              <button type="button" class="tab-link" data-goto-tab="items-reference">Items Reference</button>
+              glossary and the
+              <button type="button" class="tab-link" data-goto-tab="checklist">Women's Health Data Inventory</button>
+              to see the 11 domains and specific variables the WHD tracks.
+            </li>
+            <li>
+              Gather whatever documentation describes your cohort's
+              women's-health measures &mdash; a study protocol, codebook,
+              survey instrument, or publication &mdash; so you can answer
+              the form accurately.
+            </li>
+            <li>
+              Complete the contributor form below in its entirety. Be sure
+              to read all instructions fully and carefully follow all
+              submission guidelines.
+            </li>
+            <li>
+              The WHD team only reviews complete submissions, and may
+              follow up if anything needs clarification before a cohort is
+              added to the catalog.
+            </li>
+          </ol>
+        </div>
+
+        <div class="info-card info-card-aside">
+          <h3>
+            <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <line x1="12" y1="11" x2="12" y2="16" />
+              <circle cx="12" cy="7.6" r="0.6" fill="currentColor" stroke="none" />
+            </svg>
+            Who Should Contribute
+          </h3>
+          <p>
+            Any completed or ongoing cohort study that collects
+            women's-health data is welcome &mdash; regardless of size or
+            region.
+          </p>
+          <p>
+            Your cohort doesn't need to cover every domain. Partial
+            coverage is still useful to other researchers, and the catalog
+            entry will simply reflect what your cohort does and doesn't
+            collect.
+          </p>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h3>
+          <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="9" y1="13" x2="15" y2="13" />
+            <line x1="9" y1="17" x2="15" y2="17" />
+          </svg>
+          Before You Submit
+        </h3>
+        <p>
+          Please read the following brief overview. For more information
+          regarding our release agreement, please see the full release
+          form found at the beginning of the contributor form linked
+          below.
+        </p>
+        <ol class="ordered-list">
+          <li>
+            The information you provide about your cohort study's
+            variables will be published publicly in the Women's Health
+            Database (WHD).
+          </li>
+          <li>
+            Your cohort/study will be identified by name in the catalog
+            entry associated with your submission.
+          </li>
+          <li>
+            <p>
+              You confirm that the information submitted accurately
+              reflects your cohort's data collection to the best of your
+              knowledge. The WHD team is not responsible for errors
+              arising from inaccurate or outdated submissions.
+            </p>
+            <p>
+              If your cohort's variables change, or you would like to
+              update your entry, please resubmit this form or contact us
+              directly.
+            </p>
+            <p>
+              You may withdraw your cohort's entry from the catalog at any
+              time by sending written notice to Teal Eich at
+              <a class="inline-link" href="mailto:teich@usc.edu">teich@usc.edu</a>.
+            </p>
+          </li>
+        </ol>
+      </div>
+
+      <div class="info-card info-cta">
+        <h3>
+          <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 20v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
+          Ready to Contribute?
+        </h3>
+        <p>
+          Complete the contributor form to add a cohort to the Women's
+          Health Database, or to submit updates to a cohort already
+          listed.
+        </p>
+        <a
+          class="btn"
+          href="https://redcapsurveys.med.usc.edu/surveys/?s=AAYYLE78E988Y83C"
+          target="_blank"
+          rel="noopener noreferrer"
+        >Open the Contributor Form</a>
+        <p class="cta-subtext">
+          Submission of a contributor form does not guarantee inclusion.
+          Only complete forms will be reviewed. Incomplete submissions
+          will not be considered.
+        </p>
       </div>
     </section>
 
