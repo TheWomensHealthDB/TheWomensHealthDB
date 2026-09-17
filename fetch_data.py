@@ -201,10 +201,25 @@ EXCLUDED_COHORTS = [
 # here (rather than added to METADATA_COLUMNS) because they're the messy
 # raw inputs to RESOLVED_LOCATION_COLUMN, not something worth showing on
 # their own -- same reasoning as "State (if applicable)".
+#
+# The three checklist items below are listed by their *standardized* name
+# (post-HEADER_STANDARDIZATION_MAP), not their raw sheet header, since
+# get_complete_datasets() standardizes headers before applying this list.
+# Each is redundant with (or superseded by) another item that's kept:
+# "Date of menses item" and "Final Menstrual Period (FMP) date item" ask
+# for a calendar date where the corresponding age-based item ("Age at
+# menarche item" / "Age at final menstrual period item") already covers
+# the same ground, and "Pregnancy item" is redundant with "Ever pregnant
+# item". Their HEADER_STANDARDIZATION_MAP entries stay in place so a raw
+# column that maps to one of these names still gets excluded correctly
+# rather than leaking through as an ungrouped item.
 EXCLUDED_COLUMNS = [
     "State (if applicable)",
     SUBJECT_POPULATION_LOCATION_COLUMN,
     PI_LOCATION_COLUMN,
+    "Date of menses item",
+    "Final Menstrual Period (FMP) date item",
+    "Pregnancy item",
 ]
 
 # Raw-header -> standardized-header text for checklist/metadata columns
@@ -262,7 +277,7 @@ HEADER_STANDARDIZATION_MAP = {
     "breastfeeding item": "Breastfeeding item",
     "Time of breastfeeding": "Time of breastfeeding item",
     "Fertility medications to help you get pregnant item:": (
-        "Fertility medications to help you get pregnant item"
+        "Fertility medications used to help get pregnant item"
     ),
     "Menopausal status item:": "Menopausal status item",
     "Cycle regularity item:": "Cycle regularity item",
@@ -1251,7 +1266,6 @@ CHECKLIST_SECTION_GROUPS = [
         "header": "Menstrual History",
         "children": [
             "Age at menarche item",
-            "Date of menses item",
             {
                 "header": "Menstrual cycle / bleeding pattern item",
                 "children": [
@@ -1274,6 +1288,31 @@ CHECKLIST_SECTION_GROUPS = [
         "children": [
             "Hysterectomy item",
             "Oophorectomy item",
+            # The 6 items below don't have a matching column in the live
+            # sheet yet -- see PENDING_CHECKLIST_ITEMS below, which keeps
+            # them showing here (blank/"no data" for every cohort) instead
+            # of silently disappearing until the sheet catches up.
+            #
+            # These 3 items' fuller descriptive parentheticals (unilateral
+            # vs. bilateral / supracervical / total / radical / e.g.,
+            # cancer, benign condition) are dropped from the Data Inventory
+            # label itself to keep the column header short, but stay spelled
+            # out on the Items Reference tab's glossary entry for each one
+            # (see index.html) -- that's the canonical place to look up what
+            # a short item name means.
+            'Oophorectomy laterality item (if yes, for "Oophorectomy item")',
+            "Hysterectomy type item",
+            "Age at surgery item",
+            "Indication of surgery item",
+            # Enum-valued (Baseline only / Incident / Not applicable), not a
+            # plain Yes/No -- classifyValue() (dashboard-data.js) already
+            # falls back to its "Other" category (or "No data" for "Not
+            # applicable" specifically, via its EMPTY_ISH token set), with
+            # the exact text available on hover, for anything that isn't
+            # Yes/No/Partial, so this needs no special-casing to render
+            # correctly.
+            'Surgery indication only collected at baseline or also at follow-up incidents? (if yes, for "Indication of surgery item")',
+            "Intact uterine and/or ovarian status used as eligibility criterion?",
         ],
     },
     {
@@ -1286,7 +1325,6 @@ CHECKLIST_SECTION_GROUPS = [
             "Pelvic prolapse or relaxation item",
             "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item",
             "Fibroids (benign growths in the uterus or womb) item",
-            "Other women's health item",
         ],
     },
     {
@@ -1302,7 +1340,6 @@ CHECKLIST_SECTION_GROUPS = [
     {
         "header": "Pregnancy & Obstetric History",
         "children": [
-            "Pregnancy item",
             "Ever pregnant item",
             "Number pregnancies item",
             "Age at pregnancies item",
@@ -1317,14 +1354,13 @@ CHECKLIST_SECTION_GROUPS = [
     {
         "header": "Fertility Treatment",
         "children": [
-            "Fertility medications to help you get pregnant item",
-            'Type of fertility medication used (if yes, for "Fertility medications to help you get pregnant item")',
+            "Fertility medications used to help get pregnant item",
+            'Type of fertility medication used (if yes, for "Fertility medications used to help get pregnant item")',
         ],
     },
     {
         "header": "Menopause Status & Timing",
         "children": [
-            "Final Menstrual Period (FMP) date item",
             "Menopausal status item",
             "Age at menopause item",
             "Age at final menstrual period item",
@@ -1401,8 +1437,13 @@ CHECKLIST_SECTION_GROUPS = [
                     "Limited sexual opportunity item",
                 ],
             },
-            "Symptom severity items",
-            "Symptom time frame items",
+            {
+                "header": "Symptom detail items",
+                "children": [
+                    "Symptom severity items",
+                    "Symptom time frame items",
+                ],
+            },
         ],
     },
     {
@@ -1420,6 +1461,10 @@ CHECKLIST_SECTION_GROUPS = [
             "Hormone therapy frequency/duration item",
             "Hormone therapy start/stop age item",
             "Hormone therapy type item",
+            # Not a real column in the live sheet yet -- see
+            # PENDING_CHECKLIST_ITEMS below, same as Reproductive Surgical
+            # History's new items above.
+            "Hormone therapy reasons for starting (not including birth control pills) item",
             "Knowledge of hormone therapy item",
             "Views or perceptions of hormone therapy item",
             "Sources of knowledge about hormone therapy item",
@@ -1432,10 +1477,55 @@ CHECKLIST_SECTION_GROUPS = [
             "Health records linked?",
             "Cognitive data collected?",
             "Neuroimaging data collected?",
+            # Free text, not Yes/No/Partial like every other checklist item
+            # here -- classifyValue() (dashboard-data.js) already falls back
+            # to its "Other" category for anything that isn't a recognized
+            # Yes/No/Partial/empty token, so this renders correctly with no
+            # special-casing needed. Moved here (was under Gynecologic
+            # Conditions) and placed last, matching where the original
+            # document's own "Other" catch-all sits -- at the very end of
+            # the full item list.
+            "Other women's health item",
         ],
     },
 ]
 
+
+# Items named in CHECKLIST_SECTION_GROUPS above that don't have a matching
+# column in the live sheet yet (Reproductive Surgical History's 6 new items,
+# Hormone Therapy's "reasons for starting"). Without this list, build_schema()
+# would silently drop each one the moment none of a group's children are
+# present -- fine for a domain that still has other real items, but it also
+# means the item never appears anywhere (not even as an empty column) until
+# the sheet catches up. _ensure_pending_checklist_columns() below adds each
+# of these to the dataset as a blank column instead, so they show up in the
+# Women's Health Data Inventory now, correctly marked "no data" for every
+# cohort, rather than being invisible.
+#
+# Remove an item from this list once the live sheet actually has a real
+# column that standardizes to it (via HEADER_STANDARDIZATION_MAP, same as
+# any other item) -- real data will flow through normally from that point on
+# instead of this blank fallback.
+PENDING_CHECKLIST_ITEMS = [
+    'Oophorectomy laterality item (if yes, for "Oophorectomy item")',
+    "Hysterectomy type item",
+    "Age at surgery item",
+    "Indication of surgery item",
+    'Surgery indication only collected at baseline or also at follow-up incidents? (if yes, for "Indication of surgery item")',
+    "Intact uterine and/or ovarian status used as eligibility criterion?",
+    "Hormone therapy reasons for starting (not including birth control pills) item",
+]
+
+
+def _ensure_pending_checklist_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds any PENDING_CHECKLIST_ITEMS column not already present in `df`,
+    filled blank for every row -- see PENDING_CHECKLIST_ITEMS above for why.
+    """
+    for col in PENDING_CHECKLIST_ITEMS:
+        if col not in df.columns:
+            df[col] = ""
+    return df
 
 
 def build_schema(complete_df: pd.DataFrame, table_df: pd.DataFrame, is_mock_data: bool = False) -> dict:
@@ -1515,6 +1605,7 @@ def main():
         complete_datasets, COHORT_NAME_COLUMN, COMPLETE_DATASETS_TAB
     )
     table = _drop_excluded_cohorts(table, TABLE_COHORT_COLUMN, TABLE_TAB)
+    complete_datasets = _ensure_pending_checklist_columns(complete_datasets)
     cohorts = build_cohorts(complete_datasets, table)
 
     # PRECISE_LOCATION_LAT/LON_COLUMN only exist to hand a precise non-U.S.
