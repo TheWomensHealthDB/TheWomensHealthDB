@@ -270,6 +270,19 @@
             syncLandscapeChecklistHeight();
           }, 0);
         }
+
+        // The Women's Health Data Inventory / Items Reference dropdown
+        // (".nav-item-group" in index.html) opens on ":hover" OR
+        // ":focus-within" (see dashboard.css) -- picking any option in it
+        // leaves that option focused, so ":focus-within" alone keeps it
+        // open even after the mouse moves away, until something else on
+        // the page steals focus. Blurring the just-clicked button drops
+        // ":focus-within" immediately, so the dropdown closes as soon as
+        // the mouse leaves it too, same as it would for a plain hover with
+        // no click involved.
+        if (btn.closest(".nav-item-group")) {
+          btn.blur();
+        }
       });
     });
 
