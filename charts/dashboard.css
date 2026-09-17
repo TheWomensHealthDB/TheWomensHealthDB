@@ -154,10 +154,29 @@ header.app-header::before {
   margin-top: 0.2rem;
 }
 
+/* Wraps the <h1> and the domain line so they stack vertically beside the
+   logo badge -- ".brand-home-link" itself is a horizontal flex row (logo
+   badge next to this), so the title and domain need their own column to
+   stack in rather than becoming a third item laid out side-by-side. */
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
 header.app-header h1 {
-  margin: 0 0 0.3rem;
+  margin: 0 0 0.15rem;
   font-size: 1.4rem;
   letter-spacing: -0.01em;
+}
+
+/* Brand-owned domain, shown under the title -- plain text rather than a
+   real link until the domain is actually pointed at this site (see the
+   comment beside it in index.html). */
+.brand-domain {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
 }
 
 header.app-header p {
