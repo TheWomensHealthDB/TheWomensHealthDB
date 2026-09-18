@@ -14,9 +14,6 @@
   "checklist_columns": [
     "Hysterectomy item",
     "Oophorectomy item",
-    "Date of menses item",
-    "Final Menstrual Period (FMP) date item",
-    "Pregnancy item",
     "Other women's health item",
     "Age at menarche item",
     "Polycystic Ovary Syndrome (PCOS) / Polyendocrine Metabolic Ovarian Syndrome (PMOS) item",
@@ -40,8 +37,8 @@
     "Sex of live births item",
     "Breastfeeding item",
     "Time of breastfeeding item",
-    "Fertility medications to help you get pregnant item",
-    "Type of fertility medication used (if yes, for \"Fertility medications to help you get pregnant item\")",
+    "Fertility medications used to help get pregnant item",
+    "Type of fertility medication used (if yes, for \"Fertility medications used to help get pregnant item\")",
     "Menopausal status item",
     "Age at menopause item",
     "Age at final menstrual period item",
@@ -104,20 +101,27 @@
     "Hormone therapy frequency/duration item",
     "Hormone therapy start/stop age item",
     "Hormone therapy type item",
+    "Reasons why women start taking hormones (not including birth control pills) (if yes)",
     "Knowledge of hormone therapy item",
     "Views or perceptions of hormone therapy item",
     "Sources of knowledge about hormone therapy item",
     "Sex hormones/biomarkers collected?",
     "Health records linked?",
     "Cognitive data collected?",
-    "Neuroimaging data collected?"
+    "Neuroimaging data collected?",
+    "Oophorectomy laterality item (if yes, for \"Oophorectomy item\")",
+    "Hysterectomy type item",
+    "Age at surgery item",
+    "Indication of surgery item",
+    "Surgery indication only collected at baseline or also at follow-up incidents? (if yes, for \"Indication of surgery item\")",
+    "Intact uterine and/or ovarian status used as eligibility criterion?",
+    "Hormone therapy reasons for starting (not including birth control pills) item"
   ],
   "checklist_groups": [
     {
       "header": "Menstrual History",
       "children": [
         "Age at menarche item",
-        "Date of menses item",
         {
           "header": "Menstrual cycle / bleeding pattern item",
           "children": [
@@ -137,7 +141,13 @@
       "header": "Reproductive Surgical History",
       "children": [
         "Hysterectomy item",
-        "Oophorectomy item"
+        "Oophorectomy item",
+        "Oophorectomy laterality item (if yes, for \"Oophorectomy item\")",
+        "Hysterectomy type item",
+        "Age at surgery item",
+        "Indication of surgery item",
+        "Surgery indication only collected at baseline or also at follow-up incidents? (if yes, for \"Indication of surgery item\")",
+        "Intact uterine and/or ovarian status used as eligibility criterion?"
       ]
     },
     {
@@ -148,8 +158,7 @@
         "Endometriosis item",
         "Pelvic prolapse or relaxation item",
         "Pelvic cancer (cancer of the vulva, cervix, uterus, or ovaries) item",
-        "Fibroids (benign growths in the uterus or womb) item",
-        "Other women's health item"
+        "Fibroids (benign growths in the uterus or womb) item"
       ]
     },
     {
@@ -165,7 +174,6 @@
     {
       "header": "Pregnancy & Obstetric History",
       "children": [
-        "Pregnancy item",
         "Ever pregnant item",
         "Number pregnancies item",
         "Age at pregnancies item",
@@ -180,14 +188,13 @@
     {
       "header": "Fertility Treatment",
       "children": [
-        "Fertility medications to help you get pregnant item",
-        "Type of fertility medication used (if yes, for \"Fertility medications to help you get pregnant item\")"
+        "Fertility medications used to help get pregnant item",
+        "Type of fertility medication used (if yes, for \"Fertility medications used to help get pregnant item\")"
       ]
     },
     {
       "header": "Menopause Status & Timing",
       "children": [
-        "Final Menstrual Period (FMP) date item",
         "Menopausal status item",
         "Age at menopause item",
         "Age at final menstrual period item"
@@ -266,8 +273,13 @@
             "Limited sexual opportunity item"
           ]
         },
-        "Symptom severity items",
-        "Symptom time frame items"
+        {
+          "header": "Symptom detail items",
+          "children": [
+            "Symptom severity items",
+            "Symptom time frame items"
+          ]
+        }
       ]
     },
     {
@@ -285,6 +297,7 @@
         "Hormone therapy frequency/duration item",
         "Hormone therapy start/stop age item",
         "Hormone therapy type item",
+        "Hormone therapy reasons for starting (not including birth control pills) item",
         "Knowledge of hormone therapy item",
         "Views or perceptions of hormone therapy item",
         "Sources of knowledge about hormone therapy item"
@@ -296,7 +309,8 @@
         "Sex hormones/biomarkers collected?",
         "Health records linked?",
         "Cognitive data collected?",
-        "Neuroimaging data collected?"
+        "Neuroimaging data collected?",
+        "Other women's health item"
       ]
     }
   ],
