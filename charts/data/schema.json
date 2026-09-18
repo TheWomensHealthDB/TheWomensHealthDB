@@ -8,13 +8,11 @@
     "Age Range",
     "% Female",
     "Year Started/Wave Description",
-    "Hysterectomy and Oophorectomy Related Questions/Variables",
     "Location of Cohort's Participants (or of PI, if Unlisted/Multiple/Nationwide)"
   ],
   "checklist_columns": [
     "Hysterectomy item",
     "Oophorectomy item",
-    "Other women's health item",
     "Age at menarche item",
     "Polycystic Ovary Syndrome (PCOS) / Polyendocrine Metabolic Ovarian Syndrome (PMOS) item",
     "Premature Ovarian Insufficiency (POI) item",
@@ -309,8 +307,7 @@
         "Sex hormones/biomarkers collected?",
         "Health records linked?",
         "Cognitive data collected?",
-        "Neuroimaging data collected?",
-        "Other women's health item"
+        "Neuroimaging data collected?"
       ]
     }
   ],
