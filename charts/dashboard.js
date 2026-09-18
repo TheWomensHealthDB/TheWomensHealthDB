@@ -1100,6 +1100,27 @@
     return { category: "empty", label: "" };
   }
 
+  // Sorts by a rollup column -- DD.sortRecords() (dashboard-data.js) can't
+  // do this itself, since a rollup's value isn't a literal record field,
+  // it's computed per row from its member items (categoryRollupClassification()
+  // above). Ranks "yes" before "no", with "empty" always last regardless of
+  // direction -- matching DD.sortRecords()'s own empty-always-last rule for
+  // every other sortable column.
+  function sortRowsByRollup(rows, rollup, direction) {
+    var dir = direction === "desc" ? -1 : 1;
+    var rank = { yes: 0, no: 1 };
+    var copy = rows.slice();
+    copy.sort(function (a, b) {
+      var ca = categoryRollupClassification(a, rollup.members).category;
+      var cb = categoryRollupClassification(b, rollup.members).category;
+      if (ca === "empty" && cb === "empty") return 0;
+      if (ca === "empty") return 1;
+      if (cb === "empty") return -1;
+      return dir * (rank[ca] - rank[cb]);
+    });
+    return copy;
+  }
+
   // The "Domains" picker and the top-level rows of the "Checklist items"
   // picker both read/write the same state.t2SelectedDomains Set (see
   // renderChecklistItemPicker()'s domainSelectedSet parameter), so a
@@ -1637,7 +1658,54 @@
     var rows = state.cohorts.filter(function (r) {
       return state.t2SelectedCohorts.has(r[nameCol]);
     });
-    rows = DD.sortRecords(rows, state.t2Sort.column, state.t2Sort.direction);
+    // A rollup's key (see checklistCategoryRollups()) needs its own sort
+    // path -- see sortRowsByRollup()'s comment for why DD.sortRecords()
+    // can't handle it directly. Falls through to the plain rollup lookup
+    // returning undefined (e.g. the active sort was a domain since
+    // unchecked in the "Domains" picker, so it's not in `rollups` below)
+    // still resolves safely: DD.sortRecords() just reads a nonexistent
+    // field and leaves the rows in their prior order.
+    var sortRollup = rollups.filter(function (r) {
+      return r.key === state.t2Sort.column;
+    })[0];
+    rows = sortRollup
+      ? sortRowsByRollup(rows, sortRollup, state.t2Sort.direction)
+      : DD.sortRecords(rows, state.t2Sort.column, state.t2Sort.direction);
+
+    // Groups each domain's rollup together with its own selected specific
+    // items immediately after it, rather than showing every rollup first
+    // and every specific item afterward in one flat trailing block --
+    // reads as "one domain's worth of columns, then the next domain's"
+    // instead of two unrelated-looking column blocks. Built from the
+    // FULL (unfiltered-by-selection) rollup list -- see
+    // checklistCategoryRollups() -- so a domain's items still group
+    // correctly under its own would-be rollup position even when that
+    // domain's own rollup checkbox happens to be off (the "Checklist
+    // Items" picker lets a specific item be checked independently of its
+    // domain's own checkbox -- see renderChecklistItemPicker()). Any
+    // selected item that isn't a member of any known domain (shouldn't
+    // happen with the current taxonomy) still gets a rollup-less trailing
+    // group of its own rather than silently vanishing.
+    var columnGroups = [];
+    var groupedItems = {};
+    checklistCategoryRollups().forEach(function (rollup) {
+      var showRollup = state.t2SelectedDomains.has(rollup.label);
+      var domainItems = rollup.members.filter(function (m) {
+        return state.t2SelectedColumns.has(m);
+      });
+      domainItems.forEach(function (m) {
+        groupedItems[m] = true;
+      });
+      if (showRollup || domainItems.length) {
+        columnGroups.push({ rollup: showRollup ? rollup : null, items: domainItems });
+      }
+    });
+    var leftoverItems = columns.filter(function (c) {
+      return !groupedItems[c];
+    });
+    if (leftoverItems.length) {
+      columnGroups.push({ rollup: null, items: leftoverItems });
+    }
 
     var thead = table.querySelector("thead");
     var tbody = table.querySelector("tbody");
@@ -1660,44 +1728,48 @@
     wireSortableHeader(cornerTh, nameCol, state.t2Sort, renderTable2Body);
     headRow.appendChild(cornerTh);
 
-    // Rollup columns aren't sortable -- there's no real record field behind
-    // a rollup's synthetic key for DD.sortRecords() to read (see
-    // categoryRollupClassification()), and a "which domain has more yeses"
-    // ordering isn't a meaningful question the way sorting a real column
-    // is -- so these headers skip wireSortableHeader() entirely (no sort
-    // icon, no click handler).
-    rollups.forEach(function (rollup) {
-      var th = document.createElement("th");
-      th.className = "rollup-col-header";
-      var label = document.createElement("span");
-      label.className = "th-label";
-      label.textContent = softHyphenateLabel(rollup.label);
-      th.appendChild(label);
-      th.title = rollup.label + " \u2014 \"yes\" if any item in this domain is tracked";
-      headRow.appendChild(th);
-    });
+    // Rollup columns are sortable too, same click-to-sort UI as every
+    // other header -- wireSortableHeader() itself doesn't care that a
+    // rollup's "column" isn't a literal record field, only the actual sort
+    // in sortRowsByRollup() below needs to know that (see its own comment).
+    // `rollup.key` (not `.label`) is the sort/picker identifier here since
+    // it's guaranteed not to collide with any real checklist_columns name.
+    columnGroups.forEach(function (group) {
+      if (group.rollup) {
+        var rollupTh = document.createElement("th");
+        rollupTh.className = "rollup-col-header";
+        var rollupLabel = document.createElement("span");
+        rollupLabel.className = "th-label";
+        rollupLabel.textContent = softHyphenateLabel(group.rollup.label);
+        rollupTh.appendChild(rollupLabel);
+        rollupTh.title =
+          group.rollup.label + " \u2014 \"yes\" if any item in this domain is tracked \u2014 click to sort";
+        wireSortableHeader(rollupTh, group.rollup.key, state.t2Sort, renderTable2Body);
+        headRow.appendChild(rollupTh);
+      }
 
-    columns.forEach(function (col) {
-      var th = document.createElement("th");
-      // The label text lives in its own inner span rather than directly on
-      // the <th> -- see the ".th-label" rule in dashboard.css.
-      var label = document.createElement("span");
-      label.className = "th-label";
-      // Soft-hyphenated version of the column name -- see
-      // softHyphenateLabel() above -- so a long word wrapping onto a
-      // second line inside this narrow column shows a visible hyphen at
-      // the break instead of silently splitting mid-word. A soft hyphen
-      // (U+00AD) is a real character, not markup, so this is still safe
-      // to set via textContent.
-      label.textContent = softHyphenateLabel(col);
-      th.appendChild(label);
-      // Keep the full (non-hyphenated) column name as the native tooltip
-      // -- it's still useful on its own for a hyphenated/wrapped label --
-      // and add the "click to sort" hint alongside it rather than
-      // replacing it outright.
-      th.title = col + " \u2014 click to sort";
-      wireSortableHeader(th, col, state.t2Sort, renderTable2Body);
-      headRow.appendChild(th);
+      group.items.forEach(function (col) {
+        var th = document.createElement("th");
+        // The label text lives in its own inner span rather than directly
+        // on the <th> -- see the ".th-label" rule in dashboard.css.
+        var label = document.createElement("span");
+        label.className = "th-label";
+        // Soft-hyphenated version of the column name -- see
+        // softHyphenateLabel() above -- so a long word wrapping onto a
+        // second line inside this narrow column shows a visible hyphen at
+        // the break instead of silently splitting mid-word. A soft hyphen
+        // (U+00AD) is a real character, not markup, so this is still safe
+        // to set via textContent.
+        label.textContent = softHyphenateLabel(col);
+        th.appendChild(label);
+        // Keep the full (non-hyphenated) column name as the native tooltip
+        // -- it's still useful on its own for a hyphenated/wrapped label --
+        // and add the "click to sort" hint alongside it rather than
+        // replacing it outright.
+        th.title = col + " \u2014 click to sort";
+        wireSortableHeader(th, col, state.t2Sort, renderTable2Body);
+        headRow.appendChild(th);
+      });
     });
     thead.appendChild(headRow);
 
@@ -1729,41 +1801,43 @@
         });
         tr.appendChild(nameTd);
 
-        rollups.forEach(function (rollup) {
-          var td = document.createElement("td");
-          var classified = categoryRollupClassification(r, rollup.members);
-          var chip = document.createElement("span");
-          chip.className = "chip cat-" + classified.category;
-          attachTooltip(
-            chip,
-            rollup.label + ": " + (classified.label || "(no data)"),
-            500
-          );
-          chip.textContent = chipSymbol(classified.category, classified.label);
-          // The cell's visible glyph (Y/N/~/T) is too compact to be useful
-          // in an exported file -- see collectTableExportData() -- so
-          // exports read this attribute instead and get the same full
-          // text the chip's own tooltip above already shows.
-          td.setAttribute("data-export-value", classified.label || "");
-          td.appendChild(chip);
-          tr.appendChild(td);
-        });
+        columnGroups.forEach(function (group) {
+          if (group.rollup) {
+            var rollupTd = document.createElement("td");
+            var rollupClassified = categoryRollupClassification(r, group.rollup.members);
+            var rollupChip = document.createElement("span");
+            rollupChip.className = "chip cat-" + rollupClassified.category;
+            attachTooltip(
+              rollupChip,
+              group.rollup.label + ": " + (rollupClassified.label || "(no data)"),
+              500
+            );
+            rollupChip.textContent = chipSymbol(rollupClassified.category, rollupClassified.label);
+            // The cell's visible glyph (Y/N/~/T) is too compact to be
+            // useful in an exported file -- see collectTableExportData()
+            // -- so exports read this attribute instead and get the same
+            // full text the chip's own tooltip above already shows.
+            rollupTd.setAttribute("data-export-value", rollupClassified.label || "");
+            rollupTd.appendChild(rollupChip);
+            tr.appendChild(rollupTd);
+          }
 
-        columns.forEach(function (col) {
-          var td = document.createElement("td");
-          var classified = DD.classifyValue(r[col]);
-          var chip = document.createElement("span");
-          chip.className = "chip cat-" + classified.category;
-          // A shorter (500ms), but still not-instant, custom tooltip --
-          // see attachTooltip() above -- so quickly passing the mouse
-          // across a row of chips doesn't spam a tooltip for every cell,
-          // while still being noticeably faster than the native `title`
-          // default. Only the cohort name cell (see above) is instant.
-          attachTooltip(chip, col + ": " + (classified.label || "(no data)"), 500);
-          chip.textContent = chipSymbol(classified.category, classified.label);
-          td.setAttribute("data-export-value", classified.label || "");
-          td.appendChild(chip);
-          tr.appendChild(td);
+          group.items.forEach(function (col) {
+            var td = document.createElement("td");
+            var classified = DD.classifyValue(r[col]);
+            var chip = document.createElement("span");
+            chip.className = "chip cat-" + classified.category;
+            // A shorter (500ms), but still not-instant, custom tooltip --
+            // see attachTooltip() above -- so quickly passing the mouse
+            // across a row of chips doesn't spam a tooltip for every cell,
+            // while still being noticeably faster than the native `title`
+            // default. Only the cohort name cell (see above) is instant.
+            attachTooltip(chip, col + ": " + (classified.label || "(no data)"), 500);
+            chip.textContent = chipSymbol(classified.category, classified.label);
+            td.setAttribute("data-export-value", classified.label || "");
+            td.appendChild(chip);
+            tr.appendChild(td);
+          });
         });
         tbody.appendChild(tr);
       });
