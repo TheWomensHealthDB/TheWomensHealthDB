@@ -13,6 +13,12 @@
   "checklist_columns": [
     "Hysterectomy item",
     "Oophorectomy item",
+    "(If oophorectomy = Yes) Does it distinguish unilateral vs. bilateral (laterality)?",
+    "Does it distinguish hysterectomy type (supracervical / total / radical)?",
+    "Is age at surgery recorded?",
+    "Is indication of surgery recorded (e.g., cancer, benign condition)?",
+    "Is surgery captured at baseline only?",
+    "Was intact uterine and/or ovarian status used as an enrollment eligibility criterion?",
     "Age at menarche item",
     "Polycystic Ovary Syndrome (PCOS) / Polyendocrine Metabolic Ovarian Syndrome (PMOS) item",
     "Premature Ovarian Insufficiency (POI) item",
@@ -29,7 +35,7 @@
     "Ever pregnant item",
     "Number pregnancies item",
     "Age at pregnancies item",
-    "Type of pregnancy item",
+    "Outcome of Pregnancy item",
     "Complications of pregnancy item",
     "Number of live births item",
     "Sex of live births item",
@@ -103,7 +109,8 @@
     "Knowledge of hormone therapy item",
     "Views or perceptions of hormone therapy item",
     "Sources of knowledge about hormone therapy item",
-    "Sex hormones/biomarkers collected?",
+    "Sex Hormones Collected?",
+    "Biomarkers collected?",
     "Health records linked?",
     "Cognitive data collected?",
     "Neuroimaging data collected?",
@@ -175,7 +182,6 @@
         "Ever pregnant item",
         "Number pregnancies item",
         "Age at pregnancies item",
-        "Type of pregnancy item",
         "Complications of pregnancy item",
         "Number of live births item",
         "Sex of live births item",
@@ -304,7 +310,6 @@
     {
       "header": "Cognitive / Imaging / Biological / Health Record Linked Data",
       "children": [
-        "Sex hormones/biomarkers collected?",
         "Health records linked?",
         "Cognitive data collected?",
         "Neuroimaging data collected?"
