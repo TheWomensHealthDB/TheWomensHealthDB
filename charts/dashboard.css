@@ -1776,6 +1776,59 @@ table.matrix-table td.cohort-cell:hover {
 .filter-row .remove-condition:hover {
   background: #fbe9e7;
 }
+/* "is any of": a collapsible checklist of the field's existing values. */
+.filter-multi {
+  position: relative;
+  min-width: 12rem;
+}
+.filter-multi summary {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  background: #fff;
+  list-style: none;
+}
+.filter-multi summary::-webkit-details-marker {
+  display: none;
+}
+.filter-multi summary::after {
+  content: " \25BE";
+}
+.filter-multi-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 2px);
+  left: 0;
+  min-width: 100%;
+  max-width: min(28rem, 90vw);
+  max-height: 16rem;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 0.3rem 0;
+}
+.filter-multi-list label {
+  display: block;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filter-multi-list label:hover {
+  background: #f5f5f5;
+}
+/* "is between": two number boxes joined by "and". */
+.filter-between {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.filter-between input[type="number"],
+.filter-row > input[type="number"] {
+  width: 7rem;
+}
 
 /* ---------------------------------------------------------------------
    Map

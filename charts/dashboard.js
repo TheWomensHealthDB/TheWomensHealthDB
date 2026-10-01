@@ -840,14 +840,6 @@
   function t1Columns() {
     if (T1_COLUMNS) return T1_COLUMNS;
     var procCol = state.schema.procedure_separation_type_column;
-    // These six don't correspond to any column fetch_data.py currently
-    // pulls from the spreadsheet -- there's no source data for them yet,
-    // by design (see the "Reproductive Surgical History" discussion this
-    // table was built from). Their `key` intentionally matches no record
-    // field, so every cohort's cell renders blank (DD.formatValue(undefined)
-    // -- see dashboard-data.js) rather than a misleading "No", until real
-    // columns exist to back them.
-    var PENDING_NOTE = "Not yet collected in this database";
     // `narrow: true` on every column but Cohort Name -- their labels (e.g.
     // "Distinguishes laterality (unilateral vs. bilateral)?") run much
     // longer than their actual cell content (a short Yes/No/Type N/blank),
@@ -867,16 +859,17 @@
       { key: "% Female", label: "% Female", narrow: true },
       // Reproductive Surgical History -- the same distinctions behind each
       // cohort's Hysterectomy Inference Types classification, broken out
-      // into individual yes/no questions. Only the first two currently
-      // have real source data (see PENDING_NOTE above for the rest).
+      // into individual yes/no questions. Each `key` is the item's Data
+      // Inventory name (see HEADER_STANDARDIZATION_MAP in fetch_data.py);
+      // the last six `label`s are the raw sheet's own question wording.
       { key: "Hysterectomy item", label: "Asks about hysterectomy?", narrow: true },
       { key: "Oophorectomy item", label: "Asks about oophorectomy?", narrow: true },
-      { key: "Distinguishes laterality (unilateral vs. bilateral)", label: "Distinguishes laterality (unilateral vs. bilateral)?", note: PENDING_NOTE, narrow: true },
-      { key: "Distinguishes hysterectomy type (supracervical / total / radical)", label: "Distinguishes hysterectomy type (supracervical / total / radical)?", note: PENDING_NOTE, narrow: true },
-      { key: "Age at surgery recorded", label: "Age at surgery recorded?", note: PENDING_NOTE, narrow: true },
-      { key: "Indication of surgery recorded", label: "Indication of surgery recorded?", note: PENDING_NOTE, narrow: true },
-      { key: "Surgery captured at baseline only or also as incident events", label: "Baseline only or also incident?", note: PENDING_NOTE, narrow: true },
-      { key: "Intact uterine / ovarian status used as enrollment eligibility criterion", label: "Used as enrollment eligibility criterion?", note: PENDING_NOTE, narrow: true },
+      { key: 'Oophorectomy laterality item (if yes, for "Oophorectomy item")', label: "Distinguishes laterality (unilateral vs. bilateral)?", narrow: true },
+      { key: "Hysterectomy type item", label: "Distinguishes hysterectomy type (supracervical / total / radical)?", narrow: true },
+      { key: "Age at surgery item", label: "Age at surgery recorded?", narrow: true },
+      { key: "Indication of surgery item", label: "Indication of surgery recorded (e.g., cancer, benign condition)?", narrow: true },
+      { key: "Surgery captured at baseline only?", label: "Is surgery captured at baseline only?", narrow: true },
+      { key: "Intact uterine and/or ovarian status used as eligibility criterion?", label: "Was intact uterine and/or ovarian status used as an enrollment eligibility criterion?", narrow: true },
     ];
     return T1_COLUMNS;
   }
@@ -1989,17 +1982,17 @@
       return null;
     }
     if (!payload || !Array.isArray(payload.conditions)) return null;
+    // DD.normalizeCondition() also translates links made before the
+    // per-field-type operators (equals / contains / is empty ...) onto
+    // their closest current equivalent, dropping is empty / is not empty.
     var conditions = payload.conditions
-      .filter(function (c) {
-        return c && typeof c.field === "string" && typeof c.operator === "string";
-      })
       .map(function (c) {
-        return {
-          id: state.t3ConditionIdSeq++,
-          field: c.field,
-          operator: c.operator,
-          value: typeof c.value === "string" ? c.value : "",
-        };
+        return c && typeof c.operator === "string" ? DD.normalizeCondition(c) : null;
+      })
+      .filter(Boolean)
+      .map(function (c) {
+        c.id = state.t3ConditionIdSeq++;
+        return c;
       });
     if (!conditions.length) return null;
     return { mode: payload.mode === "any" ? "any" : "all", conditions: conditions };
@@ -2040,13 +2033,7 @@
     wireTable3Share();
     if (addBtn && !addBtn._wired) {
       addBtn.addEventListener("click", function () {
-        var fields = t3AllFields();
-        state.t3Conditions.push({
-          id: state.t3ConditionIdSeq++,
-          field: fields[0] || "",
-          operator: "equals",
-          value: "",
-        });
+        state.t3Conditions.push(newT3Condition(t3AllFields()[0] || ""));
         renderTable3Conditions();
         renderTable3();
       });
@@ -2061,12 +2048,7 @@
     }
     // Start with one condition row so the UI isn't empty.
     if (state.t3Conditions.length === 0) {
-      state.t3Conditions.push({
-        id: state.t3ConditionIdSeq++,
-        field: t3AllFields()[0] || "",
-        operator: "equals",
-        value: "",
-      });
+      state.t3Conditions.push(newT3Condition(t3AllFields()[0] || ""));
     }
     renderTable3Conditions();
   }
@@ -2082,6 +2064,7 @@
       row.className = "filter-row";
 
       var fieldSelect = document.createElement("select");
+      fieldSelect.setAttribute("aria-label", "Field");
       fields.forEach(function (f) {
         var opt = document.createElement("option");
         opt.value = f;
@@ -2090,13 +2073,19 @@
         fieldSelect.appendChild(opt);
       });
       fieldSelect.addEventListener("change", function () {
+        // A different field can mean a different kind of value (number,
+        // age range, category, text) -- start over with that kind's first
+        // operator and a blank value.
         cond.field = fieldSelect.value;
-        refreshDatalist();
+        cond.operator = DD.operatorsFor(cond.field)[0];
+        cond.value = defaultConditionValue(cond.operator);
+        renderTable3Conditions();
         renderTable3();
       });
 
       var opSelect = document.createElement("select");
-      DD.OPERATORS.forEach(function (op) {
+      opSelect.setAttribute("aria-label", "Condition");
+      DD.operatorsFor(cond.field).forEach(function (op) {
         var opt = document.createElement("option");
         opt.value = op;
         opt.textContent = operatorLabel(op);
@@ -2104,51 +2093,27 @@
         opSelect.appendChild(opt);
       });
       opSelect.addEventListener("change", function () {
+        var prev = cond.operator;
         cond.operator = opSelect.value;
-        valueInput.style.display = op_needsValue(cond.operator) ? "" : "none";
+        // Keep a single picked value when switching between is / is not /
+        // is any of, so the user doesn't lose their selection.
+        var prevList = Array.isArray(cond.value) ? cond.value : cond.value ? [cond.value] : [];
+        if (cond.operator === "is_any_of") {
+          cond.value = prev === "between" ? [] : prevList;
+        } else if (cond.operator === "between") {
+          cond.value = ["", ""];
+        } else {
+          cond.value = prev === "between" ? "" : prevList[0] || "";
+        }
+        renderTable3Conditions();
         renderTable3();
       });
-
-      var valueInput = document.createElement("input");
-      valueInput.type = "text";
-      valueInput.placeholder = "value";
-      valueInput.title =
-        "Start typing to see existing values for this field. Close " +
-        "matches (different spacing/punctuation, minor typos, numbers " +
-        "inside a range) are still found even if you don't pick one.";
-      valueInput.setAttribute("autocomplete", "off");
-      valueInput.value = cond.value;
-      valueInput.style.display = op_needsValue(cond.operator) ? "" : "none";
-      valueInput.addEventListener("input", function () {
-        cond.value = valueInput.value;
-        renderTable3();
-      });
-
-      // Native <datalist> autocomplete: shows the actual values present in
-      // the currently-selected field as a dropdown while typing, so you
-      // can see what's available instead of having to guess exact
-      // spelling/formatting. Kept in sync whenever the field changes.
-      var datalist = document.createElement("datalist");
-      var datalistId = "t3-options-" + cond.id;
-      datalist.id = datalistId;
-      valueInput.setAttribute("list", datalistId);
-
-      function refreshDatalist() {
-        datalist.innerHTML = "";
-        if (!cond.field) return;
-        DD.uniqueValues(state.cohorts, cond.field).forEach(function (val) {
-          var opt = document.createElement("option");
-          opt.value = val;
-          datalist.appendChild(opt);
-        });
-      }
-      refreshDatalist();
 
       var removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.className = "remove-condition";
       removeBtn.title = "Remove condition";
-      removeBtn.textContent = "\u2715";
+      removeBtn.textContent = "✕";
       removeBtn.addEventListener("click", function () {
         state.t3Conditions = state.t3Conditions.filter(function (c) {
           return c.id !== cond.id;
@@ -2159,27 +2124,142 @@
 
       row.appendChild(fieldSelect);
       row.appendChild(opSelect);
-      row.appendChild(valueInput);
-      row.appendChild(datalist);
+      row.appendChild(buildConditionValueInput(cond));
       row.appendChild(removeBtn);
       container.appendChild(row);
     });
   }
 
-  function op_needsValue(op) {
-    return op !== "is_empty" && op !== "is_not_empty";
+  function defaultConditionValue(op) {
+    if (op === "is_any_of") return [];
+    if (op === "between") return ["", ""];
+    return "";
+  }
+
+  function newT3Condition(field) {
+    var op = DD.operatorsFor(field)[0];
+    return { id: state.t3ConditionIdSeq++, field: field, operator: op, value: defaultConditionValue(op) };
+  }
+
+  // The value control for one condition row, matched to its operator:
+  // a dropdown of the field's existing values (is / is not), a checklist
+  // of them (is any of), one or two number boxes (number and age-range
+  // operators), or a text box (contains / does not contain).
+  function buildConditionValueInput(cond) {
+    var op = cond.operator;
+    var kind = DD.fieldKind(cond.field);
+
+    if (op === "is" || op === "is_not") {
+      var select = document.createElement("select");
+      select.setAttribute("aria-label", "Value");
+      var placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Choose a value…";
+      select.appendChild(placeholder);
+      DD.uniqueValues(state.cohorts, cond.field).forEach(function (val) {
+        var opt = document.createElement("option");
+        opt.value = val;
+        opt.textContent = val;
+        if (String(cond.value).trim().toLowerCase() === val.toLowerCase()) opt.selected = true;
+        select.appendChild(opt);
+      });
+      select.addEventListener("change", function () {
+        cond.value = select.value;
+        renderTable3();
+      });
+      return select;
+    }
+
+    if (op === "is_any_of") {
+      var picked = Array.isArray(cond.value) ? cond.value : [];
+      var details = document.createElement("details");
+      details.className = "filter-multi";
+      var summary = document.createElement("summary");
+      var updateSummary = function () {
+        summary.textContent = picked.length
+          ? picked.length === 1 ? picked[0] : picked.length + " values selected"
+          : "Choose values…";
+      };
+      updateSummary();
+      details.appendChild(summary);
+      var list = document.createElement("div");
+      list.className = "filter-multi-list";
+      DD.uniqueValues(state.cohorts, cond.field).forEach(function (val) {
+        var label = document.createElement("label");
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = picked.some(function (p) { return p.toLowerCase() === val.toLowerCase(); });
+        cb.addEventListener("change", function () {
+          picked = picked.filter(function (p) { return p.toLowerCase() !== val.toLowerCase(); });
+          if (cb.checked) picked.push(val);
+          cond.value = picked.slice();
+          updateSummary();
+          renderTable3();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + val));
+        list.appendChild(label);
+      });
+      details.appendChild(list);
+      return details;
+    }
+
+    if (kind === "number" || kind === "age_range") {
+      var makeNumber = function (initial, aria, onInput) {
+        var input = document.createElement("input");
+        input.type = "number";
+        input.min = "0";
+        input.step = "any";
+        input.placeholder = kind === "age_range" ? "age" : "number";
+        input.setAttribute("aria-label", aria);
+        input.value = initial;
+        input.addEventListener("input", function () {
+          onInput(input.value);
+          renderTable3();
+        });
+        return input;
+      };
+      if (op === "between") {
+        var pair = Array.isArray(cond.value) ? cond.value : ["", ""];
+        cond.value = pair;
+        var wrap = document.createElement("span");
+        wrap.className = "filter-between";
+        wrap.appendChild(makeNumber(pair[0], "Low value", function (v) { pair[0] = v; }));
+        var and = document.createElement("span");
+        and.textContent = "and";
+        wrap.appendChild(and);
+        wrap.appendChild(makeNumber(pair[1], "High value", function (v) { pair[1] = v; }));
+        return wrap;
+      }
+      return makeNumber(cond.value, "Value", function (v) { cond.value = v; });
+    }
+
+    var textInput = document.createElement("input");
+    textInput.type = "text";
+    textInput.placeholder = "text";
+    textInput.setAttribute("aria-label", "Value");
+    textInput.setAttribute("autocomplete", "off");
+    textInput.value = cond.value;
+    textInput.addEventListener("input", function () {
+      cond.value = textInput.value;
+      renderTable3();
+    });
+    return textInput;
   }
 
   function operatorLabel(op) {
     var labels = {
-      equals: "equals",
-      not_equals: "does not equal",
-      contains: "contains",
-      not_contains: "does not contain",
+      is: "is",
+      is_not: "is not",
+      is_any_of: "is any of",
       greater_than: "is greater than",
       less_than: "is less than",
-      is_empty: "is empty",
-      is_not_empty: "is not empty",
+      between: "is between",
+      includes_age: "includes age",
+      min_age_at_least: "minimum age is at least",
+      max_age_at_most: "maximum age is at most",
+      contains: "contains",
+      not_contains: "does not contain",
     };
     return labels[op] || op;
   }
@@ -2189,35 +2269,11 @@
     var countEl = document.getElementById("t3-result-count");
     if (!table) return;
 
-    // A condition only actually filters anything once it's "complete": it
-    // has a field, and if its operator needs a value (most do -- is_empty /
-    // is_not_empty don't), that value has been entered. Otherwise an
-    // unfinished row (e.g. the default blank condition on first load) would
-    // make every cohort look like a non-match, which is confusing.
-    var activeConditions = state.t3Conditions
-      .filter(function (c) {
-        if (!c.field) return false;
-        if (op_needsValue(c.operator) && (!c.value || !c.value.trim())) return false;
-        return true;
-      })
-      .map(function (c) {
-        // "equals"/"not_equals" only get DD._matchesEquals()'s tolerant
-        // typo/formatting fallback when the value wasn't picked verbatim
-        // from this field's own list of real existing values (its value
-        // input's <datalist> -- see renderTable3Conditions()) -- an exact
-        // value should match that value alone, not anything merely close
-        // to it (e.g. one cohort name shouldn't match a *different*
-        // cohort's name just because most of the string happens to be the
-        // same). A plain object copy (not mutating `c`/state.t3Conditions
-        // itself) since this flag is only meaningful for this one
-        // evaluation pass.
-        if (c.operator !== "equals" && c.operator !== "not_equals") return c;
-        var exact = DD.uniqueValues(state.cohorts, c.field).some(function (v) {
-          return v.toLowerCase() === c.value.trim().toLowerCase();
-        });
-        if (!exact) return c;
-        return { id: c.id, field: c.field, operator: c.operator, value: c.value, exactValue: true };
-      });
+    // A condition only filters once it's complete (see
+    // DD.isConditionComplete()) -- otherwise an unfinished row, like the
+    // blank starter row on first load, would hide every cohort.
+    var activeConditions = state.t3Conditions.filter(DD.isConditionComplete);
+
 
     var rows = state.cohorts.filter(function (r) {
       return DD.evaluateGroup(r, activeConditions, state.t3Mode);

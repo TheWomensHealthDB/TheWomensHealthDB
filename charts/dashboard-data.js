@@ -240,252 +240,167 @@
     return parseFloat(match[0]);
   }
 
+  // ---------------------------------------------------------------------
+  // Custom Filter: field kinds and operators
+  // ---------------------------------------------------------------------
+  // Each Custom Filter field gets only the operators that make sense for
+  // its kind of value, instead of one shared list for every field:
+  //   - "number":    numeric fields (N, % Female) -- compared as numbers
+  //                  via parseNumeric(), so "~10,242" and "49.50%" work.
+  //   - "age_range": Age Range -- "40-60", "~18-73", or open-ended "≥18".
+  //   - "text":      still-free-text fields, searched by substring.
+  //   - "category":  everything else (every Data Inventory item, Public
+  //                  Availability, Country, Hysterectomy Inference Types,
+  //                  ...) -- matched exactly against values picked from
+  //                  the field's own list of existing values.
+  // "Year Started/Wave Description" is text for now; once it's split into
+  // a numeric year column and a wave description column, add the year
+  // column to NUMBER_FIELDS.
+  var NUMBER_FIELDS = ["Sample Size (N)", "% Female"];
+  var AGE_RANGE_FIELDS = ["Age Range"];
+  var TEXT_FIELDS = ["Year Started/Wave Description"];
+
+  var OPERATORS_BY_KIND = {
+    category: ["is", "is_not", "is_any_of"],
+    number: ["greater_than", "less_than", "between"],
+    age_range: ["includes_age", "min_age_at_least", "max_age_at_most"],
+    text: ["contains", "not_contains"],
+  };
+
+  function fieldKind(field) {
+    if (NUMBER_FIELDS.indexOf(field) !== -1) return "number";
+    if (AGE_RANGE_FIELDS.indexOf(field) !== -1) return "age_range";
+    if (TEXT_FIELDS.indexOf(field) !== -1) return "text";
+    return "category";
+  }
+
+  function operatorsFor(field) {
+    return OPERATORS_BY_KIND[fieldKind(field)];
+  }
+
   /**
-   * Pull every numeric token out of a string, in order. Used for
-   * loosely-formatted "pair" or "range" fields like Age Range ("40-60")
-   * or %male/%female ("0/100"). See parseNumeric() above for why the
-   * regex excludes a "-" immediately after another digit.
+   * Parse an Age Range cell into {min, max}. Handles "40-60", "~18-73"
+   * (the "~" is ignored), open-ended "≥18" / "18+" (max = Infinity),
+   * "≤17" (min = 0), and a lone number (min = max). Returns null if no
+   * number is present.
    */
-  function _extractNumbers(value) {
+  function parseAgeRange(value) {
     var s = value === null || value === undefined ? "" : String(value).replace(/,/g, "");
-    var matches = s.match(/(?<!\d)-?\d+(\.\d+)?/g);
-    if (!matches) return [];
-    return matches.map(function (m) {
-      return parseFloat(m);
-    });
-  }
-
-  /**
-   * Lowercase + strip common formatting noise (%, ~, =, commas, stray
-   * punctuation) so values like "45%" and "45", or "N = 120" and "120",
-   * compare equal. Hyphens, slashes, and periods are kept since they're
-   * meaningful inside ranges/decimals (e.g. "40-60", "0/100").
-   */
-  function _normalizeLoose(value) {
-    var s = value === null || value === undefined ? "" : String(value);
-    s = s.toLowerCase();
-    s = s.replace(/[%~=]/g, " ");
-    s = s.replace(/,/g, "");
-    s = s.replace(/[^a-z0-9\s\-\/.]/g, " ");
-    s = s.replace(/\s+/g, " ").trim();
-    return s;
-  }
-
-  /** Classic Levenshtein (edit) distance between two strings. */
-  function _levenshtein(a, b) {
-    if (a === b) return 0;
-    var al = a.length,
-      bl = b.length;
-    if (al === 0) return bl;
-    if (bl === 0) return al;
-    var prev = new Array(bl + 1);
-    var curr = new Array(bl + 1);
-    for (var j = 0; j <= bl; j++) prev[j] = j;
-    for (var i = 1; i <= al; i++) {
-      curr[0] = i;
-      for (var k = 1; k <= bl; k++) {
-        var cost = a.charAt(i - 1) === b.charAt(k - 1) ? 0 : 1;
-        curr[k] = Math.min(curr[k - 1] + 1, prev[k] + 1, prev[k - 1] + cost);
-      }
-      var tmp = prev;
-      prev = curr;
-      curr = tmp;
+    var nums = (s.match(/\d+(\.\d+)?/g) || []).map(parseFloat);
+    if (!nums.length) return null;
+    if (nums.length >= 2) {
+      return { min: Math.min(nums[0], nums[1]), max: Math.max(nums[0], nums[1]) };
     }
-    return prev[bl];
+    if (/[≥>]|\+/.test(s)) return { min: nums[0], max: Infinity };
+    if (/[≤<]/.test(s)) return { min: 0, max: nums[0] };
+    return { min: nums[0], max: nums[0] };
   }
 
-  /**
-   * True if two already-normalized *whole-value* strings are the same or
-   * a small edit-distance apart (scaled to length, so short fields like
-   * "Yes"/"No" don't get too loose while longer free-text fields tolerate
-   * a couple of character-level typos/differences). Deliberately does NOT
-   * treat "one contains the other" as a match -- that's too loose for an
-   * "equals" comparison (e.g. a search for "100" shouldn't equals-match a
-   * cell of "0/100"; that's what the "contains" operator is for).
-   */
-  function _closeEnoughStrict(a, b) {
-    if (a === b) return true;
-    if (a === "" || b === "") return false;
-    var maxLen = Math.max(a.length, b.length);
-    var threshold = maxLen <= 4 ? 1 : Math.max(1, Math.round(maxLen * 0.2));
-    return _levenshtein(a, b) <= threshold;
+  function _norm(value) {
+    return value === null || value === undefined ? "" : String(value).trim().toLowerCase();
   }
 
-  /**
-   * Same idea as _closeEnoughStrict, but also treats one string containing
-   * the other as a match. Used for word/token-level fuzzy fallback inside
-   * "contains", where substring containment is exactly what's wanted.
-   */
-  function _closeEnough(a, b) {
-    if (a === b) return true;
-    if (a === "" || b === "") return false;
-    if (a.length >= 3 && b.length >= 3 && (a.indexOf(b) !== -1 || b.indexOf(a) !== -1)) {
-      return true;
+  function _valueList(value) {
+    if (Array.isArray(value)) {
+      return value.map(function (v) { return String(v).trim(); }).filter(Boolean);
     }
-    var maxLen = Math.max(a.length, b.length);
-    var threshold = maxLen <= 4 ? 1 : Math.max(1, Math.round(maxLen * 0.2));
-    return _levenshtein(a, b) <= threshold;
+    var s = value === null || value === undefined ? "" : String(value).trim();
+    return s ? [s] : [];
   }
 
   /**
-   * Tolerant "equals": exact match first, then formatting-normalized
-   * match, then numeric-set match (so "100" matches a cell of "0/100",
-   * "40-60" matches "40 to 60 years", etc.), then a fuzzy fallback for
-   * typos/small differences.
-   *
-   * `strict`, when true, stops after the plain case-insensitive exact
-   * match and skips every tolerant fallback below it, including the
-   * Levenshtein-based one -- used when `target` was picked verbatim from
-   * (or otherwise exactly matches) the field's own list of real existing
-   * values (see evaluateCondition()'s `exactValue` handling), where a
-   * "close enough" match is actively wrong, not just generous: e.g. the
-   * fuzzy fallback's edit-distance threshold scales with the *whole*
-   * string's length, so two long, mostly-identical cohort names that
-   * differ only in their first word -- "Apple Women's Health Study" vs
-   * "NYU Women's Health Study" -- fell well within it and matched each
-   * other, even though the user picked one specific, exact name. */
-  function _matchesEquals(text, target, strict) {
-    var t = target.trim();
-    if (t === "") return text.trim() === "";
-    if (text.trim().toLowerCase() === t.toLowerCase()) return true;
-    if (strict) return false;
+   * True once a condition has everything its operator needs (a field, and
+   * a value -- two values for "between"). Incomplete rows, like the blank
+   * starter row, are skipped rather than filtering everything out.
+   */
+  function isConditionComplete(condition) {
+    if (!condition || !condition.field || !condition.operator) return false;
+    var values = _valueList(condition.value);
+    if (condition.operator === "between") {
+      return Array.isArray(condition.value) && condition.value.length === 2 &&
+        !isNaN(parseNumeric(condition.value[0])) && !isNaN(parseNumeric(condition.value[1]));
+    }
+    return values.length > 0;
+  }
 
-    var normText = _normalizeLoose(text);
-    var normTarget = _normalizeLoose(t);
-    if (normText === normTarget) return true;
+  /**
+   * Coerce a condition (e.g. from an older shared link, which used the
+   * previous equals/contains/is-empty operators) onto an operator that's
+   * valid for its field's kind. Returns null for conditions that no longer
+   * have an equivalent (is empty / is not empty).
+   */
+  function normalizeCondition(condition) {
+    if (!condition || typeof condition.field !== "string") return null;
+    var field = condition.field;
+    var kind = fieldKind(field);
+    var op = condition.operator;
+    var value = condition.value;
+    if (op === "is_empty" || op === "is_not_empty") return null;
 
-    var numsText = _extractNumbers(text);
-    var numsTarget = _extractNumbers(t);
-    if (numsText.length && numsTarget.length && numsText.length === numsTarget.length) {
-      var allMatch = numsTarget.every(function (nt) {
-        return numsText.some(function (n) {
-          return Math.abs(n - nt) < 1e-9;
-        });
-      });
-      if (allMatch) return true;
-      // Both sides carry the same count of embedded numbers, but they
-      // don't line up -- e.g. "Type 1" vs "Type 2", "Visit 3" vs
-      // "Visit 4". These are meaningfully different values even though
-      // they're often just one character apart, so skip the fuzzy/typo
-      // fallback below for this case. Without this, a Levenshtein
-      // distance of 1 (well within the "close enough" threshold for
-      // short strings) made every "Type N" match every other "Type N",
-      // silently breaking the Procedure Separation Type filter (and any
-      // other numbered-category field) in the Custom Filter tab.
-      return false;
+    if (OPERATORS_BY_KIND[kind].indexOf(op) === -1) {
+      var legacy = {
+        category: { equals: "is", contains: "is", not_equals: "is_not", not_contains: "is_not" },
+        number: {},
+        age_range: { contains: "includes_age", equals: "includes_age", greater_than: "min_age_at_least", less_than: "max_age_at_most" },
+        text: { equals: "contains", not_equals: "not_contains" },
+      }[kind];
+      op = legacy[op] || OPERATORS_BY_KIND[kind][0];
     }
 
-    return _closeEnoughStrict(normText, normTarget);
-  }
-
-  /**
-   * True if a string has a "40-60" / "40 to 60" / "40 through 60" style
-   * continuous range somewhere in it. Deliberately excludes "/"-separated
-   * pairs like "0/100" (%male/%female) -- those are two discrete values,
-   * not a continuous range, so "does 55 fall between 0 and 100" would be
-   * true for almost every cohort and not a meaningful match.
-   */
-  function _looksLikeRange(text) {
-    return /\d\s*(-|to|through)\s*\d/i.test(text);
-  }
-
-  /**
-   * Tolerant "contains": plain substring first, then formatting-normalized
-   * substring, then numeric-aware matching (a bare number matches if it
-   * equals one of the field's numbers, or -- only for genuine ranges like
-   * Age Range's "40-60", not discrete pairs like %male/%female's "0/100"
-   * -- falls between the two numbers), then a fuzzy word-level fallback
-   * for typos.
-   */
-  function _matchesContains(text, target) {
-    var t = target.trim();
-    if (t === "") return true;
-
-    var lowerText = text.toLowerCase();
-    var lowerTarget = t.toLowerCase();
-    if (lowerText.indexOf(lowerTarget) !== -1) return true;
-
-    var normText = _normalizeLoose(text);
-    var normTarget = _normalizeLoose(t);
-    if (normTarget !== "" && normText.indexOf(normTarget) !== -1) return true;
-
-    var numTarget = parseNumeric(t);
-    var numsText = _extractNumbers(text);
-    if (!isNaN(numTarget) && numsText.length) {
-      if (numsText.some(function (n) { return Math.abs(n - numTarget) < 1e-9; })) return true;
-      if (numsText.length === 2 && _looksLikeRange(text)) {
-        var lo = Math.min(numsText[0], numsText[1]);
-        var hi = Math.max(numsText[0], numsText[1]);
-        if (numTarget >= lo && numTarget <= hi) return true;
-      }
+    if (op === "between") {
+      value = Array.isArray(value) ? value.slice(0, 2).map(String) : ["", ""];
+      while (value.length < 2) value.push("");
+    } else if (op === "is_any_of") {
+      value = _valueList(value);
+    } else {
+      value = Array.isArray(value) ? (value[0] || "") : (value === null || value === undefined ? "" : String(value));
     }
-
-    if (normTarget.length >= 3) {
-      var tokens = normText.split(/[\s\-\/]+/).filter(Boolean);
-      for (var i = 0; i < tokens.length; i++) {
-        if (_closeEnough(tokens[i], normTarget)) return true;
-      }
-    }
-    return false;
-  }
-
-  // ---------------------------------------------------------------------
-  // Filter condition evaluation (AND/OR builder)
-  // ---------------------------------------------------------------------
-
-  var OPERATORS = [
-    "equals",
-    "not_equals",
-    "contains",
-    "not_contains",
-    "greater_than",
-    "less_than",
-    "is_empty",
-    "is_not_empty",
-  ];
-
-  function _fieldText(record, field) {
-    var raw = record ? record[field] : undefined;
-    return raw === null || raw === undefined ? "" : String(raw).trim();
+    return { field: field, operator: op, value: value };
   }
 
   /**
-   * Evaluate a single condition against a record.
-   * condition: { field, operator, value, exactValue }. `exactValue`
-   * (see renderTable3()'s activeConditions in dashboard.js) forces
-   * "equals"/"not_equals" into strict mode -- see _matchesEquals().
+   * Evaluate a single (complete) condition against a record.
+   * condition: { field, operator, value } -- value is a string, or an
+   * array for "is_any_of" (picked values) and "between" ([low, high]).
    */
   function evaluateCondition(record, condition) {
-    if (!condition || !condition.field || !condition.operator) return true;
+    if (!isConditionComplete(condition)) return true;
 
-    var text = _fieldText(record, condition.field);
-    var op = condition.operator;
-    var target = condition.value === null || condition.value === undefined ? "" : String(condition.value);
+    var raw = record ? record[condition.field] : undefined;
+    var text = raw === null || raw === undefined ? "" : String(raw).trim();
+    var value = condition.value;
 
-    switch (op) {
-      case "is_empty":
-        return text === "";
-      case "is_not_empty":
-        return text !== "";
-      case "equals":
-        return _matchesEquals(text, target, condition.exactValue);
-      case "not_equals":
-        return !_matchesEquals(text, target, condition.exactValue);
+    switch (condition.operator) {
+      case "is":
+        return _norm(text) === _norm(value);
+      case "is_not":
+        return _norm(text) !== _norm(value);
+      case "is_any_of":
+        return _valueList(value).some(function (v) { return _norm(v) === _norm(text); });
       case "contains":
-        return _matchesContains(text, target);
+        return _norm(text).indexOf(_norm(value)) !== -1;
       case "not_contains":
-        return target.trim() === "" ? true : !_matchesContains(text, target);
-      case "greater_than": {
-        var a = parseNumeric(text);
-        var b = parseNumeric(target);
-        if (isNaN(a) || isNaN(b)) return false;
-        return a > b;
+        return _norm(text).indexOf(_norm(value)) === -1;
+      case "greater_than":
+      case "less_than":
+      case "between": {
+        var n = parseNumeric(text);
+        if (isNaN(n)) return false;
+        if (condition.operator === "greater_than") return n > parseNumeric(value);
+        if (condition.operator === "less_than") return n < parseNumeric(value);
+        var lo = parseNumeric(value[0]);
+        var hi = parseNumeric(value[1]);
+        return n >= Math.min(lo, hi) && n <= Math.max(lo, hi);
       }
-      case "less_than": {
-        var a2 = parseNumeric(text);
-        var b2 = parseNumeric(target);
-        if (isNaN(a2) || isNaN(b2)) return false;
-        return a2 < b2;
+      case "includes_age":
+      case "min_age_at_least":
+      case "max_age_at_most": {
+        var range = parseAgeRange(text);
+        var age = parseNumeric(value);
+        if (!range || isNaN(age)) return false;
+        if (condition.operator === "includes_age") return age >= range.min && age <= range.max;
+        if (condition.operator === "min_age_at_least") return range.min >= age;
+        return range.max <= age;
       }
       default:
         return true;
@@ -605,7 +520,11 @@
     PROCEDURE_SEPARATION_TYPE_COLORS: PROCEDURE_SEPARATION_TYPE_COLORS,
     PROCEDURE_SEPARATION_TYPE_ROW_TINTS: PROCEDURE_SEPARATION_TYPE_ROW_TINTS,
     parseNumeric: parseNumeric,
-    OPERATORS: OPERATORS,
+    fieldKind: fieldKind,
+    operatorsFor: operatorsFor,
+    parseAgeRange: parseAgeRange,
+    isConditionComplete: isConditionComplete,
+    normalizeCondition: normalizeCondition,
     evaluateCondition: evaluateCondition,
     evaluateGroup: evaluateGroup,
     markerRadius: markerRadius,
