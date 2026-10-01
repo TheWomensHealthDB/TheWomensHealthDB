@@ -42,7 +42,13 @@
     "Temporal Validity - Follow-up Interval":"Semi-annual"
   },
   {
-    "Cohort":"Nurses Health Studies (I and II)",
+    "Cohort":"Nurses Health Study (I)",
+    "Classification Validity - Procedure Separation Type":"Type 1",
+    "Temporal Validity - Collection Design":"Prospective",
+    "Temporal Validity - Follow-up Interval":"Biennial"
+  },
+  {
+    "Cohort":"Nurses Health Study (II)",
     "Classification Validity - Procedure Separation Type":"Type 1",
     "Temporal Validity - Collection Design":"Prospective",
     "Temporal Validity - Follow-up Interval":"Biennial"

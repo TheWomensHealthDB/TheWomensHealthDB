@@ -11,12 +11,12 @@
     "Location of Cohort's Participants (or of PI, if Unlisted/Multiple/Nationwide)"
   ],
   "checklist_columns": [
-    "Hysterectomy item",
-    "Oophorectomy item",
-    "(If oophorectomy = Yes) Does it distinguish unilateral vs. bilateral (laterality)?",
-    "Does it distinguish hysterectomy type (supracervical / total / radical)?",
-    "Is age at surgery recorded?",
-    "Is indication of surgery recorded (e.g., cancer, benign condition)?",
+    "Hysterectomy Question Included?",
+    "Oopherectomy Question Included?",
+    "Distinguishes laterality (unilateral vs. bilateral)?",
+    "Distinguishes hysterectomy type (supracervical / total / radical)?",
+    "Age at surgery recorded?",
+    "Indication of surgery recorded (e.g., cancer, benign condition)?",
     "Is surgery captured at baseline only?",
     "Was intact uterine and/or ovarian status used as an enrollment eligibility criterion?",
     "Age at menarche item",
@@ -145,8 +145,6 @@
     {
       "header": "Reproductive Surgical History",
       "children": [
-        "Hysterectomy item",
-        "Oophorectomy item",
         "Oophorectomy laterality item (if yes, for \"Oophorectomy item\")",
         "Hysterectomy type item",
         "Age at surgery item",
