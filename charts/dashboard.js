@@ -85,6 +85,22 @@
     loadData();
   });
 
+  // Fills every [data-count="cohorts"] / [data-count="domains"] element on
+  // the Information tab from the loaded data, so those numbers always
+  // match what the site actually shows (e.g. a cohort split in the sheet
+  // changes the count with no HTML edit). The numbers written into
+  // index.html are just the fallback shown before data loads.
+  function renderInfoCounts() {
+    var counts = {
+      cohorts: state.cohorts.length,
+      domains: (state.schema.checklist_groups || []).length,
+    };
+    document.querySelectorAll("[data-count]").forEach(function (el) {
+      var n = counts[el.getAttribute("data-count")];
+      if (n) el.textContent = String(n);
+    });
+  }
+
   function loadData() {
     Promise.all([
       fetch("data/cohorts.json").then(function (r) {
@@ -116,6 +132,7 @@
         state.t2SelectedColumns = new Set();
 
         renderDataSourceBanner();
+        renderInfoCounts();
         renderTable3Fields();
 
         // Table 1 (Cohort Summary), Table 2 (Coverage Checklist), and

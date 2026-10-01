@@ -106,7 +106,8 @@
           <polyline points="0,32 15,10 28,32 40,14 55,32 68,10 82,32 100,16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <!-- Text beside a couple of stat call-outs pulled straight from the
-             copy itself (29 cohorts / 11 domains) -- fills what was empty
+             copy itself (cohort / domain counts, filled in from the data by
+             renderInfoCounts() in dashboard.js) -- fills what was empty
              space beside the (fairly short) paragraphs with something
              purposeful instead of just stretching the text wider. -->
         <div class="info-hero-body">
@@ -119,7 +120,7 @@
             Women's health variables are critical to understanding health and
             aging, yet what is measured &mdash; and how it is measured &mdash;
             varies substantially across cohorts. The Women's Health Database
-            catalogs variables collected in 29 major cohorts across 11
+            catalogs variables collected in <span data-count="cohorts">30</span> major cohorts across <span data-count="domains">11</span>
             domains of women's health, spanning menstrual and reproductive
             history, gynecologic conditions and surgeries, pregnancy and
             fertility, menopause, hormone therapy, and linked cognitive,
@@ -134,11 +135,11 @@
 
         <div class="info-hero-stats">
           <div class="info-hero-stat">
-            <span class="info-hero-stat-num">29</span>
+            <span class="info-hero-stat-num" data-count="cohorts">30</span>
             <span class="info-hero-stat-label">Cohorts</span>
           </div>
           <div class="info-hero-stat">
-            <span class="info-hero-stat-num">11</span>
+            <span class="info-hero-stat-num" data-count="domains">11</span>
             <span class="info-hero-stat-label">Domains</span>
           </div>
         </div>
