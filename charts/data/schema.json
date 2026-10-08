@@ -7,10 +7,11 @@
     "Sample Size (N)",
     "Age Range",
     "% Female",
-    "Year Started/Wave Description",
     "Location of Cohort's Participants (or of PI, if Unlisted/Multiple/Nationwide)"
   ],
   "checklist_columns": [
+    "Year Started",
+    "Follow up Interval",
     "Hysterectomy item",
     "Oophorectomy item",
     "Oophorectomy laterality item (if yes, for \"Oophorectomy item\")",
