@@ -301,17 +301,20 @@
         // Touch devices get no ":hover" rule at all (see the
         // "@media (hover: hover)" block in dashboard.css), so there the
         // dropdown is driven by an explicit ".open" class instead: tapping
-        // the always-visible button opens it, and picking either option
-        // inside it closes it again. Only a real tap opens it -- the
-        // programmatic btn.click() calls from wireInPageTabLinks() and a
-        // shared-filter link (event.isTrusted false) never should.
+        // the always-visible button toggles it open/closed, and picking
+        // either option inside it closes it. Only a real tap opens it --
+        // the programmatic btn.click() calls from wireInPageTabLinks() and
+        // a shared-filter link (event.isTrusted false) never should.
         var group = btn.closest(".nav-item-group");
         if (group) {
           btn.blur();
           var isTouch = window.matchMedia("(hover: none)").matches;
           group.classList.toggle(
             "open",
-            isTouch && event.isTrusted && !btn.closest(".nav-dropdown")
+            isTouch &&
+              event.isTrusted &&
+              !btn.closest(".nav-dropdown") &&
+              !group.classList.contains("open")
           );
         }
       });
