@@ -273,8 +273,18 @@ nav.tabs button.active {
   overflow: hidden;
   padding: 0.3rem;
 }
-.nav-item-group:hover .nav-dropdown,
-.nav-item-group:focus-within .nav-dropdown {
+/* ":hover" only on devices with a real hover (mouse/trackpad). Touch
+   browsers leave the last-tapped element stuck in ":hover" until something
+   else is tapped, which kept this dropdown open after picking an option on
+   phones. Touch devices use the ".open" class instead, toggled in
+   wireTabs() in dashboard.js. */
+@media (hover: hover) {
+  .nav-item-group:hover .nav-dropdown {
+    display: flex;
+  }
+}
+.nav-item-group:focus-within .nav-dropdown,
+.nav-item-group.open .nav-dropdown {
   display: flex;
 }
 /* Landing on Items Reference (via the dropdown -- it has no top-level

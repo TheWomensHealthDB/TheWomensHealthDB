@@ -218,7 +218,7 @@
   function wireTabs() {
     var buttons = document.querySelectorAll("nav.tabs button");
     buttons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
+      btn.addEventListener("click", function (event) {
         var target = btn.getAttribute("data-tab");
 
         // Matched by data-tab value, not by "b === btn" identity: the
@@ -297,8 +297,32 @@
         // ":focus-within" immediately, so the dropdown closes as soon as
         // the mouse leaves it too, same as it would for a plain hover with
         // no click involved.
-        if (btn.closest(".nav-item-group")) {
+        //
+        // Touch devices get no ":hover" rule at all (see the
+        // "@media (hover: hover)" block in dashboard.css), so there the
+        // dropdown is driven by an explicit ".open" class instead: tapping
+        // the always-visible button opens it, and picking either option
+        // inside it closes it again. Only a real tap opens it -- the
+        // programmatic btn.click() calls from wireInPageTabLinks() and a
+        // shared-filter link (event.isTrusted false) never should.
+        var group = btn.closest(".nav-item-group");
+        if (group) {
           btn.blur();
+          var isTouch = window.matchMedia("(hover: none)").matches;
+          group.classList.toggle(
+            "open",
+            isTouch && event.isTrusted && !btn.closest(".nav-dropdown")
+          );
+        }
+      });
+    });
+
+    // Close a touch-opened dropdown (see ".open" above) when tapping
+    // anywhere outside its group.
+    document.addEventListener("click", function (e) {
+      document.querySelectorAll(".nav-item-group.open").forEach(function (group) {
+        if (!group.contains(e.target)) {
+          group.classList.remove("open");
         }
       });
     });
