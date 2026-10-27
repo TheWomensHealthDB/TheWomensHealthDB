@@ -1646,9 +1646,7 @@
   function renderAllProcedureSeparationKeys() {
     [
       "info-procedure-key",
-      "t1-procedure-key",
       "t3-procedure-key",
-      "summary-map-procedure-key",
     ].forEach(renderProcedureSeparationKey);
 
   }

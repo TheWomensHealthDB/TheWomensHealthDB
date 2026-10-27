@@ -2509,3 +2509,14 @@ table.matrix-table td.cohort-cell:hover {
     min-height: 22rem;
   }
 }
+
+/* Full-width classification table after removing its redundant side key */
+#panel-summary > .panel-body-with-key {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Full-width embedded map after removing its redundant side key */
+#panel-summary .classification-map-section .panel-body-with-key {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto;
+}
