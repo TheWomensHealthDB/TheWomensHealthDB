@@ -1998,12 +1998,13 @@ table.matrix-table td.cohort-cell:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1.5rem;
+  gap: clamp(2rem, 4vw, 4rem);
   background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-rose-soft) 160%);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   border-radius: var(--radius);
-  padding: 1.4rem 1.6rem;
+  padding: 2rem 2.25rem;
+  min-height: 250px;
   margin-bottom: 1rem;
 }
 
@@ -2031,7 +2032,7 @@ table.matrix-table td.cohort-cell:hover {
 }
 
 /* Stat call-outs beside the body text -- both numbers are already stated
-   in the paragraph itself (29 cohorts, 11 domains), just pulled out and
+   in the paragraph itself (30 cohorts, 11 domains), just pulled out and
    presented the way a typical landing page highlights its headline
    figures. */
 .info-hero-stats {
@@ -2046,11 +2047,13 @@ table.matrix-table td.cohort-cell:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 0.75rem 1.1rem;
-  min-width: 6.5em;
+  padding: 1.1rem 1.5rem;
+  min-width: 8rem;
+  min-height: 6.5rem;
 }
 
 .info-hero-stat-num {
@@ -2084,8 +2087,8 @@ table.matrix-table td.cohort-cell:hover {
   z-index: 0;
   right: -6%;
   bottom: -18%;
-  width: 55%;
-  max-width: 320px;
+  width: 48%;
+  max-width: 460px;
   height: auto;
   color: var(--accent);
   opacity: 0.16;
@@ -2401,6 +2404,10 @@ table.matrix-table td.cohort-cell:hover {
   .info-hero,
   .info-card {
     padding: 0.9rem 1rem;
+  }
+
+  .info-hero {
+    min-height: auto;
   }
 
   .info-hero-deco {
