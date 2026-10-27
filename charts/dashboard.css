@@ -2481,3 +2481,31 @@ table.matrix-table td.cohort-cell:hover {
   line-height: 1.5;
   color: var(--text-main);
 }
+
+/* Map embedded in the Hysterectomy Inference Classification tab */
+
+#panel-summary #map {
+  width: 100%;
+  min-height: 32rem;
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+#panel-summary .classification-map-section {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #d9dee5;
+}
+
+@media (max-width: 900px) {
+  #panel-summary #map {
+    min-height: 26rem;
+  }
+}
+
+@media (max-width: 640px) {
+  #panel-summary #map {
+    min-height: 22rem;
+  }
+}

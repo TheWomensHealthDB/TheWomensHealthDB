@@ -150,6 +150,7 @@
         if (summaryPanel && summaryPanel.classList.contains("active")) {
           renderTable1();
           state.t1Rendered = true;
+          initMap();
         }
         var checklistPanel = document.getElementById("panel-checklist");
         if (checklistPanel && checklistPanel.classList.contains("active")) {
@@ -162,12 +163,6 @@
           state.t3Rendered = true;
         }
 
-        // Map is initialized lazily when its tab is first shown (see wireTabs),
-        // but if the Map tab happens to already be active on load, init now.
-        var mapPanel = document.getElementById("panel-map");
-        if (mapPanel && mapPanel.classList.contains("active")) {
-          initMap();
-        }
       })
       .catch(function (err) {
         console.error(err);
@@ -248,26 +243,29 @@
           panel.classList.toggle("active", panel.id === "panel-" + target);
         });
 
-        if (target === "map" && !state.mapInitialized && state.cohorts.length) {
-          initMap();
-        } else if (state.map) {
-          // Leaflet needs a nudge when its container was previously hidden.
-          setTimeout(function () {
-            state.map.invalidateSize();
-          }, 0);
+        // Build the classification table and map when the Hysterectomy
+        // Inference Classification tab becomes visible.
+        if (target === "summary" && state.cohorts.length) {
+          if (!state.t1Rendered) {
+            renderTable1();
+            state.t1Rendered = true;
+          }
+
+          if (!state.mapInitialized) {
+            initMap();
+          } else if (state.map) {
+            // Leaflet needs a nudge after its container was previously hidden.
+            setTimeout(function () {
+              state.map.invalidateSize();
+            }, 0);
+          }
         }
 
-        // Same deferred-build reasoning as the Map tab above -- see the
-        // comment in loadData() for why Table 1/2/3 can't be safely built
-        // while their panel is still display:none.
-        if (target === "summary" && !state.t1Rendered && state.cohorts.length) {
-          renderTable1();
-          state.t1Rendered = true;
-        }
         if (target === "checklist" && !state.t2Rendered && state.cohorts.length) {
           renderTable2();
           state.t2Rendered = true;
         }
+
         if (target === "filter" && !state.t3Rendered && state.cohorts.length) {
           renderTable3();
           state.t3Rendered = true;
@@ -1610,7 +1608,7 @@
     var titleSuffix =
       containerId === "info-procedure-key"
         ? null
-        : containerId === "map-procedure-key"
+        : containerId === "summary-map-procedure-key"
         ? "marker color"
         : "row color";
     var html =
@@ -1641,9 +1639,13 @@
   // Inventory (formerly Coverage Checklist) used to have its own copy of
   // this key too, but no longer does -- see its section in index.html.
   function renderAllProcedureSeparationKeys() {
-    ["info-procedure-key", "t1-procedure-key", "t3-procedure-key", "map-procedure-key"].forEach(
-      renderProcedureSeparationKey
-    );
+    [
+      "info-procedure-key",
+      "t1-procedure-key",
+      "t3-procedure-key",
+      "summary-map-procedure-key",
+    ].forEach(renderProcedureSeparationKey);
+
   }
 
   function renderCategoryLegend(containerId) {
@@ -2506,7 +2508,7 @@
     if (state.mapInitialized) return;
 
     if (typeof L === "undefined") {
-      var panel = document.getElementById("panel-map");
+      var panel = document.querySelector("#panel-summary .classification-map-section");
       if (panel) {
         panel.innerHTML =
           '<p class="empty-state">The map library failed to load from its CDN, so the map ' +
