@@ -253,14 +253,19 @@
 
           if (!state.mapInitialized) {
             initMap();
+
+            setTimeout(function () {
+              if (state.map) {
+                state.map.invalidateSize();
+              }
+            }, 0);
           } else if (state.map) {
-            // Leaflet needs a nudge after its container was previously hidden.
             setTimeout(function () {
               state.map.invalidateSize();
             }, 0);
           }
         }
-
+  
         if (target === "checklist" && !state.t2Rendered && state.cohorts.length) {
           renderTable2();
           state.t2Rendered = true;
