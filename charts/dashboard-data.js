@@ -178,7 +178,7 @@
   // Summary rows, map markers, the Coverage Checklist, and Custom Filter results.
   var PROCEDURE_SEPARATION_TYPE_COLORS = {
     "Type 1": "#7656A5",
-    "Type 2": "#3B6FB6",
+    "Type 2": "#0072B2",
     "Type 3": "#2A9D8F",
     "Type 4": "#C45A78",
     "Type 5": "#D99A2B",
