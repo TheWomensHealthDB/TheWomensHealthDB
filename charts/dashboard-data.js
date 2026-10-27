@@ -173,49 +173,23 @@
     },
   ];
 
-  // Fixed Type -> color mapping, independent of which types are actually
-  // present in any given subset of the data. Unlike PALETTE/paletteFor()
-  // above (which assigns colors based on the sorted order of whichever
-  // values happen to be present), this guarantees "Type 3" is always the
-  // same color everywhere it shows up -- Cohort Summary rows, Map markers,
-  // the Coverage Checklist matrix, and Custom Filter results -- even when
-  // one tab's visible subset of cohorts happens to omit a type that
-  // another tab's subset includes.
+  // Fixed Type -> color mapping, independent of which types are present in a
+  // particular subset. This keeps each type's color consistent across Cohort
+  // Summary rows, map markers, the Coverage Checklist, and Custom Filter results.
   var PROCEDURE_SEPARATION_TYPE_COLORS = {
-    "Type 1": PALETTE[0],
-    // Custom hex (not PALETTE[1] directly) -- a slightly darker red than
-    // PALETTE[1]'s "#c62828" so it reads clearly apart from Type 5's
-    // lighter magenta below rather than the two sitting at similar
-    // lightness. Hardcoded here rather than changing PALETTE[1] itself so
-    // any other, unrelated use of PALETTE[1] elsewhere isn't affected.
-    "Type 2": "#8b1a1a",
-    "Type 3": PALETTE[2],
-    "Type 4": PALETTE[3],
-    // Custom hex (not a PALETTE index) -- PALETTE[4] ("#6a1b9a", purple)
-    // originally used here read too close to Type 1's blue at a glance, so
-    // this was first swapped to PALETTE[8] ("#ad1457", pink/magenta).
-    // That in turn read too close to Type 2's red once both are shown
-    // side-by-side (e.g. in the checklist key), so it's now a lighter
-    // magenta shade, kept apart from both blue and the darker red above.
-    "Type 5": "#e63280",
+    "Type 1": "#7656A5",
+    "Type 2": "#3B6FB6",
+    "Type 3": "#2A9D8F",
+    "Type 4": "#C45A78",
+    "Type 5": "#D99A2B",
   };
-
-  // Row-tint overrides for the Cohort Summary / Coverage Checklist /
-  // Custom Filter tables' "always-on" row background (see accent-row in
-  // dashboard.css). Most types don't need an entry here -- the CSS just
-  // derives a light pastel wash directly from PROCEDURE_SEPARATION_TYPE_
-  // COLORS above via color-mix(). But mixing Type 2's dark red and Type
-  // 5's magenta down to a ~15-18% tint with white desaturates both toward
-  // the same washed-out grey-pink, since color-mix in sRGB loses
-  // saturation fast at low percentages -- exactly the two colors that need
-  // to stay visually distinct in their bold form (see the comments above)
-  // also become the hardest pair to tell apart once pastel-ified. These
-  // two hand-picked pastels keep Type 2's row wash reading warm/neutral
-  // pink-red (equal green/blue) and Type 5's reading cooler/purpler (blue
-  // > green), rather than leaving it to automatic mixing.
+  // Light row-background tints corresponding to each procedure type color.
   var PROCEDURE_SEPARATION_TYPE_ROW_TINTS = {
-    "Type 2": "#f3cccc",
-    "Type 5": "#f8d3ef",
+    "Type 1": "#E8DDF2",
+    "Type 2": "#DCEBFA",
+    "Type 3": "#D5F0E6",
+    "Type 4": "#F7E8ED",
+    "Type 5": "#FBF1DC",
   };
 
   // ---------------------------------------------------------------------
