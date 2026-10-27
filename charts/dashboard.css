@@ -2510,13 +2510,22 @@ table.matrix-table td.cohort-cell:hover {
   }
 }
 
-/* Full-width classification table after removing its redundant side key */
-#panel-summary > .panel-body-with-key {
-  grid-template-columns: minmax(0, 1fr);
+/* Full-width classification table and embedded map */
+#panel-summary .panel-body-with-key {
+  width: 100%;
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
-/* Full-width embedded map after removing its redundant side key */
+#panel-summary .panel-main,
+#panel-summary .table-scroll,
+#panel-summary #map {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+/* The map should use its natural height, not the table's tall grid row. */
 #panel-summary .classification-map-section .panel-body-with-key {
-  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto;
 }
