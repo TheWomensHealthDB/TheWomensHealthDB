@@ -18,7 +18,7 @@
     "Hysterectomy type item",
     "Age at surgery item",
     "Indication of surgery item",
-    "Surgery captured at baseline only?",
+    "Is surgery (hyst/ooph) captured at baseline only, or also at follow ups?",
     "Intact uterine and/or ovarian status used as eligibility criterion?",
     "Age at menarche item",
     "Polycystic Ovary Syndrome (PCOS) / Polyendocrine Metabolic Ovarian Syndrome (PMOS) item",
@@ -145,7 +145,6 @@
         "Hysterectomy type item",
         "Age at surgery item",
         "Indication of surgery item",
-        "Surgery captured at baseline only?",
         "Intact uterine and/or ovarian status used as eligibility criterion?"
       ]
     },
