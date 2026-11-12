@@ -940,5 +940,20 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
   <script src="dashboard-data.js"></script>
   <script src="dashboard.js"></script>
+
+  <!-- GoatCounter: privacy-friendly analytics (no cookies, no personal
+       data). Counts this page load on its own; each tab switch is counted
+       by countTabView() in dashboard.js. Dashboard: dbelk.goatcounter.com
+       The path override records just the path ("/filter/"), not a shared
+       filter link's long "?filter=..." query, so each tab stays one row. -->
+  <script>
+    window.goatcounter = {
+      path: function () {
+        return location.pathname;
+      },
+    };
+  </script>
+  <script data-goatcounter="https://dbelk.goatcounter.com/count"
+          async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>

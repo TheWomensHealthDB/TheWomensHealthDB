@@ -368,6 +368,7 @@
     // names without pushing yet another history entry.
     window.addEventListener("popstate", function () {
       goToTab(tabFromPath() || "information", "none");
+      countTabView();
     });
 
     // Close a touch-opened dropdown (see ".open" above) when tapping
@@ -493,6 +494,22 @@
       if (url.href !== window.location.href) history.replaceState(null, "", url.href);
     } else if (url.pathname !== window.location.pathname) {
       history.pushState(null, "", url.href);
+      countTabView();
+    }
+  }
+
+  // GoatCounter (index.html) only counts the initial page load on its own,
+  // so each pushState tab switch and Back/Forward is reported here as a
+  // view of the new path. (Cloudflare Web Analytics' beacon picks up
+  // pushState by itself and needs nothing here.) Silently does nothing if
+  // the GoatCounter script hasn't loaded or is blocked.
+  function countTabView() {
+    try {
+      if (window.goatcounter && typeof window.goatcounter.count === "function") {
+        window.goatcounter.count({ path: window.location.pathname });
+      }
+    } catch (e) {
+      /* analytics must never break the page */
     }
   }
 
