@@ -12,6 +12,20 @@
 
   var DD = window.DashboardData;
 
+  // The site's root URL, captured once when this script first runs --
+  // before any tab switch has pushState()'d a different path into the
+  // address bar. On a generated tab page ("/filter/" etc.) document.baseURI
+  // already is the root, via that page's <base href="../">. On the root
+  // page itself there's no <base>, so document.baseURI just follows the
+  // live address bar: reading it *after* a pushState to "/summary/" would
+  // build the next tab as "/summary/filter/" and fetch data from
+  // "/summary/data/...". Everything that needs a site-relative URL
+  // resolves against SITE_ROOT instead.
+  var SITE_ROOT = new URL("./", document.baseURI).href;
+  function siteURL(path) {
+    return new URL(path, SITE_ROOT);
+  }
+
   var state = {
     cohorts: [],
     schema: null,
@@ -109,11 +123,11 @@
 
   function loadData() {
     Promise.all([
-      fetch("data/cohorts.json").then(function (r) {
+      fetch(siteURL("data/cohorts.json")).then(function (r) {
         if (!r.ok) throw new Error("Failed to load cohorts.json (" + r.status + ")");
         return r.json();
       }),
-      fetch("data/schema.json").then(function (r) {
+      fetch(siteURL("data/schema.json")).then(function (r) {
         if (!r.ok) throw new Error("Failed to load schema.json (" + r.status + ")");
         return r.json();
       }),
@@ -433,9 +447,10 @@
   // (.github/workflows/update-chart.yml) copies index.html into
   // <tab>/index.html with a <base href="../">, so opening or refreshing
   // "/filter/" directly loads the site with that tab showing, and every
-  // relative asset/data URL still resolves against the site root. URLs are
-  // built against document.baseURI for the same reason, so this works on
-  // the custom domain and on a "<user>.github.io/<repo>/" URL alike.
+  // relative asset/data URL still resolves against the site root. Tab URLs
+  // are built against SITE_ROOT (top of this file) for the same reason, so
+  // this works on the custom domain and on a "<user>.github.io/<repo>/"
+  // URL alike.
   //
   // NOTE: when adding/renaming a tab, update TAB_PAGES in the workflow too.
 
@@ -443,7 +458,7 @@
   var tabHistoryMode = "push";
 
   function tabURL(target) {
-    return new URL(target === "information" ? "./" : target + "/", document.baseURI);
+    return siteURL(target === "information" ? "./" : target + "/");
   }
 
   // The tab named by the current path's last segment, or null (site root).
