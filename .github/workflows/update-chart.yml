@@ -91,6 +91,27 @@ jobs:
             done
           fi
 
+      # Gives every tab its own real URL ("<site>/summary/", "<site>/filter/", ...)
+      # so those links can be opened/refreshed directly and so Cloudflare Web
+      # Analytics reports traffic per tab (see "Per-tab URLs" in
+      # charts/dashboard.js, which reads the path and shows that tab). Each
+      # copy gets <base href="../"> so its relative CSS/JS/data URLs still
+      # point at the site root. Done at build time only -- the copies are
+      # never committed. Keep TAB_PAGES in sync with the data-tab values in
+      # charts/index.html (Information is the root page, so it's not listed).
+      - name: Generate per-tab pages
+        run: |
+          TAB_PAGES="summary checklist items-reference filter contribute"
+          grep -q '<meta charset="UTF-8" />' charts/index.html || {
+            echo "index.html no longer has the <meta charset> line this step anchors on" >&2
+            exit 1
+          }
+          for tab in $TAB_PAGES; do
+            mkdir -p "charts/$tab"
+            sed 's|<meta charset="UTF-8" />|<meta charset="UTF-8" />\n  <base href="../" />|' \
+              charts/index.html > "charts/$tab/index.html"
+          done
+
       - name: Upload charts folder as Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -61,6 +61,11 @@
     wireTableExport();
     renderAllProcedureSeparationKeys();
 
+    // Opened directly on a tab's own URL (e.g. "/filter/", see "Per-tab URLs"
+    // below) -- show that tab. The URL is already right, so no history change.
+    var initialTab = tabFromPath();
+    if (initialTab) goToTab(initialTab, "none");
+
     // A shared Custom Filter link (see buildShareableFilterURL()) --
     // applied here, before loadData() below, so renderTable3Fields()'s own
     // "start with one blank condition" fallback naturally never fires
@@ -78,8 +83,9 @@
       // same nav.tabs button wireTabs() above already wired, so every
       // side effect of a real tab switch happens exactly as it would from
       // a direct click.
-      var filterBtn = document.querySelector('nav.tabs button[data-tab="filter"]');
-      if (filterBtn) filterBtn.click();
+      // "replace" moves the address bar onto "/filter/" (keeping the
+      // ?filter= payload) without adding a history entry.
+      goToTab("filter", "replace");
     }
 
     loadData();
@@ -120,6 +126,7 @@
             return c[state.schema.cohort_name_column];
           })
         );
+        setT1SearchExample();
         // All 11 domains start selected -- see the comment on
         // t2SelectedDomains in `state` above.
         state.t2SelectedDomains = new Set(
@@ -181,6 +188,24 @@
               "not opening index.html directly as a file.</p>";
           });
       });
+  }
+
+  // The Hysterectomy Inference Classification search box's "e.g. ..." hint
+  // uses the alphabetically first real cohort name from the loaded data,
+  // so it never names a cohort that doesn't exist. Keeps the generic
+  // markup placeholder from index.html if there are no names.
+  function setT1SearchExample() {
+    var input = document.getElementById("t1-search");
+    if (!input || !state.schema) return;
+    var names = state.cohorts
+      .map(function (c) {
+        return String(c[state.schema.cohort_name_column] || "").trim();
+      })
+      .filter(Boolean)
+      .sort(function (a, b) {
+        return a.localeCompare(b, undefined, { sensitivity: "base" });
+      });
+    if (names.length) input.placeholder = "e.g. " + names[0];
   }
 
   // ---------------------------------------------------------------------
@@ -320,7 +345,15 @@
               !group.classList.contains("open")
           );
         }
+
+        syncTabURL(target);
       });
+    });
+
+    // Browser Back/Forward between tab URLs: show the tab the restored URL
+    // names without pushing yet another history entry.
+    window.addEventListener("popstate", function () {
+      goToTab(tabFromPath() || "information", "none");
     });
 
     // Close a touch-opened dropdown (see ".open" above) when tapping
@@ -384,6 +417,68 @@
         syncLandscapeChecklistHeight();
       }, 150);
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Per-tab URLs (for analytics + shareable/bookmarkable tabs)
+  // ---------------------------------------------------------------------
+  // Every tab except Information has its own path -- "<site>/summary/",
+  // "<site>/filter/", etc. -- and switching tabs updates the address bar
+  // with history.pushState(). Cloudflare Web Analytics' beacon counts each
+  // pushState as a page view of that path, which is what gives per-tab
+  // traffic numbers. (A "?tab=" query wouldn't work: Cloudflare drops
+  // query strings for privacy, so every tab would look like "/".)
+  //
+  // Those paths exist as real pages too: the deploy workflow
+  // (.github/workflows/update-chart.yml) copies index.html into
+  // <tab>/index.html with a <base href="../">, so opening or refreshing
+  // "/filter/" directly loads the site with that tab showing, and every
+  // relative asset/data URL still resolves against the site root. URLs are
+  // built against document.baseURI for the same reason, so this works on
+  // the custom domain and on a "<user>.github.io/<repo>/" URL alike.
+  //
+  // NOTE: when adding/renaming a tab, update TAB_PAGES in the workflow too.
+
+  // "push" for real tab clicks; goToTab() temporarily overrides it.
+  var tabHistoryMode = "push";
+
+  function tabURL(target) {
+    return new URL(target === "information" ? "./" : target + "/", document.baseURI);
+  }
+
+  // The tab named by the current path's last segment, or null (site root).
+  function tabFromPath() {
+    var segments = window.location.pathname.split("/").filter(Boolean);
+    var last = segments[segments.length - 1];
+    if (!last || last === "index.html") return null;
+    return document.querySelector('nav.tabs button[data-tab="' + last + '"]') ? last : null;
+  }
+
+  // Switches tabs through the same nav.tabs button click path as a user
+  // would, with control over how the address bar is updated:
+  // "push" (new history entry), "replace" (rewrite current entry, keeping
+  // any ?query/#hash -- e.g. a shared ?filter= link), or "none".
+  function goToTab(target, historyMode) {
+    var btn = document.querySelector('nav.tabs button[data-tab="' + target + '"]');
+    if (!btn) return;
+    tabHistoryMode = historyMode;
+    try {
+      btn.click();
+    } finally {
+      tabHistoryMode = "push";
+    }
+  }
+
+  function syncTabURL(target) {
+    if (tabHistoryMode === "none" || !window.history || !history.pushState) return;
+    var url = tabURL(target);
+    if (tabHistoryMode === "replace") {
+      url.search = window.location.search;
+      url.hash = window.location.hash;
+      if (url.href !== window.location.href) history.replaceState(null, "", url.href);
+    } else if (url.pathname !== window.location.pathname) {
+      history.pushState(null, "", url.href);
+    }
   }
 
   // In-page links that jump to another tab -- the Information tab's
