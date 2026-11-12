@@ -2156,16 +2156,23 @@ table.matrix-table td.cohort-cell:hover {
   position: relative;
   z-index: 1;
 }
-/* Anchored to the bottom-right corner, sized to roughly the bottom-right
-   quadrant of whatever empty space this shorter card is left with next to
-   its taller sibling -- and washed out to the same low opacity/single
-   color as ".info-hero-deco", so it reads as the same kind of quiet
-   background motif, not a second competing focal point. */
+/* Anchored to the bottom-right corner and washed out to the same low
+   opacity/single color as ".info-hero-deco", so it reads as the same kind
+   of quiet background motif, not a second competing focal point.
+   The card is full-width and short now (its taller sibling moved to the
+   classification tab), so the motif is pushed mostly below the card's
+   bottom edge and clipped by its overflow: hidden. `bottom` is
+   "<visible height> - <own height>" -- both percentages are of the card's
+   height, so the motif's top edge always sits exactly 1.5rem above the
+   card's bottom edge however tall the card wraps to. With the card's
+   1.1rem bottom padding, that only grazes the lowest ~0.4rem of the last
+   text line, and only at its far right, where the lines' tips peak. Raise
+   1.5rem to show more of the motif; lower it for less overlap. */
 .info-card-deco {
   position: absolute;
   z-index: 0;
   right: -6%;
-  bottom: -6%;
+  bottom: calc(1.5rem - 62%);
   width: 62%;
   height: 62%;
   color: var(--accent);
