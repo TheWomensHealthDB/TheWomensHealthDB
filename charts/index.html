@@ -966,12 +966,16 @@
             <input type="email" id="contact-email" name="email" autocomplete="email" required />
           </div>
           <div class="field">
+            <label for="contact-institution">Affiliated institution <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="contact-institution" name="institution" autocomplete="organization" placeholder="e.g., USC" required />
+          </div>
+          <div class="field">
             <label for="contact-cohort">What cohort is this note in regards to?: <span class="optional">(optional)</span></label>
             <input type="text" id="contact-cohort" name="cohort" placeholder="A cohort already on the website, one not yet included, or leave blank" />
           </div>
           <div class="field contact-field-half">
             <label for="contact-cohort-abbr">Cohort abbreviation <span class="optional">(optional)</span></label>
-            <input type="text" id="contact-cohort-abbr" name="cohort_abbreviation" placeholder="e.g., CARDIA" />
+            <input type="text" id="contact-cohort-abbr" name="cohort_abbreviation" placeholder="e.g., SAGE" />
           </div>
           <div class="field">
             <label for="contact-message">Message <span class="req" aria-hidden="true">*</span></label>

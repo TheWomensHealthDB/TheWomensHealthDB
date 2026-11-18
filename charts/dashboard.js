@@ -205,10 +205,13 @@
       });
   }
 
-  // The Hysterectomy Inference Classification search box's "e.g. ..." hint
-  // uses the alphabetically first real cohort name from the loaded data,
-  // so it never names a cohort that doesn't exist. Keeps the generic
-  // markup placeholder from index.html if there are no names.
+  // The Hysterectomy Inference Classification search box's "e.g. ..." hint.
+  // The site's standard example cohort is SAGE (also used on the Contact Us
+  // form); if SAGE isn't in the loaded data, falls back to the
+  // alphabetically first real cohort name, so the hint never names a cohort
+  // that doesn't exist. Keeps the generic markup placeholder from
+  // index.html if there are no names.
+  var EXAMPLE_COHORT_ABBR = "SAGE";
   function setT1SearchExample() {
     var input = document.getElementById("t1-search");
     if (!input || !state.schema) return;
@@ -220,7 +223,10 @@
       .sort(function (a, b) {
         return a.localeCompare(b, undefined, { sensitivity: "base" });
       });
-    if (names.length) input.placeholder = "e.g. " + names[0];
+    var example = names.filter(function (n) {
+      return n.indexOf("(" + EXAMPLE_COHORT_ABBR + ")") !== -1;
+    })[0] || names[0];
+    if (example) input.placeholder = "e.g. " + example;
   }
 
   // ---------------------------------------------------------------------
@@ -580,7 +586,7 @@
 
     function validate() {
       var firstBad = null;
-      ["contact-first", "contact-last", "contact-email", "contact-message"].forEach(function (id) {
+      ["contact-first", "contact-last", "contact-email", "contact-institution", "contact-message"].forEach(function (id) {
         var input = document.getElementById(id);
         var value = input.value.trim();
         var message = "";
@@ -614,13 +620,14 @@
       var cohortAbbr = form.elements.cohort_abbreviation.value.trim();
       var payload = {
         access_key: CONTACT_FORM_ACCESS_KEY,
-        // e.g. "WHD website message (CARDIA) from Jane Doe"
+        // e.g. "WHD website message (SAGE) from Jane Doe"
         subject:
           "WHD website message" + (cohortAbbr ? " (" + cohortAbbr + ")" : "") +
           " from " + first + " " + last,
         from_name: "The Women's Health Database website",
         name: first + " " + last,
         email: form.elements.email.value.trim(),
+        institution: form.elements.institution.value.trim(),
         cohort: cohort || "(not given)",
         cohort_abbreviation: cohortAbbr || "(not given)",
         message: form.elements.message.value.trim(),
