@@ -2743,6 +2743,9 @@
       rowsInGroup.forEach(function (r, i) {
         var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
         var color = procedureTypeColor(typeVal) || "#666";
+        // Unclassified (new) cohorts: white fill with a grey outline, to
+        // match the "New cohort; classification pending" legend entry.
+        var fill = procedureTypeColor(typeVal) || "#ffffff";
         // Radius at the map's current zoom, derived from the cohort's
         // Sample Size (N) -- baseRadius itself never changes, but the
         // on-screen size does as the user zooms (see
@@ -2753,8 +2756,8 @@
         var marker = L.circleMarker(centroid, {
           radius: markerRadiusForZoom(baseRadius),
           color: color,
-          fillColor: color,
-          fillOpacity: 0.65,
+          fillColor: fill,
+          fillOpacity: fill === color ? 0.65 : 0.9,
           weight: 1.5,
         });
 
@@ -2809,7 +2812,7 @@
         marker.on("mouseout", function () {
           marker.setStyle({
             radius: markerRadiusForZoom(baseRadius),
-            fillOpacity: 0.65,
+            fillOpacity: fill === color ? 0.65 : 0.9,
             weight: 1.5,
           });
         });
