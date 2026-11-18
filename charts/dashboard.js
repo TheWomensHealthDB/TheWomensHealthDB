@@ -1160,6 +1160,11 @@
             if (accentColor) {
               td.style.color = accentColor;
               td.style.fontWeight = "700";
+            } else if (!procVal) {
+              // Blank = new cohort not yet classified (see the "New cohort;
+              // classification pending" entry in the key).
+              td.textContent = "Not categorized yet";
+              td.classList.add("proc-type-pending");
             }
             var typeDef = procedureTypeDefinition(procVal);
             if (typeDef) attachTooltip(td, typeDef, 500);
@@ -1758,6 +1763,18 @@
         "</div>" +
         "</div>";
     });
+    // Hysterectomy Inference Classification's key only: newly added cohorts
+    // with a blank type cell show "Not categorized yet" and get no row tint,
+    // so they're keyed here as a white swatch.
+    if (containerId === "info-procedure-key") {
+      html +=
+        '<div class="procedure-key-item">' +
+        '<span class="procedure-key-swatch procedure-key-swatch-pending" style="background:#ffffff"></span>' +
+        "<div>" +
+        '<span class="procedure-key-type">New cohort; classification pending</span>' +
+        "</div>" +
+        "</div>";
+    }
     html += "</div>";
     el.innerHTML = html;
   }
