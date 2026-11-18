@@ -1539,12 +1539,12 @@
     "Health records linked?":"Yes",
     "Cognitive data collected?":"Yes",
     "Neuroimaging data collected?":"Yes",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"New York",
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"New York City, New York",
     "Classification Validity - Procedure Separation Type":"Type 1",
     "Temporal Validity - Collection Design":"Prospective",
     "Temporal Validity - Follow-up Interval":"3-5 years",
-    "Latitude":42.9,
-    "Longitude":-75.5
+    "Latitude":40.7128,
+    "Longitude":-74.006
   },
   {
     "Cohort Name":"National Longitudinal Survey of Young Women (NLSYW)",
@@ -2015,12 +2015,12 @@
     "Health records linked?":"",
     "Cognitive data collected?":"",
     "Neuroimaging data collected?":"",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Pennsylvania",
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Philadelphia, Pennsylvania",
     "Classification Validity - Procedure Separation Type":"Type 5",
     "Temporal Validity - Collection Design":"Prospective",
     "Temporal Validity - Follow-up Interval":"9-12 months",
-    "Latitude":40.9,
-    "Longitude":-77.8
+    "Latitude":39.9526,
+    "Longitude":-75.1652
   },
   {
     "Cohort Name":"Australian Longitudinal Study on Women\u2019s Health (ALSWH)",
@@ -2253,12 +2253,12 @@
     "Health records linked?":"",
     "Cognitive data collected?":"",
     "Neuroimaging data collected?":"",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Washington",
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Seattle, Washington",
     "Classification Validity - Procedure Separation Type":"Type 5",
     "Temporal Validity - Collection Design":"Prospective",
     "Temporal Validity - Follow-up Interval":"Annual",
-    "Latitude":47.4,
-    "Longitude":-120.8
+    "Latitude":47.6062,
+    "Longitude":-122.3321
   },
   {
     "Cohort Name":"Melbourne Women\u2019s Midlife Health Project (MWMHP)",
@@ -3443,12 +3443,12 @@
     "Health records linked?":"No",
     "Cognitive data collected?":"Yes",
     "Neuroimaging data collected?":"Yes",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"California",
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Los Angeles, California",
     "Classification Validity - Procedure Separation Type":"Type 1",
     "Temporal Validity - Collection Design":"Retrospective",
     "Temporal Validity - Follow-up Interval":"",
-    "Latitude":37.2,
-    "Longitude":-119.7
+    "Latitude":34.0522,
+    "Longitude":-118.2437
   },
   {
     "Cohort Name":"The English Longitudinal Study of Aging (ELSA)",

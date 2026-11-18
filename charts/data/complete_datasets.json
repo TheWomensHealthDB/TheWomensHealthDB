@@ -1479,7 +1479,7 @@
     "Health records linked?":"Yes",
     "Cognitive data collected?":"Yes",
     "Neuroimaging data collected?":"Yes",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"New York"
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"New York City, New York"
   },
   {
     "Cohort Name":"National Longitudinal Survey of Young Women (NLSYW)",
@@ -1935,7 +1935,7 @@
     "Health records linked?":"",
     "Cognitive data collected?":"",
     "Neuroimaging data collected?":"",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Pennsylvania"
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Philadelphia, Pennsylvania"
   },
   {
     "Cohort Name":"Australian Longitudinal Study on Women\u2019s Health (ALSWH)",
@@ -2163,7 +2163,7 @@
     "Health records linked?":"",
     "Cognitive data collected?":"",
     "Neuroimaging data collected?":"",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Washington"
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Seattle, Washington"
   },
   {
     "Cohort Name":"Melbourne Women\u2019s Midlife Health Project (MWMHP)",
@@ -3303,7 +3303,7 @@
     "Health records linked?":"No",
     "Cognitive data collected?":"Yes",
     "Neuroimaging data collected?":"Yes",
-    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"California"
+    "Location of Cohort's Participants (or of PI, if Unlisted\/Multiple\/Nationwide)":"Los Angeles, California"
   },
   {
     "Cohort Name":"The English Longitudinal Study of Aging (ELSA)",
