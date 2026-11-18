@@ -2552,8 +2552,11 @@ table.matrix-table td.cohort-cell:hover {
    Contact Us tab
    --------------------------------------------------------------------- */
 
+/* Centered under the banner on wide screens; full width on phones. */
 .contact-card {
   max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 .contact-form {
   display: flex;
