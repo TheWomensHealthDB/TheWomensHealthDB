@@ -180,16 +180,14 @@ TABLE_COHORT_COLUMN = "Cohort"
 # spreadsheet yet, rather than waiting on that spreadsheet edit.
 #
 # Matched case-/whitespace-insensitively as a *whole word* anywhere in the
-# cohort name (see _is_excluded_cohort() below) -- not just a prefix -- so a
-# single "RANN" entry here catches every way the raw sheet currently spells
-# this one out: "RANN (Columbia PI Stern)" (starts with it) *and*
-# "Reference Ability Neural Network (RANN)" (has it parenthesized at the
-# end). Word-boundary matching means it won't accidentally catch an
-# unrelated cohort whose name merely contains "rann" as part of a longer
-# word (e.g. a hypothetical "Brannigan Study").
-EXCLUDED_COHORTS = [
-    "RANN",
-]
+# cohort name (see _is_excluded_cohort() below) -- not just a prefix -- so
+# an entry like "RANN" would catch both "RANN (Columbia PI Stern)" and
+# "Reference Ability Neural Network (RANN)", but not an unrelated name
+# that merely contains those letters inside a longer word ("Brannigan").
+#
+# Currently empty: RANN, the only entry so far, has been removed from the
+# source sheet itself.
+EXCLUDED_COHORTS = []
 
 # Columns in "Complete Datasets" that should never show up anywhere in the
 # dashboard (not in the Coverage Checklist table, not as a checklist-item
