@@ -978,6 +978,11 @@
   // which types happen to be present in whatever subset of cohorts is being
   // rendered, so the same type always gets the same color everywhere it
   // appears (Cohort Summary, Coverage Checklist, Custom Filter, Map).
+  // Unclassified ("New cohort; classification pending") cohorts: light grey
+  // swatch / map marker / row accent, plus a paler row tint.
+  var PENDING_TYPE_COLOR = "#BDBDBD";
+  var PENDING_TYPE_ROW_TINT = "#F1F1F1";
+
   function procedureTypeColor(rawVal) {
     var val = rawVal === null || rawVal === undefined ? "" : String(rawVal).trim();
     if (!val) return null;
@@ -1142,6 +1147,12 @@
           tr.style.setProperty("--row-accent", accentColor);
           var rowTint = procedureTypeRowTint(procVal);
           if (rowTint) tr.style.setProperty("--row-tint", rowTint);
+        } else if (!procVal) {
+          // New cohort, not yet classified: light grey, matching the
+          // "New cohort; classification pending" key entry and map marker.
+          tr.classList.add("accent-row");
+          tr.style.setProperty("--row-accent", PENDING_TYPE_COLOR);
+          tr.style.setProperty("--row-tint", PENDING_TYPE_ROW_TINT);
         }
 
         var typeTd = null;
@@ -1171,7 +1182,7 @@
             typeTd = td;
           }
           if (col.narrow) td.classList.add("narrow-col-cell");
-          if (i === 0 && accentColor) {
+          if (i === 0 && (accentColor || !procVal)) {
             td.classList.add("accent-cell");
           }
           tr.appendChild(td);
@@ -1765,11 +1776,11 @@
     });
     // Hysterectomy Inference Classification's key only: newly added cohorts
     // with a blank type cell show "Not categorized yet" and get no row tint,
-    // so they're keyed here as a white swatch.
+    // so they're keyed here with the light grey pending swatch.
     if (containerId === "info-procedure-key") {
       html +=
         '<div class="procedure-key-item">' +
-        '<span class="procedure-key-swatch procedure-key-swatch-pending" style="background:#ffffff"></span>' +
+        '<span class="procedure-key-swatch" style="background:' + PENDING_TYPE_COLOR + '"></span>' +
         "<div>" +
         '<span class="procedure-key-type">New cohort; classification pending</span>' +
         "</div>" +
@@ -2742,10 +2753,9 @@
 
       rowsInGroup.forEach(function (r, i) {
         var typeVal = r[procCol] ? String(r[procCol]).trim() : "";
-        var color = procedureTypeColor(typeVal) || "#666";
-        // Unclassified (new) cohorts: white fill with a grey outline, to
+        // Unclassified (new) cohorts get the light grey pending color, to
         // match the "New cohort; classification pending" legend entry.
-        var fill = procedureTypeColor(typeVal) || "#ffffff";
+        var color = procedureTypeColor(typeVal) || PENDING_TYPE_COLOR;
         // Radius at the map's current zoom, derived from the cohort's
         // Sample Size (N) -- baseRadius itself never changes, but the
         // on-screen size does as the user zooms (see
@@ -2756,8 +2766,8 @@
         var marker = L.circleMarker(centroid, {
           radius: markerRadiusForZoom(baseRadius),
           color: color,
-          fillColor: fill,
-          fillOpacity: fill === color ? 0.65 : 0.9,
+          fillColor: color,
+          fillOpacity: 0.65,
           weight: 1.5,
         });
 
@@ -2812,7 +2822,7 @@
         marker.on("mouseout", function () {
           marker.setStyle({
             radius: markerRadiusForZoom(baseRadius),
-            fillOpacity: fill === color ? 0.65 : 0.9,
+            fillOpacity: 0.65,
             weight: 1.5,
           });
         });

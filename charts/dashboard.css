@@ -1407,10 +1407,6 @@ table.data-table tbody tr.accent-row:hover td {
   border-radius: 3px;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
 }
-/* White "classification pending" swatch needs a visible edge. */
-.procedure-key .procedure-key-swatch-pending {
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.35) inset;
-}
 /* Hysterectomy Inference Classification: blank type cell text. */
 #t1-table td.proc-type-pending {
   font-style: italic;
