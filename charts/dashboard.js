@@ -620,9 +620,9 @@
       var cohortAbbr = form.elements.cohort_abbreviation.value.trim();
       var payload = {
         access_key: CONTACT_FORM_ACCESS_KEY,
-        // e.g. "WHD website message (SAGE) from Jane Doe"
+        // e.g. "WHD message (SAGE) from Jane Doe"
         subject:
-          "WHD website message" + (cohortAbbr ? " (" + cohortAbbr + ")" : "") +
+          "WHD message" + (cohortAbbr ? " (" + cohortAbbr + ")" : "") +
           " from " + first + " " + last,
         from_name: "The Women's Health Database website",
         name: first + " " + last,
