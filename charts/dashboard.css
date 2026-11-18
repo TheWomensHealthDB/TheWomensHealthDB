@@ -2557,12 +2557,35 @@ table.matrix-table td.cohort-cell:hover {
   max-width: 44rem;
   margin-left: auto;
   margin-right: auto;
+  padding: 0;
+  overflow: hidden;
+}
+/* Shaded header, using the same shading as the Contribute tab's banner. */
+.contact-header {
+  background: linear-gradient(135deg, var(--accent-soft) 0%, var(--accent-rose-soft) 160%);
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  padding: 1.4rem 1.5rem;
+}
+.contact-header h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.3rem;
+  color: var(--accent-dark);
+}
+.contact-header p {
+  color: #3a4451;
+  line-height: 1.55;
+}
+.contact-header p + p {
+  margin-top: 0.6rem;
+}
+.contact-body {
+  padding: 1.1rem 1.5rem 1.4rem;
 }
 .contact-form {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  margin-top: 1rem;
 }
 .contact-row {
   display: grid;

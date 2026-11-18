@@ -936,12 +936,10 @@
          Web3Forms (see "Contact form" in dashboard.js), so the team's
          address never appears on the site. -->
     <section id="panel-contact" class="tab-panel">
-      <!-- Same banner as the Contribute tab's "Contribute a Cohort" header. -->
-      <div class="info-hero">
-        <svg class="info-hero-deco" viewBox="0 0 100 40" aria-hidden="true" preserveAspectRatio="none">
-          <polyline points="0,32 15,10 28,32 40,14 55,32 68,10 82,32 100,16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <div class="info-hero-body">
+      <!-- One card: a shaded header (same shading as the Contribute tab's
+           banner) above the form, both the width of the form. -->
+      <div class="info-card contact-card">
+        <div class="contact-header">
           <h2>Contact Us</h2>
           <p>
             Have a question about the Women's Health Database, need to update
@@ -956,17 +954,8 @@
             <button type="button" class="tab-link" data-goto-tab="contribute">Contribute tab</button>.</strong>
           </p>
         </div>
-      </div>
 
-      <div class="info-card contact-card">
-        <h3>
-          <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="14" rx="2" />
-            <polyline points="3 7 12 13 21 7" />
-          </svg>
-          Send a Message
-        </h3>
-
+        <div class="contact-body">
         <form id="contact-form" class="contact-form" novalidate>
           <div class="contact-row">
             <div class="field">
@@ -1005,6 +994,7 @@
           </div>
           <p class="contact-status" id="contact-status" role="status" aria-live="polite" hidden></p>
         </form>
+        </div>
       </div>
     </section>
 
