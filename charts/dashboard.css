@@ -2569,6 +2569,24 @@ table.matrix-table td.cohort-cell:hover {
 .contact-form .req {
   color: var(--accent-rose);
 }
+.contact-form .optional {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+/* Same width as one column of .contact-row (first/last name). */
+.contact-field-half {
+  width: calc(50% - 0.45rem);
+}
+@media (max-width: 600px) {
+  .contact-field-half {
+    width: 100%;
+  }
+}
+.contact-form input::placeholder,
+.contact-form textarea::placeholder {
+  color: #9aa3ad;
+}
 .contact-form input[type="text"],
 .contact-form input[type="email"],
 .contact-form textarea {

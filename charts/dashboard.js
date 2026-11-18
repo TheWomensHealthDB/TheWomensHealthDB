@@ -610,12 +610,19 @@
 
       var first = form.elements.first_name.value.trim();
       var last = form.elements.last_name.value.trim();
+      var cohort = form.elements.cohort.value.trim();
+      var cohortAbbr = form.elements.cohort_abbreviation.value.trim();
       var payload = {
         access_key: CONTACT_FORM_ACCESS_KEY,
-        subject: "WHD website message from " + first + " " + last,
+        // e.g. "WHD website message (CARDIA) from Jane Doe"
+        subject:
+          "WHD website message" + (cohortAbbr ? " (" + cohortAbbr + ")" : "") +
+          " from " + first + " " + last,
         from_name: "The Women's Health Database website",
         name: first + " " + last,
         email: form.elements.email.value.trim(),
+        cohort: cohort || "(not given)",
+        cohort_abbreviation: cohortAbbr || "(not given)",
         message: form.elements.message.value.trim(),
       };
 
