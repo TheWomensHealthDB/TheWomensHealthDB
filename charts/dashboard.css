@@ -2566,7 +2566,8 @@ table.matrix-table td.cohort-cell:hover {
   grid-template-columns: 1fr 1fr;
   gap: 0.9rem;
 }
-.contact-form .req {
+.contact-form .req,
+.contact-card .req-inline {
   color: var(--accent-rose);
 }
 .contact-form .optional {
