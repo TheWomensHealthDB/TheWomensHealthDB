@@ -18,9 +18,9 @@ Resolution rules (see resolve_participant_location()):
      spellings), or names more than one distinct state/region/country ->
      fall back to the PI location column, using the *first* state/region it
      names.
-  2. Otherwise, if SPL names exactly one state/region/country -> use that
-     (ignoring any city name that comes along with it, e.g. "Los Angeles,
-     CA" resolves to California).
+  2. Otherwise, if SPL names exactly one place -> use that. A known city
+     wins over its own state/country, e.g. "Los Angeles, CA" resolves to
+     "Los Angeles, California" with that city's coordinates.
   3. Otherwise, if SPL names no recognizable state/region but does name a
      known city -> use that city's state (best-effort, see
      state_centroids.CITY_TO_STATE).
@@ -33,15 +33,13 @@ This module figures out *which* place a cohort should be geocoded to,
 returning its canonical display name -- turning that into map coordinates
 is normally done via state_centroids.geocode_state() /
 country_centroids.geocode_country(), same as before. The one exception:
-when a value names a specific *non-U.S. city* that's in
+when a value names a specific known city -- a non-U.S. city in
 country_centroids.CITY_CENTROIDS (e.g. "Melbourne", or "Melbourne,
-Australia"), this module also returns that city's own precise (lat, lon)
-directly, so the caller can place the cohort there instead of falling all
-the way back to its country's much coarser centroid. U.S. locations
-intentionally stay state-level only, even when a city is named (see
-resolve_participant_location() rule 2) -- there's no equivalent U.S.
-city-level centroid table, since state-level precision was the original,
-deliberate design for U.S. cohorts.
+Australia") or a U.S. city in state_centroids.US_CITY_CENTROIDS (e.g.
+"Los Angeles, CA") -- this module also returns that city's own precise
+(lat, lon) directly, so the caller can place the cohort there instead of
+falling back to its state's or country's much coarser centroid. A U.S.
+city that isn't in the table still resolves to its state.
 """
 
 import re
@@ -52,7 +50,15 @@ from country_centroids import (
     country_from_city,
     geocode_city,
 )
-from state_centroids import state_display_name, state_from_city
+from state_centroids import (
+    geocode_us_city,
+    is_exact_state_name,
+    state_display_name,
+    state_from_city,
+    us_city_display_name,
+    us_city_key,
+    us_city_state,
+)
 
 # Recognized spellings of "this study recruited from all over, not one
 # place" -- treated the same as a blank Subject population location.
@@ -123,9 +129,8 @@ def _resolve_segment_international_city(segment: str):
     country_centroids.CITY_TO_COUNTRY but doesn't (yet) have a matching
     entry in CITY_CENTROIDS.
 
-    Deliberately doesn't consult state_centroids.CITY_TO_STATE -- U.S.
-    locations intentionally stay state-level only (see module docstring),
-    so this only ever returns a *non-U.S.* city.
+    Doesn't consult state_centroids.CITY_TO_STATE -- U.S. cities are
+    handled separately by _us_city_matches() below.
     """
     segment = segment.strip().strip(".")
     if not segment:
@@ -138,18 +143,59 @@ def _resolve_segment_international_city(segment: str):
     return f"{city}, {country}", coords
 
 
+def _us_city_matches(segments):
+    """
+    Precise U.S. city matches for one cell's segments, as
+    [(display_name, (lat, lon), state_display_name, segment_index), ...] --
+    e.g. "Los Angeles, CA" -> [("Los Angeles, California", (34.05, -118.24),
+    "California", 0)]. Guards against the city table's ambiguous names:
+
+      - A segment that is itself a state name ("New York", "Washington")
+        only counts as a city when *another* segment names that city's
+        state ("New York, NY", "Washington, DC"). Alone, or in "Seattle,
+        Washington", it stays a state.
+      - A city whose table state contradicts a state named elsewhere in the
+        cell is ignored ("Rochester, MN" stays Minnesota, since the table's
+        "rochester" is Rochester, NY).
+      - Several different cities in the same state ("Los Angeles and San
+        Diego") collapse back to that state, rather than counting as
+        multiple locations.
+    """
+    segs = [s.strip().strip(".") for s in segments]
+    seg_states = [state_display_name(s) if s else None for s in segs]
+
+    matches = []
+    for i, seg in enumerate(segs):
+        key = us_city_key(seg)
+        if not key:
+            continue
+        city_state = us_city_state(key)
+        other_states = {st for j, st in enumerate(seg_states) if j != i and st}
+        if is_exact_state_name(seg) and city_state not in other_states:
+            continue  # segment is a state name, not confirmed as a city
+        if other_states and city_state not in other_states:
+            continue  # contradicts an explicitly named state
+        display = us_city_display_name(key)
+        if display not in [m[0] for m in matches]:
+            matches.append((display, geocode_us_city(key), city_state, i))
+
+    per_state = {}
+    for m in matches:
+        per_state[m[2]] = per_state.get(m[2], 0) + 1
+    return [m for m in matches if per_state[m[2]] == 1]
+
+
 def _distinct_resolved_locations(text: str):
     """
     Splits `text` into segments and resolves them to distinct places, in the
     order first seen. Each returned item is a (display_name, coords) tuple,
-    where `coords` is a precise (lat, lon) pair for a recognized non-U.S.
-    city (see _resolve_segment_international_city()), or None for a
+    where `coords` is a precise (lat, lon) pair for a recognized city (see _resolve_segment_international_city()), or None for a
     country/U.S. state-level result (the caller geocodes those the same way
     as before, via state_centroids.geocode_state()/
     country_centroids.geocode_country()).
 
     Resolves in three passes:
-      1. Precise non-U.S. city matches. Tried first so that when a segment
+      1. Precise city matches (non-U.S., then U.S. via _us_city_matches()). Tried first so that when a segment
          names a specific known city (e.g. "Melbourne"), the result is that
          city's own centroid rather than the coarser country-level one a
          second pass would otherwise find.
@@ -182,8 +228,19 @@ def _distinct_resolved_locations(text: str):
             city_matches.append(match)
             city_countries.add(match[0].rsplit(", ", 1)[-1])
 
+    # Precise U.S. city matches (e.g. "Los Angeles, CA"); their states are
+    # excluded from the place pass below, the same way a city's country is.
+    city_segments = set()
+    for display, coords, city_state, seg_index in _us_city_matches(segments):
+        city_segments.add(seg_index)
+        if display not in [m[0] for m in city_matches]:
+            city_matches.append((display, coords))
+            city_countries.add(city_state)
+
     place_matches = []
-    for segment in segments:
+    for i, segment in enumerate(segments):
+        if i in city_segments:
+            continue  # already used as a city (e.g. "Washington" in "Washington, DC")
         resolved = _resolve_segment_place(segment)
         if resolved and resolved not in city_countries and resolved not in place_matches:
             place_matches.append(resolved)
@@ -219,8 +276,8 @@ def resolve_participant_location(subject_population_location: str, pi_location: 
     where `source` is a short string describing which column/rule produced
     the answer (useful for debugging/warnings), and `precise_coords` is a
     (lat, lon) pair when `display_name` resolved to a specific recognized
-    non-U.S. city (see _resolve_segment_international_city()) or None when
-    it's a country/U.S.-state-level result -- the caller geocodes those the
+    city (see _resolve_segment_international_city() / _us_city_matches())
+    or None when it's a country/U.S.-state-level result -- the caller geocodes those the
     usual way, via state_centroids.geocode_state()/
     country_centroids.geocode_country(). Returns (None, None, None) if
     nothing could be resolved at all.

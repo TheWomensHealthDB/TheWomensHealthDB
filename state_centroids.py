@@ -273,3 +273,135 @@ def state_from_city(name: str):
     key = _normalize(str(name))
     state_key = CITY_TO_STATE.get(key)
     return state_display_name(state_key) if state_key else None
+
+
+# Approximate (lat, lon) for every city in CITY_TO_STATE, so a cohort whose
+# location names a specific U.S. city gets its own map pin instead of its
+# state's centroid (see participant_location.py). Keys match CITY_TO_STATE
+# exactly; a check at the bottom of this module enforces that, so adding a
+# city to CITY_TO_STATE without a centroid fails loudly.
+US_CITY_CENTROIDS = {
+    "new york city": (40.7128, -74.0060), "new york": (40.7128, -74.0060),
+    "nyc": (40.7128, -74.0060), "brooklyn": (40.6782, -73.9442),
+    "buffalo": (42.8864, -78.8784), "rochester": (43.1566, -77.6088),
+    "los angeles": (34.0522, -118.2437), "san francisco": (37.7749, -122.4194),
+    "san diego": (32.7157, -117.1611), "san jose": (37.3382, -121.8863),
+    "sacramento": (38.5816, -121.4944), "oakland": (37.8044, -122.2712),
+    "long beach": (33.7701, -118.1937), "fresno": (36.7378, -119.7871),
+    "chicago": (41.8781, -87.6298),
+    "houston": (29.7604, -95.3698), "dallas": (32.7767, -96.7970),
+    "austin": (30.2672, -97.7431), "san antonio": (29.4241, -98.4936),
+    "fort worth": (32.7555, -97.3308), "el paso": (31.7619, -106.4850),
+    "phoenix": (33.4484, -112.0740), "tucson": (32.2226, -110.9747),
+    "philadelphia": (39.9526, -75.1652), "pittsburgh": (40.4406, -79.9959),
+    "boston": (42.3601, -71.0589), "cambridge": (42.3736, -71.1097),
+    "worcester": (42.2626, -71.8023),
+    "seattle": (47.6062, -122.3321), "spokane": (47.6588, -117.4260),
+    "tacoma": (47.2529, -122.4443),
+    "denver": (39.7392, -104.9903), "boulder": (40.0150, -105.2705),
+    "aurora": (39.7294, -104.8319),
+    "washington": (38.9072, -77.0369),
+    "nashville": (36.1627, -86.7816), "memphis": (35.1495, -90.0490),
+    "knoxville": (35.9606, -83.9207),
+    "portland": (45.5152, -122.6784), "eugene": (44.0521, -123.0868),
+    "atlanta": (33.7490, -84.3880), "augusta": (33.4735, -82.0105),
+    "savannah": (32.0809, -81.0912),
+    "miami": (25.7617, -80.1918), "orlando": (28.5383, -81.3792),
+    "tampa": (27.9506, -82.4572), "jacksonville": (30.3322, -81.6557),
+    "gainesville": (29.6516, -82.3248),
+    "baltimore": (39.2904, -76.6122), "bethesda": (38.9847, -77.0947),
+    "annapolis": (38.9784, -76.4922),
+    "detroit": (42.3314, -83.0458), "ann arbor": (42.2808, -83.7430),
+    "grand rapids": (42.9634, -85.6681),
+    "minneapolis": (44.9778, -93.2650), "saint paul": (44.9537, -93.0900),
+    "st paul": (44.9537, -93.0900), "rochester mn": (44.0121, -92.4802),
+    "st louis": (38.6270, -90.1994), "saint louis": (38.6270, -90.1994),
+    "kansas city": (39.0997, -94.5786),
+    "cleveland": (41.4993, -81.6944), "columbus": (39.9612, -82.9988),
+    "cincinnati": (39.1031, -84.5120), "toledo": (41.6528, -83.5379),
+    "dayton": (39.7589, -84.1916),
+    "las vegas": (36.1699, -115.1398), "reno": (39.5296, -119.8138),
+    "new orleans": (29.9511, -90.0715), "baton rouge": (30.4515, -91.1871),
+    "charlotte": (35.2271, -80.8431), "raleigh": (35.7796, -78.6382),
+    "durham": (35.9940, -78.8986), "chapel hill": (35.9132, -79.0558),
+    "indianapolis": (39.7684, -86.1581),
+    "milwaukee": (43.0389, -87.9065), "madison": (43.0731, -89.4012),
+    "salt lake city": (40.7608, -111.8910), "provo": (40.2338, -111.6585),
+    "albuquerque": (35.0844, -106.6504),
+    "honolulu": (21.3069, -157.8583),
+    "anchorage": (61.2181, -149.9003),
+    "richmond": (37.5407, -77.4360), "norfolk": (36.8508, -76.2859),
+    "charlottesville": (38.0293, -78.4767), "arlington": (38.8816, -77.0910),
+    "birmingham": (33.5186, -86.8104), "montgomery": (32.3792, -86.3077),
+    "mobile": (30.6954, -88.0399),
+    "little rock": (34.7465, -92.2896),
+    "oklahoma city": (35.4676, -97.5164), "tulsa": (36.1540, -95.9928),
+    "wichita": (37.6872, -97.3301),
+    "omaha": (41.2565, -95.9345), "lincoln": (40.8136, -96.7026),
+    "des moines": (41.5868, -93.6250), "iowa city": (41.6611, -91.5302),
+    "louisville": (38.2527, -85.7585), "lexington": (38.0406, -84.5037),
+    "jackson": (32.2988, -90.1848),
+    "columbia": (34.0007, -81.0348), "charleston": (32.7765, -79.9311),
+    "providence": (41.8240, -71.4128),
+    "hartford": (41.7658, -72.6734), "new haven": (41.3083, -72.9279),
+    "burlington": (44.4759, -73.2121),
+    "manchester": (42.9956, -71.4548),
+    "wilmington": (39.7391, -75.5398),
+    "newark": (40.7357, -74.1724), "princeton": (40.3573, -74.6672),
+    "trenton": (40.2206, -74.7597),
+    "boise": (43.6150, -116.2023),
+    "billings": (45.7833, -108.5007), "bozeman": (45.6770, -111.0429),
+    "fargo": (46.8772, -96.7898),
+    "sioux falls": (43.5446, -96.7311),
+    "cheyenne": (41.1400, -104.8202),
+    "san juan": (18.4655, -66.1057),
+}
+
+# Display names that plain title-casing gets wrong.
+_US_CITY_DISPLAY_OVERRIDES = {
+    "new york": "New York City", "nyc": "New York City",
+    "new york city": "New York City",
+    "st louis": "St. Louis", "saint louis": "St. Louis",
+    "st paul": "Saint Paul", "rochester mn": "Rochester",
+    "washington": "Washington",
+}
+
+_missing = set(CITY_TO_STATE) ^ set(US_CITY_CENTROIDS)
+assert not _missing, f"CITY_TO_STATE / US_CITY_CENTROIDS keys differ: {sorted(_missing)}"
+
+
+def us_city_key(name: str):
+    """Normalized CITY_TO_STATE key for a city name, or None if unknown."""
+    if not name or not str(name).strip():
+        return None
+    key = _normalize(str(name))
+    return key if key in CITY_TO_STATE else None
+
+
+def us_city_state(key: str):
+    """Canonical display name of the state a CITY_TO_STATE key belongs to."""
+    return state_display_name(CITY_TO_STATE[key])
+
+
+def us_city_display_name(key: str):
+    """e.g. "los angeles" -> "Los Angeles, California"."""
+    city = _US_CITY_DISPLAY_OVERRIDES.get(key, key.title())
+    state = us_city_state(key)
+    if state == "District of Columbia":
+        return "Washington, D.C."
+    return f"{city}, {state}"
+
+
+def geocode_us_city(key: str):
+    """(lat, lon) for a CITY_TO_STATE key."""
+    return US_CITY_CENTROIDS[key]
+
+
+def is_exact_state_name(name: str) -> bool:
+    """True only when `name` is itself a state/territory name or
+    abbreviation ("New York", "NY"), not merely a longer string containing
+    one ("New York City")."""
+    if not name or not str(name).strip():
+        return False
+    key = _normalize(str(name))
+    return ALIASES.get(key, key) in STATE_CENTROIDS

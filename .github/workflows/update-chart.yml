@@ -11,6 +11,8 @@ on:
     paths:
       - "fetch_data.py"
       - "country_centroids.py"
+      - "state_centroids.py"
+      - "participant_location.py"
       - "requirements.txt"
       - "charts/index.html"
       - "charts/dashboard.css"

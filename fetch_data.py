@@ -100,7 +100,7 @@ RESOLVED_LOCATION_COLUMN = "Location of Cohort's Participants (or of PI, if Unli
 # written to complete_datasets.json/schema.json -- stripped out again right
 # after build_cohorts() consumes them, see main()) that carry a precise
 # (lat, lon) alongside RESOLVED_LOCATION_COLUMN when
-# resolve_participant_location() recognized a specific non-U.S. city (e.g.
+# resolve_participant_location() recognized a specific city (e.g.
 # "Melbourne, Australia") rather than only a country/U.S. state. Kept as a
 # pair of plain float-or-blank columns (rather than a single tuple/list
 # column) so they survive DataFrame construction, the empty-row filter, and
@@ -1222,7 +1222,7 @@ def build_cohorts(complete_df: pd.DataFrame, table_df: pd.DataFrame) -> pd.DataF
     ).drop(columns=["_join_key"])
 
     def _row_coords(row):
-        # A precise non-U.S. city centroid (see PRECISE_LOCATION_LAT/LON_
+        # A precise city centroid (see PRECISE_LOCATION_LAT/LON_
         # COLUMN / participant_location.py) always wins when present --
         # it's strictly more specific than re-deriving a coarser state/
         # country centroid from the RESOLVED_LOCATION_COLUMN text below.
@@ -1578,7 +1578,7 @@ def main():
     table = _drop_excluded_cohorts(table, TABLE_COHORT_COLUMN, TABLE_TAB)
     cohorts = build_cohorts(complete_datasets, table)
 
-    # PRECISE_LOCATION_LAT/LON_COLUMN only exist to hand a precise non-U.S.
+    # PRECISE_LOCATION_LAT/LON_COLUMN only exist to hand a precise
     # city centroid from _add_resolved_location_column()/
     # _mock_complete_datasets() through to build_cohorts() above -- drop
     # them now so they never leak into complete_datasets.json or get
