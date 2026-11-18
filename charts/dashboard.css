@@ -2548,3 +2548,91 @@ table.matrix-table td.cohort-cell:hover {
 #panel-summary .classification-map-section .panel-body-with-key {
   grid-template-rows: auto;
 }
+/* ---------------------------------------------------------------------
+   Contact Us tab
+   --------------------------------------------------------------------- */
+
+.contact-card {
+  max-width: 44rem;
+}
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+.contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+.contact-form .req {
+  color: var(--accent-rose);
+}
+.contact-form input[type="text"],
+.contact-form input[type="email"],
+.contact-form textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  font-size: 0.92rem;
+  background: #fff;
+  color: var(--text-main);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.contact-form textarea {
+  resize: vertical;
+  min-height: 9rem;
+  line-height: 1.5;
+}
+.contact-form input:focus,
+.contact-form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.contact-form .field.invalid input,
+.contact-form .field.invalid textarea {
+  border-color: #c0392b;
+}
+.contact-form .field-error {
+  font-size: 0.8rem;
+  color: #c0392b;
+}
+.contact-botcheck {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.contact-actions button[disabled] {
+  opacity: 0.65;
+  cursor: progress;
+}
+.contact-status {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.contact-status.success {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  color: #1b5e20;
+}
+.contact-status.error {
+  background: #fdecea;
+  border: 1px solid #f5b7b1;
+  color: #922b21;
+}
+@media (max-width: 600px) {
+  .contact-row {
+    grid-template-columns: 1fr;
+  }
+}

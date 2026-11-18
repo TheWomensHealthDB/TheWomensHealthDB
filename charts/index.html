@@ -82,6 +82,7 @@
       </div>
       <button type="button" data-tab="filter">Custom Filter</button>
       <button type="button" data-tab="contribute">Contribute</button>
+      <button type="button" data-tab="contact">Contact Us</button>
     </nav>
   </header>
 
@@ -890,13 +891,13 @@
             </p>
             <p>
               If your cohort's variables change, or you would like to
-              update your entry, please resubmit this form or contact us
-              directly.
+              update your entry, please resubmit this form or
+              <button type="button" class="tab-link" data-goto-tab="contact">contact us directly</button>.
             </p>
             <p>
               You may withdraw your cohort's entry from the catalog at any
-              time by sending written notice to Teal Eich at
-              <a class="inline-link" href="mailto:teich@usc.edu">teich@usc.edu</a>.
+              time by sending the WHD Team a
+              <button type="button" class="tab-link" data-goto-tab="contact">written notice</button>.
             </p>
           </li>
         </ol>
@@ -928,6 +929,53 @@
           Only complete forms will be reviewed. Incomplete submissions
           will not be considered.
         </p>
+      </div>
+    </section>
+
+    <!-- Contact Us: messages are emailed to the WHD Team through
+         Web3Forms (see "Contact form" in dashboard.js), so the team's
+         address never appears on the site. -->
+    <section id="panel-contact" class="tab-panel">
+      <div class="info-card contact-card">
+        <h3>
+          <svg class="info-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <polyline points="3 7 12 13 21 7" />
+          </svg>
+          Contact Us
+        </h3>
+        <p>
+          Questions about the Women's Health Database, updates to a cohort's
+          entry, or a request to withdraw a cohort? Send the WHD Team a
+          message below. All fields are required.
+        </p>
+
+        <form id="contact-form" class="contact-form" novalidate>
+          <div class="contact-row">
+            <div class="field">
+              <label for="contact-first">First name <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="contact-first" name="first_name" autocomplete="given-name" required />
+            </div>
+            <div class="field">
+              <label for="contact-last">Last name <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="contact-last" name="last_name" autocomplete="family-name" required />
+            </div>
+          </div>
+          <div class="field">
+            <label for="contact-email">Email <span class="req" aria-hidden="true">*</span></label>
+            <input type="email" id="contact-email" name="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="contact-message">Message <span class="req" aria-hidden="true">*</span></label>
+            <textarea id="contact-message" name="message" rows="7" required></textarea>
+          </div>
+          <!-- Spam trap: hidden from people, often filled in by bots. -->
+          <input type="checkbox" name="botcheck" class="contact-botcheck" tabindex="-1" autocomplete="off" aria-hidden="true" />
+          <div class="contact-actions">
+            <button type="submit" class="btn" id="contact-submit">Send message</button>
+          </div>
+          <p class="contact-status" id="contact-status" role="status" aria-live="polite" hidden></p>
+        </form>
       </div>
     </section>
 

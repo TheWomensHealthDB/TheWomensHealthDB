@@ -103,7 +103,7 @@ jobs:
       # charts/index.html (Information is the root page, so it's not listed).
       - name: Generate per-tab pages
         run: |
-          TAB_PAGES="summary checklist items-reference filter contribute"
+          TAB_PAGES="summary checklist items-reference filter contribute contact"
           grep -q '<meta charset="UTF-8" />' charts/index.html || {
             echo "index.html no longer has the <meta charset> line this step anchors on" >&2
             exit 1

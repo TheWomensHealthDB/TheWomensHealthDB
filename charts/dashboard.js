@@ -70,6 +70,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     wireTabs();
     wireInPageTabLinks();
+    wireContactForm();
     wireModal();
     wireTableZoom();
     wireTableExport();
@@ -535,6 +536,121 @@
           if (btn) btn.click();
         });
       });
+  }
+
+  // ---------------------------------------------------------------------
+  // Contact form (Contact Us tab)
+  //
+  // GitHub Pages can't send email, so messages go through Web3Forms
+  // (web3forms.com), which forwards each one to the WHD Team's inbox. The
+  // access key below is tied to that inbox on Web3Forms' side; it's meant to
+  // be public and doesn't reveal the address. The sender's email becomes the
+  // reply-to, so the team can answer with a plain "Reply".
+  // ---------------------------------------------------------------------
+
+  var CONTACT_FORM_ACCESS_KEY = "";
+  var CONTACT_FORM_ENDPOINT = "https://api.web3forms.com/submit";
+
+  function wireContactForm() {
+    var form = document.getElementById("contact-form");
+    if (!form) return;
+    var status = document.getElementById("contact-status");
+    var submitBtn = document.getElementById("contact-submit");
+    var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function showStatus(kind, text) {
+      status.className = "contact-status " + kind;
+      status.textContent = text;
+      status.hidden = false;
+    }
+
+    function setFieldError(input, message) {
+      var field = input.closest(".field");
+      var existing = field.querySelector(".field-error");
+      if (existing) existing.remove();
+      field.classList.toggle("invalid", !!message);
+      input.setAttribute("aria-invalid", message ? "true" : "false");
+      if (message) {
+        var err = document.createElement("span");
+        err.className = "field-error";
+        err.textContent = message;
+        field.appendChild(err);
+      }
+    }
+
+    function validate() {
+      var firstBad = null;
+      ["contact-first", "contact-last", "contact-email", "contact-message"].forEach(function (id) {
+        var input = document.getElementById(id);
+        var value = input.value.trim();
+        var message = "";
+        if (!value) message = "This field is required.";
+        else if (input.type === "email" && !emailRe.test(value)) message = "Please enter a valid email address.";
+        setFieldError(input, message);
+        if (message && !firstBad) firstBad = input;
+      });
+      if (firstBad) firstBad.focus();
+      return !firstBad;
+    }
+
+    form.addEventListener("input", function (event) {
+      if (event.target.closest(".field.invalid")) setFieldError(event.target, "");
+    });
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      status.hidden = true;
+      if (!validate()) return;
+      if (form.elements.botcheck.checked) return; // bot
+
+      if (!CONTACT_FORM_ACCESS_KEY) {
+        showStatus("error", "Sorry, the contact form isn't set up yet. Please try again later.");
+        return;
+      }
+
+      var first = form.elements.first_name.value.trim();
+      var last = form.elements.last_name.value.trim();
+      var payload = {
+        access_key: CONTACT_FORM_ACCESS_KEY,
+        subject: "WHD website message from " + first + " " + last,
+        from_name: "The Women's Health Database website",
+        name: first + " " + last,
+        email: form.elements.email.value.trim(),
+        message: form.elements.message.value.trim(),
+      };
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Sending…";
+
+      fetch(CONTACT_FORM_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { ok: res.ok && data && data.success };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok) throw new Error("send failed");
+          form.reset();
+          showStatus(
+            "success",
+            "Thank you, " + first + "! Your message has been sent to the WHD Team. We'll reply to the email address you provided."
+          );
+        })
+        .catch(function () {
+          showStatus(
+            "error",
+            "Sorry, your message couldn't be sent. Please check your connection and try again."
+          );
+        })
+        .then(function () {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Send message";
+        });
+    });
   }
 
   // ---------------------------------------------------------------------
