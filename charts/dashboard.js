@@ -554,7 +554,7 @@
   // reply-to, so the team can answer with a plain "Reply".
   // ---------------------------------------------------------------------
 
-  var CONTACT_FORM_ACCESS_KEY = "";
+  var CONTACT_FORM_ACCESS_KEY = "9a8d61a8-0245-4cf3-8bb3-5189717a201d";
   var CONTACT_FORM_ENDPOINT = "https://api.web3forms.com/submit";
 
   function wireContactForm() {
