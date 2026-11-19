@@ -556,6 +556,13 @@
 
   var CONTACT_FORM_ACCESS_KEY = "9a8d61a8-0245-4cf3-8bb3-5189717a201d";
   var CONTACT_FORM_ENDPOINT = "https://api.web3forms.com/submit";
+  // Tag added to the end of the email subject for each "Reason for contact".
+  var REASON_TAGS = {
+    "General question": "[Q]",
+    "Update a cohort": "[Update]",
+    "Withdraw a cohort": "[Withdraw]",
+    "Other": "[Other]",
+  };
 
   function wireContactForm() {
     var form = document.getElementById("contact-form");
@@ -624,10 +631,11 @@
       var cohortAbbr = form.elements.cohort_abbreviation.value.trim();
       var payload = {
         access_key: CONTACT_FORM_ACCESS_KEY,
-        // e.g. "WHD message (SAGE) from Jane Doe"
+        // e.g. "WHD message (SAGE) from Jane Doe [Update]"
         subject:
           "WHD message" + (cohortAbbr ? " (" + cohortAbbr + ")" : "") +
-          " from " + first + " " + last,
+          " from " + first + " " + last +
+          (REASON_TAGS[form.elements.reason.value] ? " " + REASON_TAGS[form.elements.reason.value] : ""),
         from_name: "The Women's Health Database website",
         name: first + " " + last,
         email: form.elements.email.value.trim(),
