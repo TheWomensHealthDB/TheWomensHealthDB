@@ -983,6 +983,16 @@
             <input type="text" id="contact-institution" name="institution" autocomplete="organization" placeholder="e.g., USC" required />
           </div>
           <div class="field">
+            <label for="contact-reason">Reason for contact <span class="req" aria-hidden="true">*</span></label>
+            <select id="contact-reason" name="reason" required>
+              <option value="" selected disabled>Choose a reason&hellip;</option>
+              <option>General question</option>
+              <option>Update a cohort</option>
+              <option>Withdraw a cohort</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="contact-cohort">What cohort is this note in regards to?: <span class="optional">(optional)</span></label>
             <input type="text" id="contact-cohort" name="cohort" placeholder="A cohort already on the website, one not yet included, or leave blank" />
           </div>

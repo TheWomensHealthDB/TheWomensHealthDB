@@ -586,7 +586,7 @@
 
     function validate() {
       var firstBad = null;
-      ["contact-first", "contact-last", "contact-email", "contact-institution", "contact-message"].forEach(function (id) {
+      ["contact-first", "contact-last", "contact-email", "contact-institution", "contact-reason", "contact-message"].forEach(function (id) {
         var input = document.getElementById(id);
         var value = input.value.trim();
         var message = "";
@@ -599,6 +599,10 @@
       return !firstBad;
     }
 
+    function clearOnEdit(event) {
+      if (event.target.closest(".field.invalid")) setFieldError(event.target, "");
+    }
+    form.addEventListener("change", clearOnEdit);
     form.addEventListener("input", function (event) {
       if (event.target.closest(".field.invalid")) setFieldError(event.target, "");
     });
@@ -628,6 +632,7 @@
         name: first + " " + last,
         email: form.elements.email.value.trim(),
         institution: form.elements.institution.value.trim(),
+        reason: form.elements.reason.value,
         cohort: cohort || "(not given)",
         cohort_abbreviation: cohortAbbr || "(not given)",
         message: form.elements.message.value.trim(),

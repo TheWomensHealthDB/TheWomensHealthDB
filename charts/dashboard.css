@@ -2618,6 +2618,7 @@ table.matrix-table td.cohort-cell:hover {
 }
 .contact-form input[type="text"],
 .contact-form input[type="email"],
+.contact-form select,
 .contact-form textarea {
   width: 100%;
   min-width: 0;
@@ -2637,12 +2638,14 @@ table.matrix-table td.cohort-cell:hover {
   line-height: 1.5;
 }
 .contact-form input:focus,
+.contact-form select:focus,
 .contact-form textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .contact-form .field.invalid input,
+.contact-form .field.invalid select,
 .contact-form .field.invalid textarea {
   border-color: #c0392b;
 }
@@ -2682,4 +2685,12 @@ table.matrix-table td.cohort-cell:hover {
   .contact-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Reason dropdown: grey until a reason is chosen, like the placeholders. */
+.contact-form select:invalid {
+  color: #9aa3ad;
+}
+.contact-form select option {
+  color: var(--text-main);
 }
