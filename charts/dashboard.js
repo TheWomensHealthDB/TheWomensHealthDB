@@ -593,7 +593,7 @@
 
     function validate() {
       var firstBad = null;
-      ["contact-first", "contact-last", "contact-email", "contact-institution", "contact-reason", "contact-message"].forEach(function (id) {
+      ["contact-reason", "contact-first", "contact-last", "contact-email", "contact-institution", "contact-message"].forEach(function (id) {
         var input = document.getElementById(id);
         var value = input.value.trim();
         var message = "";
