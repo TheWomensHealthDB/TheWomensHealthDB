@@ -557,7 +557,7 @@
   // jump the page to the top and add a stray "#" to the URL.
   function wireInPageTabLinks() {
     document
-      .querySelectorAll(".tab-link[data-goto-tab], .brand-home-link[data-goto-tab]")
+      .querySelectorAll(".tab-link[data-goto-tab], .brand-home-link[data-goto-tab], .btn[data-goto-tab]")
       .forEach(function (link) {
         link.addEventListener("click", function (event) {
           event.preventDefault();

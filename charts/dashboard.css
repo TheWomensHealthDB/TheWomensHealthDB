@@ -2703,3 +2703,24 @@ table.matrix-table td.cohort-cell:hover {
 .contact-form select option {
   color: var(--text-main);
 }
+
+/* Home page "Contribute a Cohort" card: text beside its button on wide
+   screens, stacked on phones. */
+.info-card-contribute-body {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.info-card-contribute-body p {
+  flex: 1 1 auto;
+}
+.info-card-contribute-body .btn {
+  flex: none;
+}
+@media (max-width: 600px) {
+  .info-card-contribute-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}
