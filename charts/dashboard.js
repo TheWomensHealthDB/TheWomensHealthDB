@@ -385,10 +385,9 @@
       document.querySelectorAll(".nav-item-group").forEach(function (group) {
         var dropdown = group.querySelector(".nav-dropdown");
         if (!dropdown) return;
-        var style = getComputedStyle(dropdown);
-        var width =
-          Math.max(parseFloat(style.minWidth) || 0, dropdown.scrollWidth) +
-          (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0) + 2;
+        // The dropdown is at least as wide as its group's button; when it's
+        // showing, use its real width in case its entries are wider.
+        var width = Math.max(group.offsetWidth, dropdown.offsetWidth);
         var left = group.getBoundingClientRect().left;
         var viewport = document.documentElement.clientWidth;
         group.classList.toggle("flip", left + width > viewport - 8);

@@ -265,7 +265,11 @@ nav.tabs button.active {
   top: 100%;
   left: 0;
   z-index: 20;
-  min-width: 14em;
+  /* At least as wide as its own top-level tab button (the group is only
+     as wide as that button), and otherwise only as wide as its entries. */
+  min-width: 100%;
+  width: max-content;
+  box-sizing: border-box;
   background: var(--bg-page);
   border: 1px solid var(--border);
   border-radius: 0 8px 8px 8px;
