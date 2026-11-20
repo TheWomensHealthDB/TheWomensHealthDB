@@ -273,10 +273,11 @@ nav.tabs button.active {
   overflow: hidden;
   padding: 0.3rem;
 }
-/* The last group in the nav (Contact Us / Contribute) opens leftward,
-   anchored to its own right edge, so it never runs off the right side of
-   the screen. */
-.nav-item-group-end .nav-dropdown {
+/* A dropdown that would run off the right side of the screen (e.g. Contact
+   Us / Contribute at the end of the nav on a phone) opens leftward instead,
+   anchored to its group's right edge. ".flip" is set only when needed, by
+   updateDropdownDirections() in dashboard.js. */
+.nav-item-group.flip .nav-dropdown {
   left: auto;
   right: 0;
   border-radius: 8px 0 8px 8px;

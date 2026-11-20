@@ -378,6 +378,30 @@
       countTabView();
     });
 
+    // Each dropdown normally opens rightward from its group's left edge;
+    // flip it leftward only when that would run off the screen. Checked
+    // right before a dropdown can open (hover, focus, tap) and on resize.
+    function updateDropdownDirections() {
+      document.querySelectorAll(".nav-item-group").forEach(function (group) {
+        var dropdown = group.querySelector(".nav-dropdown");
+        if (!dropdown) return;
+        var style = getComputedStyle(dropdown);
+        var width =
+          Math.max(parseFloat(style.minWidth) || 0, dropdown.scrollWidth) +
+          (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0) + 2;
+        var left = group.getBoundingClientRect().left;
+        var viewport = document.documentElement.clientWidth;
+        group.classList.toggle("flip", left + width > viewport - 8);
+      });
+    }
+    updateDropdownDirections();
+    window.addEventListener("resize", updateDropdownDirections);
+    document.querySelectorAll(".nav-item-group").forEach(function (group) {
+      ["mouseenter", "focusin", "touchstart"].forEach(function (type) {
+        group.addEventListener(type, updateDropdownDirections, { passive: true });
+      });
+    });
+
     // Close a touch-opened dropdown (see ".open" above) when tapping
     // anywhere outside its group.
     document.addEventListener("click", function (e) {
