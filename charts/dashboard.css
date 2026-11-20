@@ -273,6 +273,14 @@ nav.tabs button.active {
   overflow: hidden;
   padding: 0.3rem;
 }
+/* The last group in the nav (Contact Us / Contribute) opens leftward,
+   anchored to its own right edge, so it never runs off the right side of
+   the screen. */
+.nav-item-group-end .nav-dropdown {
+  left: auto;
+  right: 0;
+  border-radius: 8px 0 8px 8px;
+}
 /* ":hover" only on devices with a real hover (mouse/trackpad). Touch
    browsers leave the last-tapped element stuck in ":hover" until something
    else is tapped, which kept this dropdown open after picking an option on

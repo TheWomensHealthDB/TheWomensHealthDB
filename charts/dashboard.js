@@ -188,12 +188,12 @@
       })
       .catch(function (err) {
         console.error(err);
-        // Information, Items Reference, and Contribute are all static
+        // Information, Items Reference, Contribute, and Contact Us are all static
         // markup with no cohort-data dependency (see their sections in
         // index.html), so they're excluded here and stay usable even when
         // the data fetch below fails.
         document
-          .querySelectorAll(".tab-panel:not(#panel-information):not(#panel-items-reference):not(#panel-contribute)")
+          .querySelectorAll(".tab-panel:not(#panel-information):not(#panel-items-reference):not(#panel-contribute):not(#panel-contact)")
           .forEach(function (panel) {
             panel.innerHTML =
               '<p class="empty-state">Could not load cohort data (' +
